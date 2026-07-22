@@ -1,36 +1,80 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SalonFlow
 
-## Getting Started
+SalonFlow is a salon management and appointment scheduling platform built with Next.js, TypeScript and Supabase.
 
-First, run the development server:
+The project is being evolved from a single-salon application into a reusable multi-tenant SaaS product for beauty, wellness and similar service businesses.
+
+## Current capabilities
+
+- appointment calendar and scheduling
+- employee shifts and availability
+- clients, services, rooms and equipment
+- online booking requests
+- SMS and email notifications
+- reports and operational dashboards
+- role-based administration
+
+## Technology
+
+- Next.js 16
+- React 19
+- TypeScript
+- Tailwind CSS 4
+- Supabase
+- Resend
+- Twilio
+
+## Local setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Copy the environment variable template:
+
+```bash
+cp .env.example .env.local
+```
+
+3. Add the required values to `.env.local`.
+
+4. Start the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Validation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+The existing codebase currently contains lint debt inherited from the original single-salon application. New work should avoid introducing additional lint errors, while existing findings will be handled incrementally.
 
-To learn more about Next.js, take a look at the following resources:
+## Product direction
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The first product-foundation phase covers:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- centralized SalonFlow product identity
+- removal of hardcoded single-salon assumptions
+- multi-tenant organization architecture
+- tenant-aware permissions and database access
+- onboarding and subscription foundations
 
-## Deploy on Vercel
+See [`docs/PRODUCT_FOUNDATION.md`](docs/PRODUCT_FOUNDATION.md) for the current implementation roadmap.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Security
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Never commit `.env` files or real credentials.
+- Do not expose Supabase service-role, Resend, Twilio or cron secrets to the browser.
+- Keep production customer data out of the repository.
+
+## Status
+
+SalonFlow is under active development and is not yet ready for general production use as a multi-tenant SaaS product.
