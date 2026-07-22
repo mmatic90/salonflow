@@ -158,21 +158,6 @@ for select
 to authenticated
 using (public.is_organization_member(organization_id));
 
-create policy "Organization creator can create owner membership"
-on public.organization_members
-for insert
-to authenticated
-with check (
-  user_id = auth.uid()
-  and role = 'owner'
-  and exists (
-    select 1
-    from public.organizations organization
-    where organization.id = organization_id
-      and organization.created_by = auth.uid()
-  )
-);
-
 create policy "Owners and admins can add members"
 on public.organization_members
 for insert
@@ -218,18 +203,29 @@ create or replace function public.create_organization_with_owner(
 )
 returns uuid
 language plpgsql
-security invoker
+security definer
 set search_path = public
 as $$
 declare
+  current_user_id uuid := auth.uid();
+  normalized_name text := trim(organization_name);
+  normalized_slug text := lower(trim(organization_slug));
   new_organization_id uuid;
 begin
-  if auth.uid() is null then
+  if current_user_id is null then
     raise exception 'Authentication required';
   end if;
 
+  if char_length(normalized_name) < 2 then
+    raise exception 'Organization name must contain at least 2 characters';
+  end if;
+
+  if normalized_slug !~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' then
+    raise exception 'Organization slug is invalid';
+  end if;
+
   insert into public.organizations (name, slug, created_by)
-  values (trim(organization_name), lower(trim(organization_slug)), auth.uid())
+  values (normalized_name, normalized_slug, current_user_id)
   returning id into new_organization_id;
 
   insert into public.organization_members (
@@ -239,7 +235,7 @@ begin
   )
   values (
     new_organization_id,
-    auth.uid(),
+    current_user_id,
     'owner'
   );
 
@@ -247,5 +243,6 @@ begin
 end;
 $$;
 
+revoke all on function public.create_organization_with_owner(text, text) from public;
 grant execute on function public.create_organization_with_owner(text, text)
 to authenticated;
