@@ -1,6 +1,14 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("RESEND_API_KEY is missing");
+  }
+
+  return new Resend(apiKey);
+}
 
 const fromEmail =
   process.env.RESEND_FROM_EMAIL || "Body & Soul <onboarding@resend.dev>";
@@ -99,7 +107,7 @@ export async function sendBookingAcceptedEmail(args: {
       </p>
     `;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: fromEmail,
     to: [args.to],
     subject: isHr
@@ -155,7 +163,7 @@ export async function sendBookingRejectedEmail(args: {
       </p>
     `;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: fromEmail,
     to: [args.to],
     subject: isHr
@@ -210,7 +218,7 @@ export async function sendAppointmentReminderEmail(args: {
       </p>
     `;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: fromEmail,
     to: [args.to],
     subject: isHr
@@ -262,7 +270,7 @@ export async function sendGoogleReviewRequestEmail(args: {
       </a>
     `;
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: fromEmail,
     to: [args.to],
     subject: isHr
