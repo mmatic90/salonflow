@@ -23,7 +23,12 @@ async function getSetupContext() {
     return { error: "Niste prijavljeni ili nemate aktivan salon." } as const;
   }
 
-  if (!(["owner", "admin", "manager"] as const).includes(permissions.organizationRole as any)) {
+  const canManageSetup =
+    permissions.organizationRole === "owner" ||
+    permissions.organizationRole === "admin" ||
+    permissions.organizationRole === "manager";
+
+  if (!canManageSetup) {
     return { error: "Nemate ovlasti za uređivanje osnovnih podataka salona." } as const;
   }
 
