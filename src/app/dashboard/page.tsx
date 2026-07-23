@@ -43,7 +43,10 @@ function actionLabel(action: string) {
 }
 
 function relativeTime(value: string) {
-  const diffMinutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000));
+  const diffMinutes = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(value).getTime()) / 60000),
+  );
   if (diffMinutes < 1) return "upravo sada";
   if (diffMinutes < 60) return `prije ${diffMinutes} min`;
   const hours = Math.floor(diffMinutes / 60);
@@ -52,13 +55,28 @@ function relativeTime(value: string) {
   return days === 1 ? "jučer" : `prije ${days} dana`;
 }
 
+const EMPTY_OVERVIEW = {
+  pendingOnlineCount: 0,
+  todayOnlineCount: 0,
+  todayAppointmentsCount: 0,
+  tomorrowAppointmentsCount: 0,
+  completedThisMonthCount: 0,
+  noShowThisMonthCount: 0,
+  onlineThisMonthCount: 0,
+  onlineAcceptedThisMonthCount: 0,
+  onlineConversionRate: 0,
+};
+
 export default async function DashboardPage() {
   const permissions = await requireDashboardUser();
   const canViewAudit = canAccessSettings(permissions.role);
+
   const [overdueAppointments, overviewStats, recentAudit] = await Promise.all([
-    getOverdueScheduledAppointments(),
-    getDashboardOverviewStats(),
-    canViewAudit ? getAuditLogs({ pageSize: 5 }) : Promise.resolve({ items: [], total: 0 }),
+    getOverdueScheduledAppointments().catch(() => []),
+    getDashboardOverviewStats().catch(() => EMPTY_OVERVIEW),
+    canViewAudit
+      ? getAuditLogs({ pageSize: 5 }).catch(() => ({ items: [], total: 0 }))
+      : Promise.resolve({ items: [], total: 0 }),
   ]);
 
   return (
@@ -69,7 +87,8 @@ export default async function DashboardPage() {
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <h1 className="text-3xl font-bold text-app-text">Dashboard</h1>
           <p className="mt-2 text-app-muted">
-            Body &amp; Soul by Elizabeth Dobrović - upravljanje terminima i klijentima.
+            {permissions.organizationName} — upravljanje terminima, klijentima i
+            poslovanjem salona.
           </p>
         </div>
 
@@ -87,30 +106,107 @@ export default async function DashboardPage() {
           <section className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="rounded-xl bg-app-card-alt p-2 text-app-accent"><Activity className="h-5 w-5" /></span>
-                <div><h2 className="text-lg font-bold text-app-text">Posljednje aktivnosti</h2><p className="text-sm text-app-muted">Najnovije promjene u sustavu.</p></div>
+                <span className="rounded-xl bg-app-card-alt p-2 text-app-accent">
+                  <Activity className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="text-lg font-bold text-app-text">
+                    Posljednje aktivnosti
+                  </h2>
+                  <p className="text-sm text-app-muted">
+                    Najnovije promjene u sustavu.
+                  </p>
+                </div>
               </div>
-              <Link href="/dashboard/settings/audit-log" className="inline-flex items-center gap-2 text-sm font-semibold text-app-accent">Prikaži sve <ArrowRight className="h-4 w-4" /></Link>
+              <Link
+                href="/dashboard/settings/audit-log"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-app-accent"
+              >
+                Prikaži sve <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
             <div className="mt-5 divide-y divide-app-soft">
-              {recentAudit.items.length === 0 ? <p className="py-5 text-sm text-app-muted">Još nema zabilježenih aktivnosti.</p> : recentAudit.items.map((log) => (
-                <Link key={log.id} href={`/dashboard/settings/audit-log?selected=${log.id}`} className="flex items-center justify-between gap-4 py-3 transition hover:bg-app-card-alt sm:px-2">
-                  <div className="min-w-0"><p className="truncate text-sm font-semibold text-app-text">{log.actor_display_name || log.actor_email || "Nepoznati korisnik"}</p><p className="truncate text-sm text-app-muted">{actionLabel(log.action)}{log.entity_label ? ` · ${log.entity_label}` : ""}</p></div>
-                  <span className="shrink-0 text-xs text-app-muted">{relativeTime(log.created_at)}</span>
-                </Link>
-              ))}
+              {recentAudit.items.length === 0 ? (
+                <p className="py-5 text-sm text-app-muted">
+                  Još nema zabilježenih aktivnosti.
+                </p>
+              ) : (
+                recentAudit.items.map((log) => (
+                  <Link
+                    key={log.id}
+                    href={`/dashboard/settings/audit-log?selected=${log.id}`}
+                    className="flex items-center justify-between gap-4 py-3 transition hover:bg-app-card-alt sm:px-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-app-text">
+                        {log.actor_display_name ||
+                          log.actor_email ||
+                          "Nepoznati korisnik"}
+                      </p>
+                      <p className="truncate text-sm text-app-muted">
+                        {actionLabel(log.action)}
+                        {log.entity_label ? ` · ${log.entity_label}` : ""}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-app-muted">
+                      {relativeTime(log.created_at)}
+                    </span>
+                  </Link>
+                ))
+              )}
             </div>
           </section>
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <DashboardLinkCard href="/dashboard/appointments" title="Termini" description="Pregled i upravljanje terminima." icon={Calendar} />
-          <DashboardLinkCard href="/dashboard/calendar" title="Kalendar" description="Dnevni pregled termina." icon={Clock} />
-          <DashboardLinkCard href="/dashboard/calendar/time-grid" title="Time-grid kalendar" description="Dnevni raspored po vremenskoj osi." icon={Clock} />
-          <DashboardLinkCard href="/dashboard/clients" title="Klijenti" description="Pregled klijenata i povijesti termina." icon={Users} />
-          {canAccessScheduleManagement(permissions.role) ? <DashboardLinkCard href="/dashboard/schedule" title="Rasporedi" description="Upravljanje rasporedima zaposlenika." icon={UserCog} /> : null}
-          {canAccessReports(permissions.role) ? <DashboardLinkCard href="/dashboard/reports" title="Reports" description="Pregled termina, statusa i statistike." icon={BarChart3} /> : null}
-          {canViewAudit ? <DashboardLinkCard href="/dashboard/settings" title="Postavke" description="Upravljanje uslugama, sobama i pravilima." icon={Settings} /> : null}
+          <DashboardLinkCard
+            href="/dashboard/appointments"
+            title="Termini"
+            description="Pregled i upravljanje terminima."
+            icon={Calendar}
+          />
+          <DashboardLinkCard
+            href="/dashboard/calendar"
+            title="Kalendar"
+            description="Dnevni pregled termina."
+            icon={Clock}
+          />
+          <DashboardLinkCard
+            href="/dashboard/calendar/time-grid"
+            title="Time-grid kalendar"
+            description="Dnevni raspored po vremenskoj osi."
+            icon={Clock}
+          />
+          <DashboardLinkCard
+            href="/dashboard/clients"
+            title="Klijenti"
+            description="Pregled klijenata i povijesti termina."
+            icon={Users}
+          />
+          {canAccessScheduleManagement(permissions.role) ? (
+            <DashboardLinkCard
+              href="/dashboard/schedule"
+              title="Rasporedi"
+              description="Upravljanje rasporedima zaposlenika."
+              icon={UserCog}
+            />
+          ) : null}
+          {canAccessReports(permissions.role) ? (
+            <DashboardLinkCard
+              href="/dashboard/reports"
+              title="Reports"
+              description="Pregled termina, statusa i statistike."
+              icon={BarChart3}
+            />
+          ) : null}
+          {canViewAudit ? (
+            <DashboardLinkCard
+              href="/dashboard/settings"
+              title="Postavke"
+              description="Upravljanje uslugama, sobama i pravilima."
+              icon={Settings}
+            />
+          ) : null}
         </div>
       </div>
     </main>
