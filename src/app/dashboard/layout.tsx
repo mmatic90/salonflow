@@ -33,6 +33,9 @@ export default async function DashboardLayout({
         />
 
         <main className="flex min-w-0 flex-1 flex-col transition-all duration-200">
+          <div className="border-b border-app-soft bg-white px-4 py-2 text-xs text-app-muted sm:px-6">
+            Aktivni salon: <span className="font-semibold text-app-text">{permissions.organizationName}</span>
+          </div>
           <div className="flex-1">{children}</div>
           <AdminFooter />
         </main>
