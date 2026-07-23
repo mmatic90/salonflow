@@ -9,6 +9,37 @@ type SearchParams = Promise<{
   date?: string;
 }>;
 
+type ClientRow = Record<string, unknown> & {
+  id: string;
+};
+
+function getClientLabel(client: ClientRow) {
+  const fullName = typeof client.full_name === "string" ? client.full_name.trim() : "";
+  if (fullName) return fullName;
+
+  const name = typeof client.name === "string" ? client.name.trim() : "";
+  if (name) return name;
+
+  const clientName =
+    typeof client.client_name === "string" ? client.client_name.trim() : "";
+  if (clientName) return clientName;
+
+  const firstName =
+    typeof client.first_name === "string" ? client.first_name.trim() : "";
+  const lastName =
+    typeof client.last_name === "string" ? client.last_name.trim() : "";
+  const combinedName = [firstName, lastName].filter(Boolean).join(" ");
+  if (combinedName) return combinedName;
+
+  const email = typeof client.email === "string" ? client.email.trim() : "";
+  if (email) return email;
+
+  const phone = typeof client.phone === "string" ? client.phone.trim() : "";
+  if (phone) return phone;
+
+  return "Klijent";
+}
+
 export default async function NewAppointmentPage({
   searchParams,
 }: {
@@ -45,10 +76,9 @@ export default async function NewAppointmentPage({
         .order("name", { ascending: true }),
       supabase
         .from("clients")
-        .select("id, name")
+        .select("*")
         .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .order("name", { ascending: true }),
+        .eq("is_active", true),
     ]);
 
   const firstError =
@@ -82,10 +112,12 @@ export default async function NewAppointmentPage({
     label: room.name,
   }));
 
-  const clients = (clientsResult.data ?? []).map((client) => ({
-    id: client.id,
-    label: client.name,
-  }));
+  const clients = ((clientsResult.data ?? []) as ClientRow[])
+    .map((client) => ({
+      id: client.id,
+      label: getClientLabel(client),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "hr"));
 
   return (
     <main className="min-h-screen bg-app-bg p-6 md:p-8">
