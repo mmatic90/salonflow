@@ -5,10 +5,11 @@ import { toast } from "sonner";
 import { quickUpdateAppointmentStatusAction } from "@/features/appointments/actions";
 import { useRouter } from "next/navigation";
 import ConfirmActionButton from "@/components/confirm-action-button";
+import type { AppointmentStatus } from "@/features/appointments/types";
 
 type Props = {
   appointmentId: string;
-  currentStatus: "scheduled" | "completed" | "cancelled" | "no_show";
+  currentStatus: AppointmentStatus;
   compact?: boolean;
 };
 
