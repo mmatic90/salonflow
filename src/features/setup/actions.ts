@@ -1,26 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
-
-export type SetupActionState = {
-  error: string;
-  success: string;
-};
 
 type SetupContextResult =
   | {
       ok: true;
       organizationId: string;
-      userId: string;
     }
   | {
       ok: false;
       error: string;
     };
-
-const EMPTY_STATE: SetupActionState = { error: "", success: "" };
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -52,29 +45,30 @@ async function getSetupContext(): Promise<SetupContextResult> {
   return {
     ok: true,
     organizationId: permissions.organizationId,
-    userId: permissions.userId,
   };
 }
 
 function refreshSetupPaths() {
+  revalidatePath("/dashboard");
   revalidatePath("/dashboard/setup");
   revalidatePath("/dashboard/appointments/new");
   revalidatePath("/dashboard/settings");
 }
 
-export async function createSetupEmployeeAction(
-  _previousState: SetupActionState = EMPTY_STATE,
-  formData: FormData,
-): Promise<SetupActionState> {
+function redirectWithMessage(type: "success" | "error", message: string): never {
+  redirect(`/dashboard/setup?${type}=${encodeURIComponent(message)}`);
+}
+
+export async function createSetupEmployeeAction(formData: FormData): Promise<void> {
   const context = await getSetupContext();
-  if (!context.ok) return { error: context.error, success: "" };
+  if (!context.ok) redirectWithMessage("error", context.error);
 
   const firstName = text(formData, "first_name");
   const lastName = text(formData, "last_name");
   const color = text(formData, "color") || "#776B5D";
 
   if (!firstName) {
-    return { error: "Ime zaposlenika je obavezno.", success: "" };
+    redirectWithMessage("error", "Ime zaposlenika je obavezno.");
   }
 
   const supabase = await createClient();
@@ -86,33 +80,37 @@ export async function createSetupEmployeeAction(
     is_active: true,
   });
 
-  if (error) return { error: error.message, success: "" };
+  if (error) {
+    console.error("Greška pri dodavanju zaposlenika:", error);
+    redirectWithMessage("error", error.message || "Zaposlenika nije moguće dodati.");
+  }
 
   refreshSetupPaths();
-  return { error: "", success: "Zaposlenik je dodan." };
+  redirectWithMessage("success", "Zaposlenik je dodan.");
 }
 
-export async function createSetupServiceAction(
-  _previousState: SetupActionState = EMPTY_STATE,
-  formData: FormData,
-): Promise<SetupActionState> {
+export async function createSetupServiceAction(formData: FormData): Promise<void> {
   const context = await getSetupContext();
-  if (!context.ok) return { error: context.error, success: "" };
+  if (!context.ok) redirectWithMessage("error", context.error);
 
   const name = text(formData, "name");
   const durationMinutes = Number(text(formData, "duration_minutes"));
   const rawPrice = text(formData, "price").replace(",", ".");
   const price = rawPrice ? Number(rawPrice) : null;
 
-  if (!name) return { error: "Naziv usluge je obavezan.", success: "" };
-  if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
-    return {
-      error: "Trajanje usluge mora biti pozitivan broj minuta.",
-      success: "",
-    };
+  if (!name) {
+    redirectWithMessage("error", "Naziv usluge je obavezan.");
   }
+
+  if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
+    redirectWithMessage(
+      "error",
+      "Trajanje usluge mora biti pozitivan broj minuta.",
+    );
+  }
+
   if (price !== null && (!Number.isFinite(price) || price < 0)) {
-    return { error: "Cijena usluge nije valjana.", success: "" };
+    redirectWithMessage("error", "Cijena usluge nije valjana.");
   }
 
   const supabase = await createClient();
@@ -124,21 +122,23 @@ export async function createSetupServiceAction(
     is_active: true,
   });
 
-  if (error) return { error: error.message, success: "" };
+  if (error) {
+    console.error("Greška pri dodavanju usluge:", error);
+    redirectWithMessage("error", error.message || "Uslugu nije moguće dodati.");
+  }
 
   refreshSetupPaths();
-  return { error: "", success: "Usluga je dodana." };
+  redirectWithMessage("success", "Usluga je dodana.");
 }
 
-export async function createSetupRoomAction(
-  _previousState: SetupActionState = EMPTY_STATE,
-  formData: FormData,
-): Promise<SetupActionState> {
+export async function createSetupRoomAction(formData: FormData): Promise<void> {
   const context = await getSetupContext();
-  if (!context.ok) return { error: context.error, success: "" };
+  if (!context.ok) redirectWithMessage("error", context.error);
 
   const name = text(formData, "name");
-  if (!name) return { error: "Naziv sobe je obavezan.", success: "" };
+  if (!name) {
+    redirectWithMessage("error", "Naziv sobe je obavezan.");
+  }
 
   const supabase = await createClient();
   const { error } = await supabase.from("rooms").insert({
@@ -147,8 +147,11 @@ export async function createSetupRoomAction(
     is_active: true,
   });
 
-  if (error) return { error: error.message, success: "" };
+  if (error) {
+    console.error("Greška pri dodavanju sobe:", error);
+    redirectWithMessage("error", error.message || "Sobu nije moguće dodati.");
+  }
 
   refreshSetupPaths();
-  return { error: "", success: "Soba je dodana." };
+  redirectWithMessage("success", "Soba je dodana.");
 }
