@@ -1,73 +1,104 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
-import { getMultiTenantAppointmentById } from "@/features/appointments/multi-tenant-edit-query";
 import MultiTenantEditAppointmentForm from "./multi-tenant-edit-form";
+import type { AppointmentEditItem } from "@/features/appointments/queries";
 
+type Params = Promise<{ id: string }>;
+type GenericRow = Record<string, unknown> & { id: string };
 
-type Params = Promise<{
-  id: string;
-}>;
-
-type ClientRow = Record<string, unknown> & { id: string };
-
-function getClientName(client: ClientRow) {
-  const fullName =
-    typeof client.full_name === "string" ? client.full_name.trim() : "";
-  if (fullName) return fullName;
-
-  const firstName =
-    typeof client.first_name === "string" ? client.first_name.trim() : "";
-  const lastName =
-    typeof client.last_name === "string" ? client.last_name.trim() : "";
-  const combined = [firstName, lastName].filter(Boolean).join(" ");
-  if (combined) return combined;
-
-  const name = typeof client.name === "string" ? client.name.trim() : "";
-  if (name) return name;
-
-  return "Klijent";
+function asString(value: unknown) {
+  return typeof value === "string" ? value : "";
 }
 
-export default async function EditAppointmentPage({
-  params,
-}: {
-  params: Params;
-}) {
-  const permissions = await getCurrentUserPermissions();
+function nullableString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
 
-  if (!permissions) {
-    redirect("/login");
-  }
+function getClientName(client: GenericRow) {
+  const fullName = asString(client.full_name).trim();
+  if (fullName) return fullName;
+
+  const combined = [asString(client.first_name), asString(client.last_name)]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return combined || asString(client.name).trim() || "Klijent";
+}
+
+function durationBetween(startTime: string, endTime: string) {
+  const [startHour, startMinute] = startTime.slice(0, 5).split(":").map(Number);
+  const [endHour, endMinute] = endTime.slice(0, 5).split(":").map(Number);
+
+  if ([startHour, startMinute, endHour, endMinute].some(Number.isNaN)) return 0;
+  return Math.max(0, endHour * 60 + endMinute - (startHour * 60 + startMinute));
+}
+
+function ErrorCard({ message, id }: { message: string; id: string }) {
+  return (
+    <main className="min-h-screen bg-app-bg p-6 md:p-8">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
+        <h1 className="text-2xl font-bold">Termin se ne može otvoriti</h1>
+        <p className="mt-3 whitespace-pre-wrap text-sm">{message}</p>
+        <p className="mt-3 text-xs text-red-700">ID termina: {id}</p>
+        <Link
+          href="/dashboard/appointments"
+          className="mt-5 inline-flex rounded-xl border border-red-300 bg-white px-4 py-2 font-medium"
+        >
+          Natrag na termine
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+export default async function EditAppointmentPage({ params }: { params: Params }) {
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) redirect("/login");
 
   const { id } = await params;
-  const appointment = await getMultiTenantAppointmentById(id);
-
-  if (!appointment) {
-    notFound();
-  }
-
   const supabase = await createClient();
   const organizationId = permissions.organizationId;
 
-  const [servicesResult, employeesResult, roomsResult, clientsResult] =
+  const appointmentResult = await supabase
+    .from("appointments")
+    .select("*")
+    .eq("id", id)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (appointmentResult.error) {
+    return <ErrorCard id={id} message={`Dohvat termina: ${appointmentResult.error.message}`} />;
+  }
+
+  if (!appointmentResult.data) {
+    return <ErrorCard id={id} message="Termin nije pronađen u aktivnom salonu." />;
+  }
+
+  const [appointmentServicesResult, servicesResult, employeesResult, roomsResult, clientsResult] =
     await Promise.all([
       supabase
+        .from("appointment_services")
+        .select("*")
+        .eq("appointment_id", id)
+        .eq("organization_id", organizationId)
+        .order("sort_order", { ascending: true }),
+      supabase
         .from("services")
-        .select("id, name, duration_minutes, price, is_active")
+        .select("*")
         .eq("organization_id", organizationId)
         .eq("is_active", true)
         .order("name", { ascending: true }),
       supabase
         .from("employees")
-        .select("id, first_name, last_name, color, is_active")
+        .select("*")
         .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .order("first_name", { ascending: true }),
+        .eq("is_active", true),
       supabase
         .from("rooms")
-        .select("id, name")
+        .select("*")
         .eq("organization_id", organizationId)
         .eq("is_active", true)
         .order("name", { ascending: true }),
@@ -79,48 +110,88 @@ export default async function EditAppointmentPage({
     ]);
 
   const firstError =
+    appointmentServicesResult.error ||
     servicesResult.error ||
     employeesResult.error ||
     roomsResult.error ||
     clientsResult.error;
 
   if (firstError) {
-    throw new Error(firstError.message || "Nije moguće pripremiti uređivanje termina.");
+    return <ErrorCard id={id} message={`Priprema forme: ${firstError.message}`} />;
   }
 
-  const services = (servicesResult.data ?? []).map((service) => ({
-    id: String(service.id),
-    name: String(service.name),
-    duration_minutes: Number(service.duration_minutes ?? 0),
-    price_cents:
-      service.price == null ? null : Math.round(Number(service.price) * 100),
-    service_group: null,
-    priority_room: null,
-    is_active: service.is_active,
+  const rawAppointment = appointmentResult.data as GenericRow;
+  const rawAppointmentServices = (appointmentServicesResult.data ?? []) as GenericRow[];
+
+  const appointmentServices = rawAppointmentServices.map((entry, index) => ({
+    id: String(entry.id),
+    appointment_id: id,
+    service_id: asString(entry.service_id),
+    duration_minutes: Number(entry.duration_minutes ?? 0),
+    sort_order: Number(entry.sort_order ?? index),
+    service: {
+      id: asString(entry.service_id),
+      name: asString(entry.service_name) || "Usluga",
+      description: null,
+      service_group: null,
+    },
   }));
 
-  const employees = (employeesResult.data ?? []).map((employee) => ({
+  const startTime = asString(rawAppointment.start_time);
+  const endTime = asString(rawAppointment.end_time);
+
+  const appointment: AppointmentEditItem = {
+    id,
+    client_id: nullableString(rawAppointment.client_id),
+    appointment_date: asString(rawAppointment.appointment_date),
+    start_time: startTime,
+    end_time: endTime,
+    duration_minutes: durationBetween(startTime, endTime),
+    status: asString(rawAppointment.status) as AppointmentEditItem["status"],
+    client_name: asString(rawAppointment.client_name),
+    client_phone: nullableString(rawAppointment.client_phone),
+    client_email: nullableString(rawAppointment.client_email),
+    client_note: nullableString(rawAppointment.notes),
+    internal_note: null,
+    service_id: appointmentServices[0]?.service_id || asString(rawAppointment.service_id),
+    employee_id: asString(rawAppointment.employee_id),
+    room_id: asString(rawAppointment.room_id),
+    appointment_services: appointmentServices,
+  };
+
+  const services = ((servicesResult.data ?? []) as GenericRow[]).map((service) => ({
+    id: String(service.id),
+    name: asString(service.name),
+    duration_minutes: Number(service.duration_minutes ?? 0),
+    price_cents: service.price == null ? null : Math.round(Number(service.price) * 100),
+    service_group: nullableString(service.service_group),
+    priority_room: nullableString(service.priority_room),
+    is_active: Boolean(service.is_active),
+  }));
+
+  const employees = ((employeesResult.data ?? []) as GenericRow[]).map((employee) => ({
     id: String(employee.id),
     display_name:
-      [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
-      "Zaposlenik",
-    color_hex: employee.color ?? null,
+      [asString(employee.first_name), asString(employee.last_name)]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(" ") || asString(employee.display_name) || "Zaposlenik",
+    color_hex: nullableString(employee.color) ?? nullableString(employee.color_hex),
   }));
 
-  const rooms = (roomsResult.data ?? []).map((room) => ({
+  const rooms = ((roomsResult.data ?? []) as GenericRow[]).map((room) => ({
     id: String(room.id),
-    name: String(room.name),
+    name: asString(room.name),
   }));
 
-  const clients = ((clientsResult.data ?? []) as ClientRow[])
+  const clients = ((clientsResult.data ?? []) as GenericRow[])
     .map((client) => ({
       id: String(client.id),
       full_name: getClientName(client),
-      phone: typeof client.phone === "string" ? client.phone : null,
-      email: typeof client.email === "string" ? client.email : null,
-      note: typeof client.note === "string" ? client.note : null,
-      internal_note:
-        typeof client.internal_note === "string" ? client.internal_note : null,
+      phone: nullableString(client.phone),
+      email: nullableString(client.email),
+      note: nullableString(client.note),
+      internal_note: nullableString(client.internal_note),
     }))
     .sort((a, b) => a.full_name.localeCompare(b.full_name, "hr"));
 
@@ -131,11 +202,8 @@ export default async function EditAppointmentPage({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-app-text">Uredi termin</h1>
-              <p className="mt-2 text-app-muted">
-                Uredi postojeći termin i njegove podatke.
-              </p>
+              <p className="mt-2 text-app-muted">Uredi postojeći termin i njegove podatke.</p>
             </div>
-
             <Link
               href={`/dashboard/appointments?date=${appointment.appointment_date}`}
               className="inline-flex items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
