@@ -18,10 +18,20 @@ import {
   Activity,
   ArrowRight,
   Wrench,
+  Plus,
+  CalendarDays,
 } from "lucide-react";
 import DashboardOverviewWidget from "@/components/dashboard-overview-widget";
 import { getDashboardOverviewStats } from "@/features/dashboard/overview-queries";
 import { getAuditLogs } from "@/features/audit/queries";
+import { getAppointmentsByDate } from "@/features/appointments/queries";
+import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
+import {
+  formatDateLabel,
+  formatTime,
+  getTodayLocalDate,
+  statusLabel,
+} from "@/lib/utils";
 
 function actionLabel(action: string) {
   const labels: Record<string, string> = {
@@ -71,37 +81,165 @@ const EMPTY_OVERVIEW = {
 export default async function DashboardPage() {
   const permissions = await requireDashboardUser();
   const canViewAudit = canAccessSettings(permissions.role);
+  const today = getTodayLocalDate();
 
-  const [overdueAppointments, overviewStats, recentAudit] = await Promise.all([
-    getOverdueScheduledAppointments(permissions.organizationId).catch(() => []),
-    getDashboardOverviewStats(permissions.organizationId).catch(() => EMPTY_OVERVIEW),
-    canViewAudit
-      ? getAuditLogs({ pageSize: 5 }).catch(() => ({ items: [], total: 0 }))
-      : Promise.resolve({ items: [], total: 0 }),
-  ]);
+  const [overdueAppointments, overviewStats, recentAudit, todayAppointments] =
+    await Promise.all([
+      getOverdueScheduledAppointments(permissions.organizationId).catch(() => []),
+      getDashboardOverviewStats(permissions.organizationId).catch(
+        () => EMPTY_OVERVIEW,
+      ),
+      canViewAudit
+        ? getAuditLogs({ pageSize: 5 }).catch(() => ({ items: [], total: 0 }))
+        : Promise.resolve({ items: [], total: 0 }),
+      getAppointmentsByDate(today).catch(() => []),
+    ]);
+
+  const visibleTodayAppointments = todayAppointments
+    .filter((appointment) => appointment.status !== "cancelled")
+    .slice()
+    .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   return (
     <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
         <OverdueAppointmentsPanel items={overdueAppointments} />
 
-        <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <h1 className="text-3xl font-bold text-app-text">Dashboard</h1>
-          <p className="mt-2 text-app-muted">
-            {permissions.organizationName} — upravljanje terminima, klijentima i
-            poslovanjem salona.
-          </p>
-        </div>
+        <section className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-app-accent">
+                {formatDateLabel(today)}
+              </p>
+              <h1 className="mt-1 text-3xl font-bold text-app-text">Dashboard</h1>
+              <p className="mt-2 text-app-muted">
+                {permissions.organizationName} — današnji pregled i brze akcije.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link
+                href={`/dashboard/appointments/new?date=${today}`}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 font-semibold text-white transition hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" />
+                Novi termin
+              </Link>
+              <Link
+                href={`/dashboard/calendar/time-grid?date=${today}`}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 font-semibold text-app-text transition hover:bg-app-card-alt"
+              >
+                <CalendarDays className="h-4 w-4" />
+                Otvori kalendar
+              </Link>
+            </div>
+          </div>
+        </section>
 
         <DashboardOverviewWidget
-          pendingOnlineCount={overviewStats.pendingOnlineCount}
-          todayOnlineCount={overviewStats.todayOnlineCount}
           todayAppointmentsCount={overviewStats.todayAppointmentsCount}
           tomorrowAppointmentsCount={overviewStats.tomorrowAppointmentsCount}
           completedThisMonthCount={overviewStats.completedThisMonthCount}
           noShowThisMonthCount={overviewStats.noShowThisMonthCount}
-          onlineConversionRate={overviewStats.onlineConversionRate}
         />
+
+        <section className="overflow-hidden rounded-2xl border border-app-soft bg-app-card shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-app-soft p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-app-text">Današnji termini</h2>
+              <p className="mt-1 text-sm text-app-muted">
+                {visibleTodayAppointments.length === 0
+                  ? "Za danas nema aktivnih termina."
+                  : `${visibleTodayAppointments.length} aktivnih termina u rasporedu.`}
+              </p>
+            </div>
+            <Link
+              href={`/dashboard/appointments?date=${today}`}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-app-accent"
+            >
+              Prikaži sve <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          {visibleTodayAppointments.length === 0 ? (
+            <div className="p-8 text-center">
+              <Calendar className="mx-auto h-10 w-10 text-app-muted" />
+              <p className="mt-3 font-semibold text-app-text">
+                Današnji raspored je prazan
+              </p>
+              <p className="mt-1 text-sm text-app-muted">
+                Dodajte termin ili otvorite kalendar za pregled drugog datuma.
+              </p>
+              <Link
+                href={`/dashboard/appointments/new?date=${today}`}
+                className="mt-4 inline-flex rounded-xl bg-app-accent px-4 py-2 text-sm font-semibold text-white"
+              >
+                Dodaj prvi termin
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-app-soft">
+              {visibleTodayAppointments.slice(0, 8).map((appointment) => {
+                const services = formatAppointmentServicesLabel(
+                  appointment.appointment_services
+                    ?.slice()
+                    .sort((a, b) => a.sort_order - b.sort_order),
+                );
+                const employeeName =
+                  appointment.employee?.display_name ?? "Nepoznati zaposlenik";
+                const roomName = appointment.room?.name ?? "Bez sobe";
+                const employeeColor =
+                  appointment.employee?.color_hex || "#999999";
+
+                return (
+                  <Link
+                    key={appointment.id}
+                    href={`/dashboard/appointments/${appointment.id}/edit`}
+                    className="grid gap-3 p-4 transition hover:bg-app-card-alt sm:grid-cols-[110px_1.2fr_1fr_auto] sm:items-center sm:px-6"
+                  >
+                    <div>
+                      <p className="font-bold text-app-text">
+                        {formatTime(appointment.start_time)} –{" "}
+                        {formatTime(appointment.end_time)}
+                      </p>
+                      <p className="mt-1 text-xs text-app-muted">
+                        {appointment.duration_minutes} min
+                      </p>
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-app-text">
+                        {appointment.client_name}
+                      </p>
+                      <p className="mt-1 truncate text-sm text-app-muted">
+                        {services}
+                      </p>
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: employeeColor }}
+                        />
+                        <span className="truncate text-sm font-medium text-app-text">
+                          {employeeName}
+                        </span>
+                      </div>
+                      <p className="mt-1 truncate text-sm text-app-muted">
+                        {roomName}
+                      </p>
+                    </div>
+
+                    <span className="w-fit rounded-full bg-app-bg px-3 py-1 text-xs font-semibold text-app-text">
+                      {statusLabel(appointment.status)}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         {canViewAudit ? (
           <section className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
@@ -203,7 +341,7 @@ export default async function DashboardPage() {
           {canAccessReports(permissions.role) ? (
             <DashboardLinkCard
               href="/dashboard/reports"
-              title="Reports"
+              title="Izvještaji"
               description="Pregled termina, statusa i statistike."
               icon={BarChart3}
             />
