@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 export type CalendarAppointmentItem = {
   id: string;
@@ -6,7 +7,7 @@ export type CalendarAppointmentItem = {
   start_time: string;
   end_time: string;
   duration_minutes: number;
-  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
   client_name: string;
   client_phone: string | null;
   service: {
@@ -14,6 +15,16 @@ export type CalendarAppointmentItem = {
     name: string;
     service_group: string | null;
   } | null;
+  appointment_services: {
+    id: string;
+    duration_minutes: number;
+    sort_order: number;
+    service: {
+      id: string;
+      name: string;
+      service_group: string | null;
+    } | null;
+  }[];
   room: {
     id: string;
     name: string;
@@ -44,16 +55,86 @@ export type CalendarEmployeeGroup = {
 };
 
 function getSingleRelation<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
+  if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
 }
 
+function calculateDurationMinutes(startTime: string, endTime: string) {
+  const [startHour, startMinute] = startTime.slice(0, 5).split(":").map(Number);
+  const [endHour, endMinute] = endTime.slice(0, 5).split(":").map(Number);
+
+  return Math.max(
+    0,
+    endHour * 60 + endMinute - (startHour * 60 + startMinute),
+  );
+}
+
+function mapAppointment(item: any): CalendarAppointmentItem {
+  const room = getSingleRelation(item.room);
+  const employee = getSingleRelation(item.employee);
+
+  const appointmentServices = (item.appointment_services ?? [])
+    .map((entry: any) => {
+      const service = getSingleRelation(entry.service);
+
+      return {
+        id: String(entry.id ?? ""),
+        duration_minutes: Number(entry.duration_minutes ?? 0),
+        sort_order: Number(entry.sort_order ?? 0),
+        service: {
+          id: String(service?.id ?? entry.service_id ?? ""),
+          name: String(service?.name ?? entry.service_name ?? "Usluga"),
+          service_group: null,
+        },
+      };
+    })
+    .sort((a: any, b: any) => a.sort_order - b.sort_order);
+
+  const firstService = appointmentServices[0]?.service ?? null;
+
+  return {
+    id: String(item.id ?? ""),
+    appointment_date: String(item.appointment_date ?? ""),
+    start_time: String(item.start_time ?? ""),
+    end_time: String(item.end_time ?? ""),
+    duration_minutes: calculateDurationMinutes(
+      String(item.start_time ?? ""),
+      String(item.end_time ?? ""),
+    ),
+    status: item.status,
+    client_name: String(item.client_name ?? ""),
+    client_phone: item.client_phone ? String(item.client_phone) : null,
+    service: firstService,
+    appointment_services: appointmentServices,
+    room: room
+      ? {
+          id: String((room as any).id ?? ""),
+          name: String((room as any).name ?? ""),
+        }
+      : null,
+    employee: employee
+      ? {
+          id: String((employee as any).id ?? ""),
+          display_name:
+            [(employee as any).first_name, (employee as any).last_name]
+              .filter(Boolean)
+              .join(" ") || "Zaposlenik",
+          color_hex: (employee as any).color
+            ? String((employee as any).color)
+            : null,
+        }
+      : null,
+  };
+}
+
 async function getCalendarAppointments(
-  date: string,
+  dateFrom: string,
+  dateTo = dateFrom,
 ): Promise<CalendarAppointmentItem[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) return [];
 
   const { data, error } = await supabase
     .from("appointments")
@@ -63,24 +144,18 @@ async function getCalendarAppointments(
       appointment_date,
       start_time,
       end_time,
-      duration_minutes,
       status,
       client_name,
       client_phone,
-      service:services (
-        id,
-        name,
-        service_group
-      ),
       appointment_services (
         id,
         service_id,
+        service_name,
         duration_minutes,
         sort_order,
         service:services (
           id,
-          name,
-          service_group
+          name
         )
       ),
       room:rooms (
@@ -89,72 +164,39 @@ async function getCalendarAppointments(
       ),
       employee:employees (
         id,
-        display_name,
-        color_hex
+        first_name,
+        last_name,
+        color
       )
     `,
     )
-    .eq("appointment_date", date)
+    .eq("organization_id", permissions.organizationId)
+    .gte("appointment_date", dateFrom)
+    .lte("appointment_date", dateTo)
+    .order("appointment_date", { ascending: true })
     .order("start_time", { ascending: true });
 
   if (error) {
-    console.error(error);
+    console.error("Greška pri dohvaćanju termina za kalendar:", error);
     throw new Error("Nije moguće dohvatiti termine za kalendar.");
   }
 
-  return (data ?? []).map((item: any) => {
-    const service = getSingleRelation(item.service);
-    const room = getSingleRelation(item.room);
-    const employee = getSingleRelation(item.employee);
-
-    return {
-      id: String(item.id ?? ""),
-      appointment_date: String(item.appointment_date ?? ""),
-      start_time: String(item.start_time ?? ""),
-      end_time: String(item.end_time ?? ""),
-      duration_minutes: Number(item.duration_minutes ?? 0),
-      status: item.status as
-        | "scheduled"
-        | "completed"
-        | "cancelled"
-        | "no_show",
-      client_name: String(item.client_name ?? ""),
-      client_phone: item.client_phone ? String(item.client_phone) : null,
-      service: service
-        ? {
-            id: String(service.id ?? ""),
-            name: String(service.name ?? ""),
-            service_group: service.service_group
-              ? String(service.service_group)
-              : null,
-          }
-        : null,
-      room: room
-        ? {
-            id: String(room.id ?? ""),
-            name: String(room.name ?? ""),
-          }
-        : null,
-      employee: employee
-        ? {
-            id: String(employee.id ?? ""),
-            display_name: String(employee.display_name ?? ""),
-            color_hex: employee.color_hex ? String(employee.color_hex) : null,
-          }
-        : null,
-    };
-  });
+  return (data ?? []).map(mapAppointment);
 }
 
 export async function getCalendarDayDataByRooms(
   date: string,
 ): Promise<CalendarRoomGroup[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) return [];
 
   const [{ data: rooms, error: roomsError }, appointments] = await Promise.all([
     supabase
       .from("rooms")
       .select("id, name")
+      .eq("organization_id", permissions.organizationId)
       .eq("is_active", true)
       .order("name", { ascending: true }),
     getCalendarAppointments(date),
@@ -166,10 +208,10 @@ export async function getCalendarDayDataByRooms(
   }
 
   return (rooms ?? []).map((room) => ({
-    roomId: room.id,
-    roomName: room.name,
+    roomId: String(room.id),
+    roomName: String(room.name),
     appointments: appointments.filter(
-      (appointment) => appointment.room?.id === room.id,
+      (appointment) => appointment.room?.id === String(room.id),
     ),
   }));
 }
@@ -178,14 +220,18 @@ export async function getCalendarDayDataByEmployees(
   date: string,
 ): Promise<CalendarEmployeeGroup[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) return [];
 
   const [{ data: employees, error: employeesError }, appointments] =
     await Promise.all([
       supabase
         .from("employees")
-        .select("id, display_name, color_hex")
+        .select("id, first_name, last_name, color")
+        .eq("organization_id", permissions.organizationId)
         .eq("is_active", true)
-        .order("display_name", { ascending: true }),
+        .order("first_name", { ascending: true }),
       getCalendarAppointments(date),
     ]);
 
@@ -194,10 +240,8 @@ export async function getCalendarDayDataByEmployees(
     throw new Error("Nije moguće dohvatiti zaposlenike.");
   }
 
-  const employeeRows = employees ?? [];
-
   const groups = await Promise.all(
-    employeeRows.map(async (employee) => {
+    (employees ?? []).map(async (employee) => {
       const { data, error } = await supabase.rpc(
         "get_employee_effective_schedule",
         {
@@ -234,13 +278,17 @@ export async function getCalendarDayDataByEmployees(
         };
       }
 
+      const employeeId = String(employee.id);
+
       return {
-        employeeId: employee.id,
-        employeeName: employee.display_name,
-        colorHex: employee.color_hex,
+        employeeId,
+        employeeName:
+          [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
+          "Zaposlenik",
+        colorHex: employee.color ?? null,
         workStatus,
         appointments: appointments.filter(
-          (appointment) => appointment.employee?.id === employee.id,
+          (appointment) => appointment.employee?.id === employeeId,
         ),
       };
     }),
@@ -254,118 +302,38 @@ export async function getCalendarWeekDataByEmployees(args: {
   weekEnd: string;
 }) {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
 
-  const [
-    { data: employees, error: employeesError },
-    { data: appointmentsRaw, error: appointmentsError },
-  ] = await Promise.all([
-    supabase
-      .from("employees")
-      .select("id, display_name, color_hex")
-      .eq("is_active", true)
-      .order("display_name", { ascending: true }),
+  if (!permissions) return [];
 
-    supabase
-      .from("appointments")
-      .select(
-        `
-        id,
-        appointment_date,
-        start_time,
-        end_time,
-        duration_minutes,
-        status,
-        client_name,
-        client_phone,
-        service:services (
-          id,
-          name,
-          service_group
-        ),
-        appointment_services (
-          id,
-          service_id,
-          duration_minutes,
-          sort_order,
-          service:services (
-            id,
-            name,
-            service_group
-          )
-        ),
-        room:rooms (
-          id,
-          name
-        ),
-        employee:employees (
-          id,
-          display_name,
-          color_hex
-        )
-      `,
-      )
-      .gte("appointment_date", args.weekStart)
-      .lte("appointment_date", args.weekEnd)
-      .order("appointment_date", { ascending: true })
-      .order("start_time", { ascending: true }),
-  ]);
+  const [{ data: employees, error: employeesError }, appointments] =
+    await Promise.all([
+      supabase
+        .from("employees")
+        .select("id, first_name, last_name, color")
+        .eq("organization_id", permissions.organizationId)
+        .eq("is_active", true)
+        .order("first_name", { ascending: true }),
+      getCalendarAppointments(args.weekStart, args.weekEnd),
+    ]);
 
   if (employeesError) {
     console.error(employeesError);
     throw new Error("Nije moguće dohvatiti zaposlenike.");
   }
 
-  if (appointmentsError) {
-    console.error(appointmentsError);
-    throw new Error("Nije moguće dohvatiti termine za tjedni kalendar.");
-  }
-
-  const appointments: any[] = (appointmentsRaw ?? []).map((item: any) => {
-    const service = getSingleRelation(item.service);
-    const room = getSingleRelation(item.room);
-    const employee = getSingleRelation(item.employee);
+  return (employees ?? []).map((employee) => {
+    const employeeId = String(employee.id);
 
     return {
-      id: String(item.id ?? ""),
-      appointment_date: String(item.appointment_date ?? ""),
-      start_time: String(item.start_time ?? ""),
-      end_time: String(item.end_time ?? ""),
-      duration_minutes: Number(item.duration_minutes ?? 0),
-      status: item.status,
-      client_name: String(item.client_name ?? ""),
-      client_phone: item.client_phone ? String(item.client_phone) : null,
-      service: service
-        ? {
-            id: String(service.id ?? ""),
-            name: String(service.name ?? ""),
-            service_group: service.service_group
-              ? String(service.service_group)
-              : null,
-          }
-        : null,
-      appointment_services: item.appointment_services ?? [],
-      room: room
-        ? {
-            id: String(room.id ?? ""),
-            name: String(room.name ?? ""),
-          }
-        : null,
-      employee: employee
-        ? {
-            id: String(employee.id ?? ""),
-            display_name: String(employee.display_name ?? ""),
-            color_hex: employee.color_hex ? String(employee.color_hex) : null,
-          }
-        : null,
+      employeeId,
+      employeeName:
+        [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
+        "Zaposlenik",
+      colorHex: employee.color ?? null,
+      appointments: appointments.filter(
+        (appointment) => appointment.employee?.id === employeeId,
+      ),
     };
   });
-
-  return (employees ?? []).map((employee) => ({
-    employeeId: employee.id,
-    employeeName: employee.display_name,
-    colorHex: employee.color_hex,
-    appointments: appointments.filter(
-      (appointment) => appointment.employee?.id === employee.id,
-    ),
-  }));
 }
