@@ -50,7 +50,7 @@ export async function createMultiTenantAppointmentAction(
 
   const supabase = await createClient();
 
-  const [{ data: employee }, { data: service }, { data: room }] = await Promise.all([
+  const [{ data: employee }, { data: service }] = await Promise.all([
     supabase
       .from("employees")
       .select("id")
@@ -65,20 +65,22 @@ export async function createMultiTenantAppointmentAction(
       .eq("organization_id", organizationId)
       .eq("is_active", true)
       .maybeSingle(),
-    roomId
-      ? supabase
-          .from("rooms")
-          .select("id")
-          .eq("id", roomId)
-          .eq("organization_id", organizationId)
-          .eq("is_active", true)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
   ]);
 
   if (!employee) return { error: "Odabrani zaposlenik nije dostupan u ovom salonu." };
   if (!service) return { error: "Odabrana usluga nije dostupna u ovom salonu." };
-  if (roomId && !room) return { error: "Odabrana soba nije dostupna u ovom salonu." };
+
+  if (roomId) {
+    const { data: room } = await supabase
+      .from("rooms")
+      .select("id")
+      .eq("id", roomId)
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!room) return { error: "Odabrana soba nije dostupna u ovom salonu." };
+  }
 
   const durationMinutes = Number(service.duration_minutes ?? 0);
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
@@ -118,7 +120,11 @@ export async function createMultiTenantAppointmentAction(
   }
 
   const endTime = addMinutes(startTime, durationMinutes);
-  const price = service.price == null ? null : Number(service.price);
+  const parsedPrice = service.price == null ? null : Number(service.price);
+  const price =
+    typeof parsedPrice === "number" && Number.isFinite(parsedPrice)
+      ? parsedPrice
+      : null;
 
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
@@ -135,7 +141,7 @@ export async function createMultiTenantAppointmentAction(
       client_phone: clientPhone,
       client_email: clientEmail,
       notes,
-      total_price: Number.isFinite(price) ? price : null,
+      total_price: price,
       created_by: permissions.userId,
     })
     .select("id")
@@ -151,7 +157,7 @@ export async function createMultiTenantAppointmentAction(
     service_id: service.id,
     service_name: service.name,
     duration_minutes: durationMinutes,
-    price: Number.isFinite(price) ? price : null,
+    price,
     sort_order: 0,
   });
 
