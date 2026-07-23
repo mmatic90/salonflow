@@ -16,7 +16,7 @@ export type OverdueAppointmentItem = {
   } | null;
 };
 
-export async function getOverdueScheduledAppointments() {
+export async function getOverdueScheduledAppointments(organizationId: string) {
   const supabase = await createClient();
 
   const today = new Date();
@@ -34,41 +34,38 @@ export async function getOverdueScheduledAppointments() {
       start_time,
       end_time,
       client_name,
-      service:services (
-        id,
-        name
+      appointment_services (
+        service_id,
+        service_name,
+        sort_order
       ),
       employee:employees (
         id,
-        display_name
+        first_name,
+        last_name
       )
     `,
     )
+    .eq("organization_id", organizationId)
     .eq("status", "scheduled")
     .lte("appointment_date", todayStr)
     .order("appointment_date", { ascending: true })
     .order("end_time", { ascending: true });
 
   if (error) {
-    const missingTable =
-      error.code === "42P01" ||
-      error.code === "PGRST205" ||
-      error.message?.toLowerCase().includes("appointments");
-
-    if (missingTable) {
-      return [];
-    }
-
-    throw new Error("Nije moguće dohvatiti overdue termine.");
+    console.error("Unable to load overdue appointments", error);
+    return [];
   }
 
   const now = Date.now();
 
   const normalized: OverdueAppointmentItem[] = (data ?? []).map((item: any) => {
-    const service = Array.isArray(item.service)
-      ? (item.service[0] ?? null)
-      : (item.service ?? null);
-
+    const services = Array.isArray(item.appointment_services)
+      ? [...item.appointment_services].sort(
+          (a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
+        )
+      : [];
+    const firstService = services[0] ?? null;
     const employee = Array.isArray(item.employee)
       ? (item.employee[0] ?? null)
       : (item.employee ?? null);
@@ -79,16 +76,18 @@ export async function getOverdueScheduledAppointments() {
       start_time: String(item.start_time ?? ""),
       end_time: String(item.end_time ?? ""),
       client_name: String(item.client_name ?? ""),
-      service: service
+      service: firstService
         ? {
-            id: String(service.id ?? ""),
-            name: String(service.name ?? ""),
+            id: String(firstService.service_id ?? ""),
+            name: String(firstService.service_name ?? ""),
           }
         : null,
       employee: employee
         ? {
             id: String(employee.id ?? ""),
-            display_name: String(employee.display_name ?? ""),
+            display_name: [employee.first_name, employee.last_name]
+              .filter(Boolean)
+              .join(" "),
           }
         : null,
     };
