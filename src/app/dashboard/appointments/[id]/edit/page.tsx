@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getAppointmentById,
-  getAppointmentFormData,
-} from "@/features/appointments/queries";
+import { getAppointmentFormData } from "@/features/appointments/queries";
+import { getMultiTenantAppointmentById } from "@/features/appointments/multi-tenant-edit-query";
 import MultiTenantEditAppointmentForm from "./multi-tenant-edit-form";
 import { getClientOptions } from "@/features/clients/queries";
 
@@ -29,7 +27,7 @@ export default async function EditAppointmentPage({
   }
 
   const { id } = await params;
-  const appointment = await getAppointmentById(id);
+  const appointment = await getMultiTenantAppointmentById(id);
 
   if (!appointment) {
     notFound();
