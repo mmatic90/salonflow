@@ -17,6 +17,7 @@ import {
   UserCog,
   Activity,
   ArrowRight,
+  Wrench,
 } from "lucide-react";
 import DashboardOverviewWidget from "@/components/dashboard-overview-widget";
 import { getDashboardOverviewStats } from "@/features/dashboard/overview-queries";
@@ -183,6 +184,14 @@ export default async function DashboardPage() {
             description="Pregled klijenata i povijesti termina."
             icon={Users}
           />
+          {canViewAudit ? (
+            <DashboardLinkCard
+              href="/dashboard/setup"
+              title="Početno postavljanje"
+              description="Dodaj zaposlenike, usluge i sobe salona."
+              icon={Wrench}
+            />
+          ) : null}
           {canAccessScheduleManagement(permissions.role) ? (
             <DashboardLinkCard
               href="/dashboard/schedule"
