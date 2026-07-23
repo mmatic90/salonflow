@@ -5,7 +5,7 @@ import {
   getAppointmentById,
   getAppointmentFormData,
 } from "@/features/appointments/queries";
-import EditAppointmentForm from "./edit-appointment-form";
+import MultiTenantEditAppointmentForm from "./multi-tenant-edit-form";
 import { getClientOptions } from "@/features/clients/queries";
 
 type Params = Promise<{
@@ -35,9 +35,7 @@ export default async function EditAppointmentPage({
     notFound();
   }
 
-  const { services, employees, rooms, serviceRooms, employeeServices } =
-    await getAppointmentFormData();
-
+  const { services, employees, rooms } = await getAppointmentFormData();
   const clients = await getClientOptions();
 
   return (
@@ -62,13 +60,11 @@ export default async function EditAppointmentPage({
         </div>
 
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <EditAppointmentForm
+          <MultiTenantEditAppointmentForm
             appointment={appointment}
             services={services}
             employees={employees}
             rooms={rooms}
-            serviceRooms={serviceRooms}
-            employeeServices={employeeServices}
             clients={clients}
           />
         </div>
