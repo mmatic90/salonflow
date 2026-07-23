@@ -45,10 +45,10 @@ export default async function NewAppointmentPage({
         .order("name", { ascending: true }),
       supabase
         .from("clients")
-        .select("id, full_name")
+        .select("id, name")
         .eq("organization_id", organizationId)
         .eq("is_active", true)
-        .order("full_name", { ascending: true }),
+        .order("name", { ascending: true }),
     ]);
 
   const firstError =
@@ -84,7 +84,7 @@ export default async function NewAppointmentPage({
 
   const clients = (clientsResult.data ?? []).map((client) => ({
     id: client.id,
-    label: client.full_name,
+    label: client.name,
   }));
 
   return (
