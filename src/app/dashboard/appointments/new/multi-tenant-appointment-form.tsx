@@ -1,10 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
-import {
-  createMultiTenantAppointmentAction,
-  type CreateAppointmentState,
-} from "@/features/appointments/multi-tenant-create-action";
+import { useState, type FormEvent } from "react";
 
 export type AppointmentOption = {
   id: string;
@@ -26,8 +22,6 @@ type Props = {
 const fieldClass =
   "w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/15";
 
-const initialState: CreateAppointmentState = { error: "" };
-
 export default function MultiTenantAppointmentForm({
   defaultDate,
   clients,
@@ -35,15 +29,49 @@ export default function MultiTenantAppointmentForm({
   rooms,
   services,
 }: Props) {
-  const [state, formAction, pending] = useActionState(
-    createMultiTenantAppointmentAction,
-    initialState,
-  );
-
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
   const hasRequiredSetup = employees.length > 0 && services.length > 0;
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setPending(true);
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+
+    try {
+      const response = await fetch("/api/appointments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = (await response.json()) as {
+        error?: string;
+        redirectTo?: string;
+      };
+
+      if (!response.ok) {
+        setError(result.error || "Termin nije moguće spremiti.");
+        return;
+      }
+
+      window.location.href = result.redirectTo || "/dashboard/appointments";
+    } catch (requestError) {
+      console.error(requestError);
+      setError("Dogodila se mrežna greška. Pokušajte ponovno.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   return (
-    <form action={formAction} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {!hasRequiredSetup ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Prije stvaranja termina dodajte barem jednog aktivnog zaposlenika i jednu
@@ -51,9 +79,9 @@ export default function MultiTenantAppointmentForm({
         </div>
       ) : null}
 
-      {state.error ? (
+      {error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          {state.error}
+          {error}
         </div>
       ) : null}
 
