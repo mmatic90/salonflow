@@ -14,6 +14,22 @@ function addMinutes(startTime: string, minutes: number) {
   return `${String(nextHours).padStart(2, "0")}:${String(nextMinutes).padStart(2, "0")}`;
 }
 
+function splitClientName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length <= 1) {
+    return {
+      firstName: parts[0] ?? fullName.trim(),
+      lastName: null,
+    };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const permissions = await getCurrentUserPermissions();
@@ -139,11 +155,14 @@ export async function POST(request: Request) {
 
       clientId = existingClient.id;
     } else {
+      const { firstName, lastName } = splitClientName(clientName);
+
       const { data: newClient, error: clientError } = await supabase
         .from("clients")
         .insert({
           organization_id: organizationId,
-          client_name: clientName,
+          first_name: firstName,
+          last_name: lastName,
           phone: clientPhone,
           email: clientEmail,
           is_active: true,
