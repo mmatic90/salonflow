@@ -50,7 +50,15 @@ export async function getOverdueScheduledAppointments() {
     .order("end_time", { ascending: true });
 
   if (error) {
-    console.error(error);
+    const missingTable =
+      error.code === "42P01" ||
+      error.code === "PGRST205" ||
+      error.message?.toLowerCase().includes("appointments");
+
+    if (missingTable) {
+      return [];
+    }
+
     throw new Error("Nije moguće dohvatiti overdue termine.");
   }
 
