@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ClipboardList } from "lucide-react";
 import DashboardSidebar from "@/components/dashboard-sidebar";
 import { getCurrentUserPermissions } from "@/lib/permissions";
+import { createClient } from "@/lib/supabase/server";
 import AdminFooter from "@/components/admin-footer";
 import FeedbackWidget from "@/features/feedback/components/feedback-widget";
 
@@ -15,7 +16,12 @@ export default async function DashboardLayout({
   const permissions = await getCurrentUserPermissions();
 
   if (!permissions) {
-    redirect("/login");
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    redirect(user ? "/onboarding" : "/login");
   }
 
   return (
