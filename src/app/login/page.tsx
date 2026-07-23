@@ -18,42 +18,32 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
+    if (error || !data.user) {
       setErrorMessage("Neispravan email ili lozinka.");
       setLoading(false);
       return;
     }
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setErrorMessage("Došlo je do greške pri prijavi.");
-      setLoading(false);
-      return;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("is_active")
-      .eq("id", user.id)
+    const { data: membership, error: membershipError } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", data.user.id)
+      .eq("is_active", true)
+      .limit(1)
       .maybeSingle();
 
-    if (profileError || !profile || profile.is_active === false) {
-      await supabase.auth.signOut();
-      setErrorMessage("Vaš račun je deaktiviran. Obratite se administratoru.");
+    if (membershipError) {
+      setErrorMessage("Došlo je do greške pri provjeri salona.");
       setLoading(false);
       return;
     }
 
-    router.push("/dashboard");
+    router.push(membership ? "/dashboard" : "/onboarding");
     router.refresh();
   }
 
@@ -61,20 +51,15 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-app-bg px-4">
       <div className="w-full max-w-md rounded-2xl border border-app-soft bg-app-card p-8 shadow-sm">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-app-text">
-            Body and Soul prijava
-          </h1>
+          <h1 className="text-2xl font-bold text-app-text">SalonFlow prijava</h1>
           <p className="mt-2 text-sm text-app-muted">
-            Prijavite se za pristup administraciji salona.
+            Prijavite se za pristup svom salonu.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-app-text"
-            >
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-app-text">
               Email
             </label>
             <input
@@ -88,10 +73,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-app-text"
-            >
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-app-text">
               Lozinka
             </label>
             <input
