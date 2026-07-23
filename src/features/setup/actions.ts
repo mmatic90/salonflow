@@ -9,6 +9,17 @@ export type SetupActionState = {
   success: string;
 };
 
+type SetupContextResult =
+  | {
+      ok: true;
+      organizationId: string;
+      userId: string;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
 const EMPTY_STATE: SetupActionState = { error: "", success: "" };
 
 function text(formData: FormData, key: string) {
@@ -16,11 +27,14 @@ function text(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-async function getSetupContext() {
+async function getSetupContext(): Promise<SetupContextResult> {
   const permissions = await getCurrentUserPermissions();
 
   if (!permissions) {
-    return { error: "Niste prijavljeni ili nemate aktivan salon." } as const;
+    return {
+      ok: false,
+      error: "Niste prijavljeni ili nemate aktivan salon.",
+    };
   }
 
   const canManageSetup =
@@ -29,13 +43,17 @@ async function getSetupContext() {
     permissions.organizationRole === "manager";
 
   if (!canManageSetup) {
-    return { error: "Nemate ovlasti za uređivanje osnovnih podataka salona." } as const;
+    return {
+      ok: false,
+      error: "Nemate ovlasti za uređivanje osnovnih podataka salona.",
+    };
   }
 
   return {
+    ok: true,
     organizationId: permissions.organizationId,
     userId: permissions.userId,
-  } as const;
+  };
 }
 
 function refreshSetupPaths() {
@@ -49,7 +67,7 @@ export async function createSetupEmployeeAction(
   formData: FormData,
 ): Promise<SetupActionState> {
   const context = await getSetupContext();
-  if ("error" in context) return { error: context.error, success: "" };
+  if (!context.ok) return { error: context.error, success: "" };
 
   const firstName = text(formData, "first_name");
   const lastName = text(formData, "last_name");
@@ -79,7 +97,7 @@ export async function createSetupServiceAction(
   formData: FormData,
 ): Promise<SetupActionState> {
   const context = await getSetupContext();
-  if ("error" in context) return { error: context.error, success: "" };
+  if (!context.ok) return { error: context.error, success: "" };
 
   const name = text(formData, "name");
   const durationMinutes = Number(text(formData, "duration_minutes"));
@@ -88,7 +106,10 @@ export async function createSetupServiceAction(
 
   if (!name) return { error: "Naziv usluge je obavezan.", success: "" };
   if (!Number.isInteger(durationMinutes) || durationMinutes <= 0) {
-    return { error: "Trajanje usluge mora biti pozitivan broj minuta.", success: "" };
+    return {
+      error: "Trajanje usluge mora biti pozitivan broj minuta.",
+      success: "",
+    };
   }
   if (price !== null && (!Number.isFinite(price) || price < 0)) {
     return { error: "Cijena usluge nije valjana.", success: "" };
@@ -114,7 +135,7 @@ export async function createSetupRoomAction(
   formData: FormData,
 ): Promise<SetupActionState> {
   const context = await getSetupContext();
-  if ("error" in context) return { error: context.error, success: "" };
+  if (!context.ok) return { error: context.error, success: "" };
 
   const name = text(formData, "name");
   if (!name) return { error: "Naziv sobe je obavezan.", success: "" };
