@@ -72,8 +72,8 @@ export default async function DashboardPage() {
   const canViewAudit = canAccessSettings(permissions.role);
 
   const [overdueAppointments, overviewStats, recentAudit] = await Promise.all([
-    getOverdueScheduledAppointments().catch(() => []),
-    getDashboardOverviewStats().catch(() => EMPTY_OVERVIEW),
+    getOverdueScheduledAppointments(permissions.organizationId).catch(() => []),
+    getDashboardOverviewStats(permissions.organizationId).catch(() => EMPTY_OVERVIEW),
     canViewAudit
       ? getAuditLogs({ pageSize: 5 }).catch(() => ({ items: [], total: 0 }))
       : Promise.resolve({ items: [], total: 0 }),
