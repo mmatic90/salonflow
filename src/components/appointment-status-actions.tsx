@@ -1,7 +1,9 @@
 "use client";
 
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { quickUpdateAppointmentStatusAction } from "@/features/appointments/actions";
-import ConfirmActionButton from "@/components/confirm-action-button";
 import type { AppointmentStatus } from "@/features/appointments/types";
 
 type Props = {
@@ -10,19 +12,28 @@ type Props = {
   compact?: boolean;
 };
 
+type QuickStatus = "completed" | "no_show" | "cancelled";
+
 function ActionChip({
   label,
   className,
+  disabled,
+  onClick,
 }: {
   label: string;
   className: string;
+  disabled: boolean;
+  onClick: () => void;
 }) {
   return (
-    <span
-      className={`inline-flex rounded-lg px-2 py-1 text-[11px] font-medium text-white ${className}`}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex rounded-lg px-2 py-1 text-[11px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     >
       {label}
-    </span>
+    </button>
   );
 }
 
@@ -30,39 +41,49 @@ export default function AppointmentStatusActions({
   appointmentId,
   currentStatus,
 }: Props) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
   if (currentStatus !== "scheduled") {
     return null;
   }
 
-  function updateStatus(status: "completed" | "no_show" | "cancelled") {
-    return () => quickUpdateAppointmentStatusAction(appointmentId, status);
+  function updateStatus(status: QuickStatus) {
+    startTransition(async () => {
+      const result = await quickUpdateAppointmentStatusAction(
+        appointmentId,
+        status,
+      );
+
+      if (result.ok) {
+        toast.success(result.message);
+        router.refresh();
+        return;
+      }
+
+      toast.error(result.message);
+    });
   }
 
   return (
     <div className="flex flex-wrap gap-1">
-      <ConfirmActionButton
-        title="Označiti termin kao odrađen?"
-        description="Potvrdi ako je termin uspješno odrađen."
-        confirmLabel="Odrađeno"
-        action={updateStatus("completed")}
-        trigger={<ActionChip label="Odrađeno" className="bg-[#776B5D]" />}
+      <ActionChip
+        label={pending ? "Spremanje..." : "Odrađeno"}
+        className="bg-[#776B5D]"
+        disabled={pending}
+        onClick={() => updateStatus("completed")}
       />
-
-      <ConfirmActionButton
-        title="Označiti termin kao no-show?"
-        description="Potvrdi ako klijent nije došao na termin."
-        confirmLabel="No-show"
-        action={updateStatus("no_show")}
-        trigger={<ActionChip label="No-show" className="bg-[#4B4844]" />}
+      <ActionChip
+        label="No-show"
+        className="bg-[#4B4844]"
+        disabled={pending}
+        onClick={() => updateStatus("no_show")}
       />
-
-      <ConfirmActionButton
-        title="Otkazati termin?"
-        description="Potvrdi ako želiš označiti termin kao otkazan."
-        confirmLabel="Otkaži"
-        destructive
-        action={updateStatus("cancelled")}
-        trigger={<ActionChip label="Otkaži" className="bg-[#B0A695]" />}
+      <ActionChip
+        label="Otkaži"
+        className="bg-[#B0A695]"
+        disabled={pending}
+        onClick={() => updateStatus("cancelled")}
       />
     </div>
   );
