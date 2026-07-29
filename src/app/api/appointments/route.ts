@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
+import {
+  appointmentDatabaseErrorMessage,
+  validateAppointmentRuntime,
+} from "@/features/appointments/runtime-validation";
 
 function value(input: unknown) {
   return typeof input === "string" ? input.trim() : "";
@@ -16,24 +20,15 @@ function addMinutes(startTime: string, minutes: number) {
 
 function splitClientName(fullName: string) {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
-
   if (parts.length <= 1) {
-    return {
-      firstName: parts[0] ?? fullName.trim(),
-      lastName: null,
-    };
+    return { firstName: parts[0] ?? fullName.trim(), lastName: null };
   }
-
-  return {
-    firstName: parts[0],
-    lastName: parts.slice(1).join(" "),
-  };
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
 }
 
 export async function POST(request: Request) {
   try {
     const permissions = await getCurrentUserPermissions();
-
     if (!permissions) {
       return NextResponse.json(
         { error: "Niste prijavljeni ili nemate aktivan salon." },
@@ -62,7 +57,6 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
-
     const [{ data: employee, error: employeeError }, { data: service, error: serviceError }] =
       await Promise.all([
         supabase
@@ -81,21 +75,14 @@ export async function POST(request: Request) {
           .maybeSingle(),
       ]);
 
-    if (employeeError) {
-      return NextResponse.json({ error: employeeError.message }, { status: 400 });
-    }
-
-    if (serviceError) {
-      return NextResponse.json({ error: serviceError.message }, { status: 400 });
-    }
-
+    if (employeeError) return NextResponse.json({ error: employeeError.message }, { status: 400 });
+    if (serviceError) return NextResponse.json({ error: serviceError.message }, { status: 400 });
     if (!employee) {
       return NextResponse.json(
         { error: "Odabrani zaposlenik nije dostupan u ovom salonu." },
         { status: 400 },
       );
     }
-
     if (!service) {
       return NextResponse.json(
         { error: "Odabrana usluga nije dostupna u ovom salonu." },
@@ -111,11 +98,7 @@ export async function POST(request: Request) {
         .eq("organization_id", organizationId)
         .eq("is_active", true)
         .maybeSingle();
-
-      if (roomError) {
-        return NextResponse.json({ error: roomError.message }, { status: 400 });
-      }
-
+      if (roomError) return NextResponse.json({ error: roomError.message }, { status: 400 });
       if (!room) {
         return NextResponse.json(
           { error: "Odabrana soba nije dostupna u ovom salonu." },
@@ -132,8 +115,20 @@ export async function POST(request: Request) {
       );
     }
 
-    let clientId: string | null = null;
+    const endTime = addMinutes(startTime, durationMinutes);
+    const runtimeValidation = await validateAppointmentRuntime({
+      organizationId,
+      appointmentDate,
+      startTime,
+      endTime,
+      employeeId,
+      roomId,
+    });
+    if (!runtimeValidation.ok) {
+      return NextResponse.json({ error: runtimeValidation.message }, { status: 400 });
+    }
 
+    let clientId: string | null = null;
     if (clientIdInput) {
       const { data: existingClient, error: existingClientError } = await supabase
         .from("clients")
@@ -141,22 +136,18 @@ export async function POST(request: Request) {
         .eq("id", clientIdInput)
         .eq("organization_id", organizationId)
         .maybeSingle();
-
       if (existingClientError) {
         return NextResponse.json({ error: existingClientError.message }, { status: 400 });
       }
-
       if (!existingClient) {
         return NextResponse.json(
           { error: "Odabrani klijent ne pripada ovom salonu." },
           { status: 400 },
         );
       }
-
       clientId = existingClient.id;
     } else {
       const { firstName, lastName } = splitClientName(clientName);
-
       const { data: newClient, error: clientError } = await supabase
         .from("clients")
         .insert({
@@ -169,21 +160,17 @@ export async function POST(request: Request) {
         })
         .select("id")
         .single();
-
       if (clientError || !newClient) {
         return NextResponse.json(
           { error: clientError?.message || "Klijenta nije moguće spremiti." },
           { status: 400 },
         );
       }
-
       clientId = newClient.id;
     }
 
-    const endTime = addMinutes(startTime, durationMinutes);
     const parsedPrice = service.price == null ? null : Number(service.price);
     const price = Number.isFinite(parsedPrice) ? parsedPrice : null;
-
     const { data: appointment, error: appointmentError } = await supabase
       .from("appointments")
       .insert({
@@ -207,7 +194,11 @@ export async function POST(request: Request) {
 
     if (appointmentError || !appointment) {
       return NextResponse.json(
-        { error: appointmentError?.message || "Termin nije moguće spremiti." },
+        {
+          error: appointmentDatabaseErrorMessage(
+            appointmentError?.message || "Termin nije moguće spremiti.",
+          ),
+        },
         { status: 400 },
       );
     }
