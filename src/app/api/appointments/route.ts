@@ -129,6 +129,8 @@ export async function POST(request: Request) {
     }
 
     let clientId: string | null = null;
+    const { firstName, lastName } = splitClientName(clientName);
+
     if (clientIdInput) {
       const { data: existingClient, error: existingClientError } = await supabase
         .from("clients")
@@ -145,9 +147,27 @@ export async function POST(request: Request) {
           { status: 400 },
         );
       }
+
+      const { error: clientUpdateError } = await supabase
+        .from("clients")
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          phone: clientPhone,
+          email: clientEmail,
+        })
+        .eq("id", existingClient.id)
+        .eq("organization_id", organizationId);
+
+      if (clientUpdateError) {
+        return NextResponse.json(
+          { error: clientUpdateError.message || "Podatke klijenta nije moguće ažurirati." },
+          { status: 400 },
+        );
+      }
+
       clientId = existingClient.id;
     } else {
-      const { firstName, lastName } = splitClientName(clientName);
       const { data: newClient, error: clientError } = await supabase
         .from("clients")
         .insert({
