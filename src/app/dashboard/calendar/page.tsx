@@ -1,9 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  Clock3,
+  DoorOpen,
+  Plus,
+  Shapes,
+  Timer,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   getCalendarDayDataByEmployees,
   getCalendarDayDataByRooms,
+  type CalendarAppointmentItem,
 } from "@/features/calendar/queries";
 import { formatTime, getTodayLocalDate } from "@/lib/utils";
 import DateQueryPicker from "@/components/date-query-picker";
@@ -12,6 +25,7 @@ import { getWorkStatusClasses } from "@/features/schedule/status-helpers";
 import AutoSubmitSelect from "@/components/auto-submit-select";
 import AppointmentStatusActions from "@/components/appointment-status-actions";
 import EmptyStateCard from "@/components/empty-state-card";
+import CalendarCurrentTime from "@/components/calendar-current-time";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
 
 type SearchParams = Promise<{
@@ -22,26 +36,30 @@ type SearchParams = Promise<{
 }>;
 
 function formatDateTitle(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-
   return new Intl.DateTimeFormat("hr-HR", {
     weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
+    day: "numeric",
+    month: "long",
     year: "numeric",
-  }).format(date);
+  }).format(new Date(`${value}T00:00:00`));
+}
+
+function shiftDate(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function statusClasses(status: string) {
   switch (status) {
-    case "scheduled":
-      return "border-[#c7bcad] bg-[#ebe3d6]";
+    case "confirmed":
+      return "border-emerald-200 bg-emerald-50/80";
     case "completed":
-      return "border-[#8a7d6f] bg-[#d8cec1]";
+      return "border-slate-200 bg-slate-50";
     case "cancelled":
-      return "border-[#d8cdc0] bg-[#f2ece5]";
+      return "border-rose-200 bg-rose-50/70 opacity-75";
     case "no_show":
-      return "border-[#6a655f] bg-[#ded7cf]";
+      return "border-amber-200 bg-amber-50/80";
     default:
       return "border-app-soft bg-white";
   }
@@ -49,35 +67,23 @@ function statusClasses(status: string) {
 
 function statusLabel(status: string) {
   switch (status) {
-    case "scheduled":
-      return "Zakazan";
-    case "completed":
-      return "Odrađen";
-    case "cancelled":
-      return "Otkazan";
-    case "no_show":
-      return "Nije došao";
-    default:
-      return status;
+    case "scheduled": return "Zakazan";
+    case "confirmed": return "Potvrđen";
+    case "completed": return "Odrađen";
+    case "cancelled": return "Otkazan";
+    case "no_show": return "Nije došao";
+    default: return status;
   }
 }
 
-function ViewChip({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
+function ViewChip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
     <Link
       href={href}
-      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+      className={`inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
         active
           ? "bg-app-accent text-white shadow-sm"
-          : "border border-app-soft bg-white text-app-text hover:bg-app-bg"
+          : "border border-app-soft bg-white text-app-text hover:border-app-accent/30 hover:bg-app-bg"
       }`}
     >
       {children}
@@ -85,320 +91,192 @@ function ViewChip({
   );
 }
 
-function CalendarCard({
-  appointment,
-}: {
-  appointment: {
-    id: string;
-    start_time: string;
-    end_time: string;
-    duration_minutes: number;
-    status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
-    client_name: string;
-    client_phone: string | null;
-    service: { name: string; service_group: string | null } | null;
-    appointment_services?: {
-      id: string;
-      duration_minutes: number;
-      sort_order: number;
-      service: {
-        id: string;
-        name: string;
-        service_group: string | null;
-      } | null;
-    }[];
-    metaLabel?: string;
-  };
-}) {
+function StatCard({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
   return (
-    <Link
-      href={`/dashboard/appointments/${appointment.id}/edit`}
-      className={`group relative block rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${statusClasses(
-        appointment.status,
-      )}`}
-    >
+    <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-app-text">
-            {formatTime(appointment.start_time)} -{" "}
-            {formatTime(appointment.end_time)}
-          </div>
-          <div className="mt-1 text-sm text-app-muted">
-            {appointment.duration_minutes} min
-          </div>
+          <p className="text-sm font-medium text-app-muted">{label}</p>
+          <p className="mt-2 text-2xl font-bold tracking-tight text-app-text">{value}</p>
+          <p className="mt-1 text-xs text-app-muted">{detail}</p>
         </div>
-
-        <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-app-text">
-          {statusLabel(appointment.status)}
-        </span>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent">
+          {icon}
+        </div>
       </div>
-
-      <div className="mt-4">
-        <div className="font-medium text-app-text">
-          {appointment.client_name}
-        </div>
-
-        <div className="mt-1 text-sm text-app-text">
-          {formatAppointmentServicesLabel(
-            appointment.appointment_services
-              ?.slice()
-              .sort((a, b) => a.sort_order - b.sort_order),
-          )}
-        </div>
-
-        {appointment.service?.service_group ? (
-          <div className="mt-1 text-xs text-app-muted">
-            {appointment.service.service_group}
-          </div>
-        ) : null}
-      </div>
-
-      {appointment.metaLabel ? (
-        <div className="mt-3 text-sm text-app-muted">
-          {appointment.metaLabel}
-        </div>
-      ) : null}
-
-      {appointment.client_phone ? (
-        <div className="mt-2 text-xs text-app-muted">
-          {appointment.client_phone}
-        </div>
-      ) : null}
-
-      <div className="mt-3">
-        <AppointmentStatusActions
-          appointmentId={appointment.id}
-          currentStatus={appointment.status}
-          compact
-        />
-      </div>
-
-      <AppointmentMiniDetails
-        clientName={appointment.client_name}
-        serviceName={formatAppointmentServicesLabel(
-          appointment.appointment_services
-            ?.slice()
-            .sort((a, b) => a.sort_order - b.sort_order),
-        )}
-        startTime={formatTime(appointment.start_time)}
-        endTime={formatTime(appointment.end_time)}
-        durationMinutes={appointment.duration_minutes}
-        extraLine={appointment.metaLabel}
-      />
-    </Link>
+    </div>
   );
 }
 
-export default async function CalendarPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: CalendarAppointmentItem; colorHex?: string | null; metaLabel?: string }) {
+  const serviceLabel = formatAppointmentServicesLabel(
+    appointment.appointment_services?.slice().sort((a, b) => a.sort_order - b.sort_order),
+  );
+  const accent = colorHex || appointment.employee?.color_hex || "#8a7d6f";
+
+  return (
+    <div className={`group relative overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${statusClasses(appointment.status)}`}>
+      <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: accent }} />
+      <Link href={`/dashboard/appointments/${appointment.id}/edit`} className="block p-4 pl-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-app-text">
+            <Clock3 className="h-4 w-4 text-app-muted" />
+            {formatTime(appointment.start_time)} – {formatTime(appointment.end_time)}
+          </div>
+          <span className="rounded-full border border-white/70 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-app-text shadow-sm">
+            {statusLabel(appointment.status)}
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/80 text-app-accent shadow-sm">
+            <UserRound className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-app-text">{appointment.client_name}</p>
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-app-text">
+              <Shapes className="h-3.5 w-3.5 shrink-0 text-app-muted" />
+              <span className="truncate">{serviceLabel}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-app-muted">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white/75 px-2.5 py-1">
+            <Timer className="h-3.5 w-3.5" /> {appointment.duration_minutes} min
+          </span>
+          {metaLabel ? <span className="rounded-full bg-white/75 px-2.5 py-1">{metaLabel}</span> : null}
+          {appointment.client_phone ? <span className="rounded-full bg-white/75 px-2.5 py-1">{appointment.client_phone}</span> : null}
+        </div>
+
+        <AppointmentMiniDetails
+          clientName={appointment.client_name}
+          serviceName={serviceLabel}
+          startTime={formatTime(appointment.start_time)}
+          endTime={formatTime(appointment.end_time)}
+          durationMinutes={appointment.duration_minutes}
+          extraLine={metaLabel}
+        />
+      </Link>
+
+      <div className="border-t border-black/5 px-4 py-3 pl-5">
+        <AppointmentStatusActions appointmentId={appointment.id} currentStatus={appointment.status} compact />
+      </div>
+    </div>
+  );
+}
+
+export default async function CalendarPage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) redirect("/login");
 
   const resolvedSearchParams = await searchParams;
-  const selectedDate = resolvedSearchParams.date || getTodayLocalDate();
-  const selectedView =
-    resolvedSearchParams.view === "rooms" ? "rooms" : "employees";
+  const today = getTodayLocalDate();
+  const selectedDate = resolvedSearchParams.date || today;
+  const selectedView = resolvedSearchParams.view === "rooms" ? "rooms" : "employees";
 
-  const roomGroups =
-    selectedView === "rooms"
-      ? await getCalendarDayDataByRooms(selectedDate)
-      : [];
-
-  const employeeGroups =
-    selectedView === "employees"
-      ? await getCalendarDayDataByEmployees(selectedDate)
-      : [];
+  const [roomGroups, employeeGroups] = await Promise.all([
+    selectedView === "rooms" ? getCalendarDayDataByRooms(selectedDate) : Promise.resolve([]),
+    selectedView === "employees" ? getCalendarDayDataByEmployees(selectedDate) : Promise.resolve([]),
+  ]);
 
   const selectedEmployeeId = resolvedSearchParams.employee || "";
   const selectedRoomId = resolvedSearchParams.room || "";
+  const mobileEmployeeGroups = selectedView === "employees" && employeeGroups.length
+    ? [employeeGroups.find((group) => group.employeeId === selectedEmployeeId) || employeeGroups[0]]
+    : employeeGroups;
+  const mobileRoomGroups = selectedView === "rooms" && roomGroups.length
+    ? [roomGroups.find((group) => group.roomId === selectedRoomId) || roomGroups[0]]
+    : roomGroups;
 
-  const mobileEmployeeGroups =
-    selectedView === "employees" && selectedEmployeeId
-      ? employeeGroups.filter(
-          (group) => group.employeeId === selectedEmployeeId,
-        )
-      : selectedView === "employees" && employeeGroups.length > 0
-        ? [employeeGroups[0]]
-        : employeeGroups;
+  const appointments = selectedView === "employees"
+    ? employeeGroups.flatMap((group) => group.appointments)
+    : roomGroups.flatMap((group) => group.appointments);
+  const uniqueAppointments = Array.from(new Map(appointments.map((appointment) => [appointment.id, appointment])).values());
+  const activeAppointments = uniqueAppointments.filter((appointment) => appointment.status !== "cancelled");
+  const uniqueClients = new Set(activeAppointments.map((appointment) => appointment.client_name.trim().toLocaleLowerCase("hr"))).size;
+  const bookedMinutes = activeAppointments.reduce((sum, appointment) => sum + appointment.duration_minutes, 0);
+  const workingEmployees = employeeGroups.filter((group) => group.workStatus.isWorking).length;
+  const hours = Math.floor(bookedMinutes / 60);
+  const minutes = bookedMinutes % 60;
 
-  const mobileRoomGroups =
-    selectedView === "rooms" && selectedRoomId
-      ? roomGroups.filter((group) => group.roomId === selectedRoomId)
-      : selectedView === "rooms" && roomGroups.length > 0
-        ? [roomGroups[0]]
-        : roomGroups;
+  const previousDate = shiftDate(selectedDate, -1);
+  const nextDate = shiftDate(selectedDate, 1);
 
   return (
     <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm md:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-app-text md:text-3xl">
-                Dnevni kalendar
-              </h1>
-              <p className="mt-2 text-sm text-app-muted md:text-base">
-                Pregled termina za {formatDateTitle(selectedDate)}
-              </p>
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+          <div className="border-b border-app-soft bg-gradient-to-br from-white to-app-bg p-5 md:p-7">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-2xl font-bold tracking-tight text-app-text md:text-3xl">Kalendar</h1>
+                  <CalendarCurrentTime selectedDate={selectedDate} today={today} />
+                </div>
+                <p className="mt-2 text-sm capitalize text-app-muted md:text-base">{formatDateTitle(selectedDate)}</p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="inline-flex rounded-xl border border-app-soft bg-white p-1 shadow-sm">
+                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Prethodni dan">
+                    <ArrowLeft className="h-4 w-4" />
+                  </Link>
+                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className="rounded-lg px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg">Danas</Link>
+                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Sljedeći dan">
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+
+                <DateQueryPicker value={selectedDate} basePath="/dashboard/calendar" extraParams={{ view: selectedView }} />
+
+                <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-[42px] items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                  <Plus className="h-4 w-4" /> Novi termin
+                </Link>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <DateQueryPicker
-                value={selectedDate}
-                basePath="/dashboard/calendar"
-                extraParams={{ view: selectedView }}
-              />
+            <div className="mt-6 flex flex-wrap gap-3">
+              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=employees`} active={selectedView === "employees"}>Po zaposlenicima</ViewChip>
+              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=rooms`} active={selectedView === "rooms"}>Po sobama</ViewChip>
+            </div>
 
-              <Link
-                href={`/dashboard/appointments/new?date=${selectedDate}`}
-                className="inline-flex h-[42px] items-center justify-center rounded-xl bg-app-accent px-4 py-2 font-medium text-white transition hover:opacity-90"
-              >
-                Novi termin
-              </Link>
+            <div className="mt-4 lg:hidden">
+              {selectedView === "employees" ? (
+                <AutoSubmitSelect label="Zaposlenik" action="/dashboard/calendar" name="employee" value={selectedEmployeeId || employeeGroups[0]?.employeeId || ""} hiddenFields={{ date: selectedDate, view: "employees" }} options={employeeGroups.map((group) => ({ value: group.employeeId, label: group.employeeName }))} />
+              ) : (
+                <AutoSubmitSelect label="Soba" action="/dashboard/calendar" name="room" value={selectedRoomId || roomGroups[0]?.roomId || ""} hiddenFields={{ date: selectedDate, view: "rooms" }} options={roomGroups.map((group) => ({ value: group.roomId, label: group.roomName }))} />
+              )}
             </div>
           </div>
+        </section>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <ViewChip
-              href={`/dashboard/calendar?date=${selectedDate}&view=employees`}
-              active={selectedView === "employees"}
-            >
-              Prikaz po zaposlenicima
-            </ViewChip>
-
-            <ViewChip
-              href={`/dashboard/calendar?date=${selectedDate}&view=rooms`}
-              active={selectedView === "rooms"}
-            >
-              Prikaz po sobama
-            </ViewChip>
-          </div>
-
-          {selectedView === "employees" ? (
-            <div className="mt-4 lg:hidden">
-              <AutoSubmitSelect
-                label="Zaposlenik"
-                action="/dashboard/calendar"
-                name="employee"
-                value={
-                  selectedEmployeeId || employeeGroups[0]?.employeeId || ""
-                }
-                hiddenFields={{
-                  date: selectedDate,
-                  view: "employees",
-                }}
-                options={employeeGroups.map((group) => ({
-                  value: group.employeeId,
-                  label: group.employeeName,
-                }))}
-              />
-            </div>
-          ) : (
-            <div className="mt-4 lg:hidden">
-              <AutoSubmitSelect
-                label="Soba"
-                action="/dashboard/calendar"
-                name="room"
-                value={selectedRoomId || roomGroups[0]?.roomId || ""}
-                hiddenFields={{
-                  date: selectedDate,
-                  view: "rooms",
-                }}
-                options={roomGroups.map((group) => ({
-                  value: group.roomId,
-                  label: group.roomName,
-                }))}
-              />
-            </div>
-          )}
-        </div>
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Termini" value={String(activeAppointments.length)} detail={`${uniqueAppointments.length - activeAppointments.length} otkazanih`} />
+          <StatCard icon={<UserRound className="h-5 w-5" />} label="Klijenti" value={String(uniqueClients)} detail="jedinstvenih klijenata" />
+          <StatCard icon={<Timer className="h-5 w-5" />} label="Rezervirano vrijeme" value={`${hours} h ${minutes} min`} detail="ukupno trajanje termina" />
+          <StatCard icon={<UsersRound className="h-5 w-5" />} label="Aktivni kapacitet" value={selectedView === "employees" ? `${workingEmployees}/${employeeGroups.length}` : String(roomGroups.length)} detail={selectedView === "employees" ? "zaposlenika radi" : "aktivnih soba"} />
+        </section>
 
         {selectedView === "rooms" ? (
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileRoomGroups.map((group) => (
-                <section
-                  key={group.roomId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-app-text">
-                      {group.roomName}
-                    </h2>
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
+                <section key={group.roomId} className="rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur">
+                    <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent"><DoorOpen className="h-5 w-5" /></div><h2 className="text-lg font-bold text-app-text">{group.roomName}</h2></div>
+                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold text-app-text">{group.appointments.length} termina</span>
                   </div>
-
-                  {group.appointments.length === 0 ? (
-                    <EmptyStateCard
-                      title="Nema termina u ovoj sobi"
-                      description="Za odabrani datum nema rezervacija u ovoj sobi."
-                    />
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.employee
-                              ? `Zaposlenik: ${appointment.employee.display_name}`
-                              : "Nepoznati zaposlenik",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina u ovoj sobi" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
             </div>
-
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {roomGroups.map((group) => (
-                <section
-                  key={group.roomId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-app-text">
-                      {group.roomName}
-                    </h2>
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
-                  </div>
-
-                  {group.appointments.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-app-soft bg-app-card-alt p-4 text-sm text-app-muted">
-                      Nema termina u ovoj sobi.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.employee
-                              ? `Zaposlenik: ${appointment.employee.display_name}`
-                              : "Nepoznati zaposlenik",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <section key={group.roomId} className="min-w-0 rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <div className="sticky top-4 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur"><div className="flex items-center gap-3"><DoorOpen className="h-5 w-5 text-app-accent" /><h2 className="font-bold text-app-text">{group.roomName}</h2></div><span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold">{group.appointments.length}</span></div>
+                  <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
             </div>
@@ -407,109 +285,20 @@ export default async function CalendarPage({
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileEmployeeGroups.map((group) => (
-                <section
-                  key={group.employeeId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="inline-block h-4 w-4 rounded-full"
-                        style={{ backgroundColor: group.colorHex || "#999999" }}
-                      />
-                      <div>
-                        <h2 className="text-xl font-semibold text-app-text">
-                          {group.employeeName}
-                        </h2>
-                        <div
-                          className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getWorkStatusClasses(
-                            group.workStatus,
-                          )}`}
-                        >
-                          {group.workStatus.label}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
+                <section key={group.employeeId} className="rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur">
+                    <div className="flex items-center gap-3"><span className="h-11 w-2 rounded-full" style={{ backgroundColor: group.colorHex || "#999" }} /><div><h2 className="text-lg font-bold text-app-text">{group.employeeName}</h2><span className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${getWorkStatusClasses(group.workStatus)}`}>{group.workStatus.label}</span></div></div>
+                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold text-app-text">{group.appointments.length} termina</span>
                   </div>
-
-                  {group.appointments.length === 0 ? (
-                    <EmptyStateCard
-                      title="Nema termina za ovog zaposlenika"
-                      description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina."
-                    />
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.room
-                              ? `Soba: ${appointment.room.name}`
-                              : "Nepoznata soba",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
             </div>
-
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {employeeGroups.map((group) => (
-                <section
-                  key={group.employeeId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="inline-block h-4 w-4 rounded-full"
-                        style={{ backgroundColor: group.colorHex || "#999999" }}
-                      />
-                      <div>
-                        <h2 className="text-xl font-semibold text-app-text">
-                          {group.employeeName}
-                        </h2>
-                        <div
-                          className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getWorkStatusClasses(
-                            group.workStatus,
-                          )}`}
-                        >
-                          {group.workStatus.label}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
-                  </div>
-
-                  {group.appointments.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-app-soft bg-app-card-alt p-4 text-sm text-app-muted">
-                      Nema termina za ovog zaposlenika.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.room
-                              ? `Soba: ${appointment.room.name}`
-                              : "Nepoznata soba",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <section key={group.employeeId} className="min-w-0 rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <div className="sticky top-4 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur"><div className="flex items-center gap-3"><span className="h-11 w-2 rounded-full" style={{ backgroundColor: group.colorHex || "#999" }} /><div><h2 className="font-bold text-app-text">{group.employeeName}</h2><span className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${getWorkStatusClasses(group.workStatus)}`}>{group.workStatus.label}</span></div></div><span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold">{group.appointments.length}</span></div>
+                  <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
             </div>
