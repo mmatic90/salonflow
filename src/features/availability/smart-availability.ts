@@ -8,7 +8,7 @@ type AppointmentRow = {
   room_id: string;
   start_time: string;
   end_time: string;
-  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
   service?:
     | {
         id: string;

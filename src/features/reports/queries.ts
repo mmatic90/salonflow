@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 
-type AppointmentStatus = "scheduled" | "completed" | "cancelled" | "no_show";
+type AppointmentStatus = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
 
 type AppointmentRow = {
   id: string;

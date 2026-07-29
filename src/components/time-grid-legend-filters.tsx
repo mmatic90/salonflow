@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-type StatusKey = "scheduled" | "completed" | "cancelled" | "no_show";
+type StatusKey = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
 
 type Props = {
   showScheduled: boolean;

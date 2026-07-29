@@ -93,7 +93,7 @@ function CalendarCard({
     start_time: string;
     end_time: string;
     duration_minutes: number;
-    status: "scheduled" | "completed" | "cancelled" | "no_show";
+    status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
     client_name: string;
     client_phone: string | null;
     service: { name: string; service_group: string | null } | null;
