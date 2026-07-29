@@ -1,27 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
-type AppointmentStatus = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
+type AppointmentStatus =
+  | "scheduled"
+  | "confirmed"
+  | "completed"
+  | "cancelled"
+  | "no_show";
 
 type AppointmentRow = {
   id: string;
   appointment_date: string;
   status: AppointmentStatus;
   employee_id: string | null;
-  service_id: string | null;
-  employee: {
-    id: string;
-    display_name: string;
-  } | null;
-  service: {
-    id: string;
-    name: string;
-  } | null;
-};
-
-type OnlineBookingRow = {
-  id: string;
-  status: "pending" | "accepted" | "rejected" | string;
-  created_at: string;
+  employee: { id: string; display_name: string } | null;
+  services: { id: string; name: string }[];
 };
 
 function getSingleRelation<T>(value: T | T[] | null | undefined): T | null {
@@ -33,23 +26,20 @@ function formatDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-
   return `${year}-${month}-${day}`;
 }
 
 function startOfWeek(date: Date) {
   const copy = new Date(date);
   const day = copy.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  copy.setDate(copy.getDate() + diff);
+  copy.setDate(copy.getDate() + (day === 0 ? -6 : 1 - day));
   copy.setHours(0, 0, 0, 0);
   return copy;
 }
 
 function endOfWeek(date: Date) {
-  const start = startOfWeek(date);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
+  const end = startOfWeek(date);
+  end.setDate(end.getDate() + 6);
   end.setHours(23, 59, 59, 999);
   return end;
 }
@@ -68,8 +58,10 @@ function safeRate(part: number, total: number) {
 }
 
 export async function getReportsDashboardData() {
-  const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
+  const supabase = await createClient();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -78,94 +70,79 @@ export async function getReportsDashboardData() {
   const weekEndStr = formatDate(endOfWeek(today));
   const monthStartStr = formatDate(startOfMonth(today));
   const monthEndStr = formatDate(endOfMonth(today));
-
   const last14Start = new Date(today);
   last14Start.setDate(today.getDate() - 13);
   const last14StartStr = formatDate(last14Start);
 
-  const [
-    { data: appointmentData, error: appointmentError },
-    { data: onlineData, error: onlineError },
-  ] = await Promise.all([
-    supabase
-      .from("appointments")
-      .select(
-        `
+  const { data: appointmentData, error: appointmentError } = await supabase
+    .from("appointments")
+    .select(`
+      id,
+      appointment_date,
+      status,
+      employee_id,
+      employee:employees (
         id,
-        appointment_date,
-        status,
-        employee_id,
+        first_name,
+        last_name
+      ),
+      appointment_services (
         service_id,
-        employee:employees (
-          id,
-          display_name
-        ),
-        service:services (
-          id,
-          name
-        )
-      `,
+        service_name,
+        sort_order
       )
-      .gte("appointment_date", last14StartStr)
-      .lte("appointment_date", monthEndStr)
-      .order("appointment_date", { ascending: true }),
-
-    supabase
-      .from("online_booking_requests")
-      .select("id, status, created_at")
-      .gte("created_at", `${monthStartStr}T00:00:00`)
-      .lte("created_at", `${monthEndStr}T23:59:59`),
-  ]);
+    `)
+    .eq("organization_id", permissions.organizationId)
+    .gte("appointment_date", last14StartStr)
+    .lte("appointment_date", monthEndStr)
+    .order("appointment_date", { ascending: true });
 
   if (appointmentError) {
-    console.error(appointmentError);
+    console.error("Reports appointment query failed:", {
+      message: appointmentError.message,
+      details: appointmentError.details,
+      hint: appointmentError.hint,
+      code: appointmentError.code,
+    });
     throw new Error("Nije moguće dohvatiti reports podatke.");
   }
 
-  if (onlineError) {
-    console.error(onlineError);
-    throw new Error("Nije moguće dohvatiti online booking podatke.");
-  }
+  const appointments: AppointmentRow[] = (appointmentData ?? []).map((item: any) => {
+    const employee = getSingleRelation<any>(item.employee);
+    const services = Array.isArray(item.appointment_services)
+      ? [...item.appointment_services]
+          .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+          .map((entry) => ({
+            id: String(entry.service_id ?? ""),
+            name: String(entry.service_name ?? "Usluga"),
+          }))
+      : [];
 
-  const appointments: AppointmentRow[] = (appointmentData ?? []).map(
-    (item: any) => {
-      const employee = getSingleRelation(item.employee);
-      const service = getSingleRelation(item.service);
-
-      return {
-        id: String(item.id ?? ""),
-        appointment_date: String(item.appointment_date ?? ""),
-        status: item.status as AppointmentStatus,
-        employee_id: item.employee_id ? String(item.employee_id) : null,
-        service_id: item.service_id ? String(item.service_id) : null,
-        employee: employee
-          ? {
-              id: String(employee.id ?? ""),
-              display_name: String(employee.display_name ?? ""),
-            }
-          : null,
-        service: service
-          ? {
-              id: String(service.id ?? ""),
-              name: String(service.name ?? ""),
-            }
-          : null,
-      };
-    },
-  );
-
-  const onlineBookings = (onlineData ?? []) as OnlineBookingRow[];
+    return {
+      id: String(item.id ?? ""),
+      appointment_date: String(item.appointment_date ?? ""),
+      status: item.status as AppointmentStatus,
+      employee_id: item.employee_id ? String(item.employee_id) : null,
+      employee: employee
+        ? {
+            id: String(employee.id ?? ""),
+            display_name:
+              [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
+              "Zaposlenik",
+          }
+        : null,
+      services,
+    };
+  });
 
   const todayAppointments = appointments.filter(
     (item) => item.appointment_date === todayStr,
   );
-
   const weekAppointments = appointments.filter(
     (item) =>
       item.appointment_date >= weekStartStr &&
       item.appointment_date <= weekEndStr,
   );
-
   const monthAppointments = appointments.filter(
     (item) =>
       item.appointment_date >= monthStartStr &&
@@ -173,73 +150,39 @@ export async function getReportsDashboardData() {
   );
 
   const statusCounts = {
-    scheduled: monthAppointments.filter((a) => a.status === "scheduled").length,
-    completed: monthAppointments.filter((a) => a.status === "completed").length,
-    cancelled: monthAppointments.filter((a) => a.status === "cancelled").length,
-    no_show: monthAppointments.filter((a) => a.status === "no_show").length,
+    scheduled: monthAppointments.filter(
+      (item) => item.status === "scheduled" || item.status === "confirmed",
+    ).length,
+    completed: monthAppointments.filter((item) => item.status === "completed").length,
+    cancelled: monthAppointments.filter((item) => item.status === "cancelled").length,
+    no_show: monthAppointments.filter((item) => item.status === "no_show").length,
   };
 
   const totalMonthAppointments = monthAppointments.length;
-
-  const completionRate = safeRate(
-    statusCounts.completed,
-    totalMonthAppointments,
-  );
-
+  const completionRate = safeRate(statusCounts.completed, totalMonthAppointments);
   const noShowRate = safeRate(statusCounts.no_show, totalMonthAppointments);
 
-  const onlineCounts = {
-    total: onlineBookings.length,
-    pending: onlineBookings.filter((item) => item.status === "pending").length,
-    accepted: onlineBookings.filter((item) => item.status === "accepted")
-      .length,
-    rejected: onlineBookings.filter((item) => item.status === "rejected")
-      .length,
-  };
-
-  const onlineConversionRate = safeRate(
-    onlineCounts.accepted,
-    onlineCounts.total,
-  );
-
   const employeeMap = new Map<string, { name: string; count: number }>();
-
   for (const item of monthAppointments) {
     if (!item.employee?.id) continue;
-
     const existing = employeeMap.get(item.employee.id);
-
-    if (existing) {
-      existing.count += 1;
-    } else {
-      employeeMap.set(item.employee.id, {
-        name: item.employee.display_name,
-        count: 1,
-      });
-    }
+    if (existing) existing.count += 1;
+    else employeeMap.set(item.employee.id, { name: item.employee.display_name, count: 1 });
   }
 
   const serviceMap = new Map<string, { name: string; count: number }>();
-
   for (const item of monthAppointments) {
-    if (!item.service?.id) continue;
-
-    const existing = serviceMap.get(item.service.id);
-
-    if (existing) {
-      existing.count += 1;
-    } else {
-      serviceMap.set(item.service.id, {
-        name: item.service.name,
-        count: 1,
-      });
+    for (const service of item.services) {
+      if (!service.id) continue;
+      const existing = serviceMap.get(service.id);
+      if (existing) existing.count += 1;
+      else serviceMap.set(service.id, { name: service.name, count: 1 });
     }
   }
 
   const topEmployees = Array.from(employeeMap.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
-
   const topServices = Array.from(serviceMap.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
@@ -248,22 +191,19 @@ export async function getReportsDashboardData() {
     const date = new Date(last14Start);
     date.setDate(last14Start.getDate() + index);
     const dateStr = formatDate(date);
-
     const dayAppointments = appointments.filter(
-      (a) => a.appointment_date === dateStr,
+      (appointment) => appointment.appointment_date === dateStr,
     );
-
     return {
       date: dateStr,
       count: dayAppointments.length,
-      completed: dayAppointments.filter((a) => a.status === "completed").length,
-      no_show: dayAppointments.filter((a) => a.status === "no_show").length,
+      completed: dayAppointments.filter((item) => item.status === "completed").length,
+      no_show: dayAppointments.filter((item) => item.status === "no_show").length,
     };
   });
 
-  const busiestDays = [...last14Days]
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
+  const busiestDays = [...last14Days].sort((a, b) => b.count - a.count).slice(0, 5);
+  const onlineCounts = { total: 0, pending: 0, accepted: 0, rejected: 0 };
 
   return {
     period: {
@@ -283,7 +223,7 @@ export async function getReportsDashboardData() {
       noShowMonth: statusCounts.no_show,
       completionRate,
       noShowRate,
-      onlineConversionRate,
+      onlineConversionRate: 0,
     },
     statusCounts,
     onlineCounts,
