@@ -17,6 +17,7 @@ import {
   getCalendarDayDataByEmployees,
   getCalendarDayDataByRooms,
   type CalendarAppointmentItem,
+  type CalendarEmployeeGroup,
 } from "@/features/calendar/queries";
 import { formatTime, getTodayLocalDate } from "@/lib/utils";
 import DateQueryPicker from "@/components/date-query-picker";
@@ -74,6 +75,86 @@ function statusLabel(status: string) {
     case "no_show": return "Nije došao";
     default: return status;
   }
+}
+
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toLocaleUpperCase("hr"))
+    .join("") || "SF";
+}
+
+function appointmentCountLabel(count: number) {
+  return `${count} ${count === 1 ? "termin" : "termina"}`;
+}
+
+function EmployeeColumnHeader({ group, stickyTop }: { group: CalendarEmployeeGroup; stickyTop: string }) {
+  const accent = group.colorHex || "#8a7d6f";
+  const workingHours = group.workStatus.isWorking && group.workStatus.label.includes("-")
+    ? group.workStatus.label.replace(" - ", " – ")
+    : null;
+  const statusText = group.workStatus.isWorking ? "Radi danas" : group.workStatus.label;
+
+  return (
+    <div className={`sticky ${stickyTop} z-10 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/95 backdrop-blur-xl`}>
+      <div className="h-1.5 w-full" style={{ backgroundColor: accent }} />
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-4 border-white text-sm font-bold text-white shadow-md"
+              style={{ backgroundColor: accent }}
+              aria-hidden="true"
+            >
+              {getInitials(group.employeeName)}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-bold tracking-tight text-app-text">{group.employeeName}</h2>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-app-muted">
+                <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                {workingHours || "Nema radnog vremena"}
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full border border-app-soft bg-app-bg px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
+            {appointmentCountLabel(group.appointments.length)}
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-app-soft/80 pt-3">
+          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${getWorkStatusClasses(group.workStatus)}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${group.workStatus.isWorking ? "bg-emerald-500" : "bg-current"}`} />
+            {statusText}
+          </span>
+          {group.workStatus.isOverride ? <span className="text-[11px] font-medium text-app-muted">Poseban raspored</span> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoomColumnHeader({ roomName, appointmentCount, stickyTop }: { roomName: string; appointmentCount: number; stickyTop: string }) {
+  return (
+    <div className={`sticky ${stickyTop} z-10 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/95 backdrop-blur-xl`}>
+      <div className="h-1.5 w-full bg-app-accent" />
+      <div className="flex items-center justify-between gap-4 p-5">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent shadow-sm">
+            <DoorOpen className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-app-muted">Prostorija</p>
+            <h2 className="mt-1 truncate text-lg font-bold tracking-tight text-app-text">{roomName}</h2>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full border border-app-soft bg-app-bg px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
+          {appointmentCountLabel(appointmentCount)}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function ViewChip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
@@ -265,19 +346,16 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileRoomGroups.map((group) => (
-                <section key={group.roomId} className="rounded-3xl border border-app-soft bg-app-card shadow-sm">
-                  <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur">
-                    <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent"><DoorOpen className="h-5 w-5" /></div><h2 className="text-lg font-bold text-app-text">{group.roomName}</h2></div>
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold text-app-text">{group.appointments.length} termina</span>
-                  </div>
+                <section key={group.roomId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-0" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina u ovoj sobi" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
             </div>
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {roomGroups.map((group) => (
-                <section key={group.roomId} className="min-w-0 rounded-3xl border border-app-soft bg-app-card shadow-sm">
-                  <div className="sticky top-4 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur"><div className="flex items-center gap-3"><DoorOpen className="h-5 w-5 text-app-accent" /><h2 className="font-bold text-app-text">{group.roomName}</h2></div><span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold">{group.appointments.length}</span></div>
+                <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
@@ -287,19 +365,16 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileEmployeeGroups.map((group) => (
-                <section key={group.employeeId} className="rounded-3xl border border-app-soft bg-app-card shadow-sm">
-                  <div className="sticky top-0 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur">
-                    <div className="flex items-center gap-3"><span className="h-11 w-2 rounded-full" style={{ backgroundColor: group.colorHex || "#999" }} /><div><h2 className="text-lg font-bold text-app-text">{group.employeeName}</h2><span className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${getWorkStatusClasses(group.workStatus)}`}>{group.workStatus.label}</span></div></div>
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold text-app-text">{group.appointments.length} termina</span>
-                  </div>
+                <section key={group.employeeId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <EmployeeColumnHeader group={group} stickyTop="top-0" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
             </div>
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {employeeGroups.map((group) => (
-                <section key={group.employeeId} className="min-w-0 rounded-3xl border border-app-soft bg-app-card shadow-sm">
-                  <div className="sticky top-4 z-10 flex items-center justify-between gap-3 rounded-t-3xl border-b border-app-soft bg-app-card/95 p-5 backdrop-blur"><div className="flex items-center gap-3"><span className="h-11 w-2 rounded-full" style={{ backgroundColor: group.colorHex || "#999" }} /><div><h2 className="font-bold text-app-text">{group.employeeName}</h2><span className={`mt-1 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${getWorkStatusClasses(group.workStatus)}`}>{group.workStatus.label}</span></div></div><span className="rounded-full bg-app-bg px-3 py-1 text-xs font-semibold">{group.appointments.length}</span></div>
+                <section key={group.employeeId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                  <EmployeeColumnHeader group={group} stickyTop="top-4" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
