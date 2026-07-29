@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type {
   AppointmentEditItem,
@@ -18,6 +18,11 @@ type Props = {
   clients: ClientComboboxItem[];
 };
 
+type AvailabilityOption = {
+  id: string;
+  label: string;
+};
+
 const fieldClass =
   "w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/15";
 
@@ -30,11 +35,84 @@ export default function MultiTenantEditAppointmentForm({
 }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [availabilityPending, setAvailabilityPending] = useState(false);
   const [error, setError] = useState("");
   const [clientId, setClientId] = useState(appointment.client_id ?? "");
   const [clientName, setClientName] = useState(appointment.client_name);
   const [clientPhone, setClientPhone] = useState(appointment.client_phone ?? "");
   const [clientEmail, setClientEmail] = useState(appointment.client_email ?? "");
+  const [date, setDate] = useState(appointment.appointment_date);
+  const [startTime, setStartTime] = useState(appointment.start_time.slice(0, 5));
+  const [serviceId, setServiceId] = useState(appointment.service_id);
+  const [employeeId, setEmployeeId] = useState(appointment.employee_id);
+  const [roomId, setRoomId] = useState(appointment.room_id ?? "");
+  const [availableEmployees, setAvailableEmployees] = useState<AvailabilityOption[]>([]);
+  const [availableRooms, setAvailableRooms] = useState<AvailabilityOption[]>([]);
+  const availabilityReady = Boolean(date && startTime && serviceId);
+
+  useEffect(() => {
+    if (!availabilityReady) {
+      setAvailableEmployees([]);
+      setAvailableRooms([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setAvailabilityPending(true);
+      setError("");
+
+      try {
+        const params = new URLSearchParams({
+          date,
+          start_time: startTime,
+          service_id: serviceId,
+          exclude_appointment_id: appointment.id,
+        });
+        const response = await fetch(`/api/appointments/availability?${params}`, {
+          signal: controller.signal,
+        });
+        const result = (await response.json()) as {
+          error?: string;
+          employees?: AvailabilityOption[];
+          rooms?: AvailabilityOption[];
+        };
+
+        if (!response.ok) {
+          throw new Error(result.error || "Dostupnost nije moguće provjeriti.");
+        }
+
+        const nextEmployees = result.employees ?? [];
+        const nextRooms = result.rooms ?? [];
+        setAvailableEmployees(nextEmployees);
+        setAvailableRooms(nextRooms);
+        setEmployeeId((current) =>
+          nextEmployees.some((employee) => employee.id === current) ? current : "",
+        );
+        setRoomId((current) =>
+          current && nextRooms.some((room) => room.id === current) ? current : "",
+        );
+      } catch (requestError) {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") return;
+        setAvailableEmployees([]);
+        setAvailableRooms([]);
+        setEmployeeId("");
+        setRoomId("");
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Dostupnost nije moguće provjeriti.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setAvailabilityPending(false);
+      }
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [appointment.id, availabilityReady, date, startTime, serviceId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -86,11 +164,11 @@ export default function MultiTenantEditAppointmentForm({
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
           <span>Datum</span>
-          <input className={fieldClass} type="date" name="appointment_date" defaultValue={appointment.appointment_date} required />
+          <input className={fieldClass} type="date" name="appointment_date" value={date} onChange={(event) => setDate(event.target.value)} required />
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
           <span>Vrijeme početka</span>
-          <input className={fieldClass} type="time" name="start_time" defaultValue={appointment.start_time.slice(0, 5)} required />
+          <input className={fieldClass} type="time" name="start_time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
         </label>
       </div>
 
@@ -122,26 +200,27 @@ export default function MultiTenantEditAppointmentForm({
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
           <span>Usluga</span>
-          <select className={fieldClass} name="service_id" defaultValue={appointment.service_id} required>
+          <select className={fieldClass} name="service_id" value={serviceId} onChange={(event) => setServiceId(event.target.value)} required>
             <option value="" disabled>Odaberite uslugu</option>
             {services.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.duration_minutes} min</option>)}
           </select>
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
           <span>Zaposlenik</span>
-          <select className={fieldClass} name="employee_id" defaultValue={appointment.employee_id} required>
-            <option value="" disabled>Odaberite zaposlenika</option>
-            {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.display_name}</option>)}
+          <select className={fieldClass} name="employee_id" value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} required disabled={availabilityPending || !availabilityReady}>
+            <option value="">{availabilityPending ? "Provjera dostupnosti..." : "Odaberite slobodnog zaposlenika"}</option>
+            {availableEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.label}</option>)}
           </select>
+          {availabilityReady && !availabilityPending && availableEmployees.length === 0 ? <span className="block text-xs text-amber-700">Nema slobodnih zaposlenika za odabrani termin.</span> : null}
         </label>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
           <span>Soba</span>
-          <select className={fieldClass} name="room_id" defaultValue={appointment.room_id}>
-            <option value="">Bez sobe</option>
-            {rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
+          <select className={fieldClass} name="room_id" value={roomId} onChange={(event) => setRoomId(event.target.value)} disabled={availabilityPending || !availabilityReady}>
+            <option value="">{availabilityPending ? "Provjera dostupnosti..." : "Bez sobe"}</option>
+            {availableRooms.map((room) => <option key={room.id} value={room.id}>{room.label}</option>)}
           </select>
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
@@ -161,7 +240,7 @@ export default function MultiTenantEditAppointmentForm({
         <textarea className={fieldClass} name="notes" rows={4} defaultValue={appointment.client_note ?? appointment.internal_note ?? ""} />
       </label>
 
-      <button type="submit" disabled={pending} className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+      <button type="submit" disabled={pending || availabilityPending || !employeeId} className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
         {pending ? "Spremanje..." : "Spremi izmjene"}
       </button>
     </form>
