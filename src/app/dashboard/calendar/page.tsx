@@ -212,17 +212,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           <div className="border-b border-app-soft bg-gradient-to-br from-white to-app-bg p-5 md:p-7">
             <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
-                <div className="inline-flex rounded-xl border border-app-soft bg-white p-1 shadow-sm">
-                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Prethodni dan">
-                    <ArrowLeft className="h-4 w-4" />
-                  </Link>
-                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>Danas</Link>
-                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Sljedeći dan">
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-2xl font-bold capitalize tracking-tight text-app-text md:text-3xl">{formatDateTitle(selectedDate)}</h1>
                   <CalendarCurrentTime selectedDate={selectedDate} today={today} />
                 </div>
@@ -232,9 +222,21 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 </div>
               </div>
 
-              <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-[46px] shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md xl:self-center">
-                <Plus className="h-4 w-4" /> Novi termin
-              </Link>
+              <div className="flex shrink-0 flex-col items-stretch gap-3 self-start sm:items-end xl:self-center">
+                <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-[46px] items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                  <Plus className="h-4 w-4" /> Novi termin
+                </Link>
+
+                <div className="inline-flex self-end rounded-xl border border-app-soft bg-white p-1 shadow-sm">
+                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Prethodni dan">
+                    <ArrowLeft className="h-4 w-4" />
+                  </Link>
+                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>Danas</Link>
+                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Sljedeći dan">
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
