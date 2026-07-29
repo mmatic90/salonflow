@@ -13,6 +13,10 @@ type ClientRow = Record<string, unknown> & {
   id: string;
 };
 
+function asOptionalString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function getClientLabel(client: ClientRow) {
   const fullName = typeof client.full_name === "string" ? client.full_name.trim() : "";
   if (fullName) return fullName;
@@ -116,6 +120,8 @@ export default async function NewAppointmentPage({
     .map((client) => ({
       id: client.id,
       label: getClientLabel(client),
+      phone: asOptionalString(client.phone),
+      email: asOptionalString(client.email),
     }))
     .sort((a, b) => a.label.localeCompare(b.label, "hr"));
 
