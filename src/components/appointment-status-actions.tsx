@@ -1,9 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
-import { toast } from "sonner";
 import { quickUpdateAppointmentStatusAction } from "@/features/appointments/actions";
-import { useRouter } from "next/navigation";
 import ConfirmActionButton from "@/components/confirm-action-button";
 import type { AppointmentStatus } from "@/features/appointments/types";
 
@@ -33,33 +30,16 @@ export default function AppointmentStatusActions({
   appointmentId,
   currentStatus,
 }: Props) {
-  const router = useRouter();
-  const [pending] = useTransition();
-
   if (currentStatus !== "scheduled") {
     return null;
   }
 
   function updateStatus(status: "completed" | "no_show" | "cancelled") {
-    return async () => {
-      const result = await quickUpdateAppointmentStatusAction(
-        appointmentId,
-        status,
-      );
-
-      if (result.ok) {
-        toast.success(result.message);
-        router.refresh();
-      } else {
-        toast.error(result.message);
-      }
-
-      return result;
-    };
+    return () => quickUpdateAppointmentStatusAction(appointmentId, status);
   }
 
   return (
-    <div className={`flex flex-wrap gap-1 ${pending ? "opacity-70" : ""}`}>
+    <div className="flex flex-wrap gap-1">
       <ConfirmActionButton
         title="Označiti termin kao odrađen?"
         description="Potvrdi ako je termin uspješno odrađen."
