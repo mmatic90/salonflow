@@ -18,6 +18,7 @@ import {
   sendInstantSms,
 } from "@/lib/twilio/sms";
 import { writeAuditLog } from "@/lib/audit/write-audit-log";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 export type AppointmentFormValues = {
   appointment_date: string;
@@ -56,6 +57,22 @@ function normalizeNullableText(value: FormDataEntryValue | null) {
 
 function normalizeLower(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
+}
+
+function splitClientName(clientName: string) {
+  const parts = clientName.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length <= 1) {
+    return {
+      firstName: parts[0] ?? "",
+      lastName: "",
+    };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
 }
 
 function getFormValues(formData: FormData): AppointmentFormValues {
@@ -97,7 +114,13 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
 }
 
 function isValidAppointmentStatus(value: string): value is AppointmentStatus {
-  return ["scheduled", "completed", "cancelled", "no_show"].includes(value);
+  return [
+    "scheduled",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "no_show",
+  ].includes(value);
 }
 
 function canTransitionAppointmentStatus(
@@ -107,7 +130,11 @@ function canTransitionAppointmentStatus(
   if (from === to) return true;
 
   if (from === "scheduled") {
-    return ["completed", "cancelled", "no_show"].includes(to);
+    return ["confirmed", "completed", "cancelled", "no_show"].includes(to);
+  }
+
+  if (from === "confirmed") {
+    return ["scheduled", "completed", "cancelled", "no_show"].includes(to);
   }
 
   return false;
@@ -535,35 +562,42 @@ async function cancelExistingReminderIfAny(appointmentId: string) {
 }
 
 async function resolveClientId(args: {
+  organizationId: string;
   clientId: string;
   clientName: string;
   clientPhone: string | null;
   clientEmail: string | null;
   clientNote: string | null;
-  internalNote: string | null;
 }) {
   const supabase = await createClient();
 
   const {
+    organizationId,
     clientId,
     clientName,
     clientPhone,
     clientEmail,
     clientNote,
-    internalNote,
   } = args;
 
+  const { firstName, lastName } = splitClientName(clientName);
+  const clientPayload = {
+    organization_id: organizationId,
+    first_name: firstName,
+    last_name: lastName,
+    phone: clientPhone,
+    email: clientEmail,
+    notes: clientNote,
+  };
+
   if (clientId) {
-    const { error } = await supabase
+    const { data: updatedClient, error } = await supabase
       .from("clients")
-      .update({
-        full_name: clientName,
-        phone: clientPhone,
-        email: clientEmail,
-        note: clientNote,
-        internal_note: internalNote,
-      })
-      .eq("id", clientId);
+      .update(clientPayload)
+      .eq("organization_id", organizationId)
+      .eq("id", clientId)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return {
@@ -572,16 +606,25 @@ async function resolveClientId(args: {
       };
     }
 
+    if (!updatedClient) {
+      return {
+        ok: false as const,
+        error: "Odabrani klijent nije pronađen u ovoj organizaciji.",
+      };
+    }
+
     return {
       ok: true as const,
-      clientId,
+      clientId: updatedClient.id,
     };
   }
 
   const { data: possibleMatches, error: searchError } = await supabase
     .from("clients")
-    .select("id, full_name, phone, email")
-    .ilike("full_name", clientName);
+    .select("id, first_name, last_name, phone, email")
+    .eq("organization_id", organizationId)
+    .ilike("first_name", firstName)
+    .ilike("last_name", lastName);
 
   if (searchError) {
     return {
@@ -591,8 +634,12 @@ async function resolveClientId(args: {
   }
 
   const existing = (possibleMatches ?? []).find((item) => {
+    const existingName = [item.first_name, item.last_name]
+      .filter(Boolean)
+      .join(" ");
+
     return (
-      normalizeLower(item.full_name) === normalizeLower(clientName) &&
+      normalizeLower(existingName) === normalizeLower(clientName) &&
       normalizeLower(item.phone) === normalizeLower(clientPhone) &&
       normalizeLower(item.email) === normalizeLower(clientEmail)
     );
@@ -601,13 +648,8 @@ async function resolveClientId(args: {
   if (existing) {
     const { error } = await supabase
       .from("clients")
-      .update({
-        full_name: clientName,
-        phone: clientPhone,
-        email: clientEmail,
-        note: clientNote,
-        internal_note: internalNote,
-      })
+      .update(clientPayload)
+      .eq("organization_id", organizationId)
       .eq("id", existing.id);
 
     if (error) {
@@ -625,13 +667,7 @@ async function resolveClientId(args: {
 
   const { data: createdClient, error: insertError } = await supabase
     .from("clients")
-    .insert({
-      full_name: clientName,
-      phone: clientPhone,
-      email: clientEmail,
-      note: clientNote,
-      internal_note: internalNote,
-    })
+    .insert(clientPayload)
     .select("id")
     .single();
 
@@ -649,6 +685,7 @@ async function resolveClientId(args: {
 }
 
 async function validateAppointmentRequest(args: {
+  organizationId: string;
   appointmentId?: string;
   appointmentDate: string;
   startTime: string;
@@ -660,6 +697,7 @@ async function validateAppointmentRequest(args: {
   const supabase = await createClient();
 
   const {
+    organizationId,
     appointmentId,
     appointmentDate,
     startTime,
@@ -709,12 +747,11 @@ async function validateAppointmentRequest(args: {
     { data: salonHours, error: salonError },
     { data: employeeSchedule, error: employeeScheduleError },
     { data: existingAppointments, error: appointmentsError },
-    { data: serviceRows, error: servicesError },
-    { data: groupLimits, error: groupLimitsError },
   ] = await Promise.all([
     supabase
       .from("salon_working_hours")
-      .select("day_of_week, opens_at, closes_at, is_closed"),
+      .select("day_of_week, opens_at, closes_at, is_closed")
+      .eq("organization_id", organizationId),
 
     supabase.rpc("get_employee_effective_schedule", {
       p_employee_id: employeeId,
@@ -723,32 +760,10 @@ async function validateAppointmentRequest(args: {
 
     supabase
       .from("appointments")
-      .select(
-        `
-        id,
-        employee_id,
-        room_id,
-        start_time,
-        end_time,
-        status,
-        service:services (
-          id,
-          service_group
-        )
-      `,
-      )
+      .select("id, employee_id, room_id, start_time, end_time, status")
+      .eq("organization_id", organizationId)
       .eq("appointment_date", appointmentDate)
-      .in("status", ["scheduled", "completed"]),
-
-    supabase
-      .from("services")
-      .select("id, service_group")
-      .in(
-        "id",
-        items.map((item) => item.service_id),
-      ),
-
-    supabase.from("service_group_limits").select("group_name, max_parallel"),
+      .in("status", ["scheduled", "confirmed", "completed"]),
   ]);
 
   if (salonError) {
@@ -761,14 +776,6 @@ async function validateAppointmentRequest(args: {
 
   if (appointmentsError) {
     return { ok: false as const, message: appointmentsError.message };
-  }
-
-  if (servicesError) {
-    return { ok: false as const, message: servicesError.message };
-  }
-
-  if (groupLimitsError) {
-    return { ok: false as const, message: groupLimitsError.message };
   }
 
   const dayOfWeek = new Date(`${appointmentDate}T00:00:00`).getDay();
@@ -857,39 +864,6 @@ async function validateAppointmentRequest(args: {
   }
 
   const primaryService = items[0];
-  const primaryServiceRow = (serviceRows ?? []).find(
-    (row) => row.id === primaryService.service_id,
-  );
-  const primaryGroup = primaryServiceRow?.service_group ?? null;
-
-  if (primaryGroup) {
-    const groupLimit =
-      (groupLimits ?? []).find((row) => row.group_name === primaryGroup)
-        ?.max_parallel ?? 999;
-
-    const overlappingSameGroup = filteredExisting.filter((item) => {
-      const service = Array.isArray(item.service)
-        ? item.service[0]
-        : item.service;
-
-      return (
-        service?.service_group === primaryGroup &&
-        overlaps(
-          startMinutes,
-          endMinutes,
-          timeToMinutes(item.start_time),
-          timeToMinutes(item.end_time),
-        )
-      );
-    }).length;
-
-    if (overlappingSameGroup >= groupLimit) {
-      return {
-        ok: false as const,
-        message: `Dosegnut je maksimalan broj paralelnih termina za grupu "${primaryGroup}".`,
-      };
-    }
-  }
 
   if (!isValidAppointmentStatus(status)) {
     return {
@@ -906,12 +880,16 @@ async function validateAppointmentRequest(args: {
   };
 }
 
-async function getCurrentAppointmentStatus(appointmentId: string) {
+async function getCurrentAppointmentStatus(
+  appointmentId: string,
+  organizationId: string,
+) {
   const supabase = await createClient();
 
   const { data, error } = await supabase
     .from("appointments")
     .select("status")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -951,6 +929,14 @@ export async function createAppointmentAction(
     return { error: "Niste prijavljeni.", values };
   }
 
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return { error: "Nemate pristup organizaciji.", values };
+  }
+
+  const organizationId = permissions.organizationId;
+
   const clientPhone = normalizeNullableText(formData.get("client_phone"));
   const clientEmail = normalizeNullableText(formData.get("client_email"));
   const clientNote = normalizeNullableText(formData.get("client_note"));
@@ -981,12 +967,12 @@ export async function createAppointmentAction(
   }
 
   const resolvedClient = await resolveClientId({
+    organizationId,
     clientId: values.client_id,
     clientName: values.client_name,
     clientPhone,
     clientEmail,
     clientNote,
-    internalNote,
   });
 
   if (!resolvedClient.ok) {
@@ -1017,6 +1003,7 @@ export async function createAppointmentAction(
   }
 
   const appointmentValidation = await validateAppointmentRequest({
+    organizationId,
     appointmentDate: values.appointment_date,
     startTime: values.start_time,
     employeeId: values.employee_id,
@@ -1033,31 +1020,43 @@ export async function createAppointmentAction(
   const primaryServiceId = appointmentValidation.primaryServiceId;
   const endTime = appointmentValidation.endTime;
 
-  const { data: primaryService } = await supabase
-    .from("services")
-    .select("name")
-    .eq("id", primaryServiceId)
-    .maybeSingle();
+  const { data: selectedServices, error: selectedServicesError } =
+    await supabase
+      .from("services")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .in(
+        "id",
+        serviceItems.map((item) => item.service_id),
+      );
 
-  const serviceName = primaryService?.name ?? "odabranu uslugu";
+  if (selectedServicesError) {
+    return { error: selectedServicesError.message, values };
+  }
+
+  const serviceNameById = new Map(
+    (selectedServices ?? []).map((service) => [service.id, service.name]),
+  );
+  const serviceName =
+    serviceNameById.get(primaryServiceId) ?? "odabranu uslugu";
 
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .insert({
+      organization_id: organizationId,
       client_id: resolvedClient.clientId,
       client_name: values.client_name,
       client_phone: clientPhone,
       client_email: clientEmail,
-      client_note: clientNote,
-      internal_note: internalNote,
-      service_id: primaryServiceId,
+      notes: clientNote,
+      internal_notes: internalNote,
       employee_id: values.employee_id,
       room_id: values.room_id,
       appointment_date: values.appointment_date,
       start_time: values.start_time,
       end_time: endTime,
-      duration_minutes: totalDuration,
       status: values.status,
+      created_by: user.id,
     })
     .select("id")
     .single();
@@ -1073,15 +1072,22 @@ export async function createAppointmentAction(
     .from("appointment_services")
     .insert(
       serviceItems.map((item, index) => ({
+        organization_id: organizationId,
         appointment_id: appointment.id,
         service_id: item.service_id,
+        service_name:
+          serviceNameById.get(item.service_id) ?? "Nepoznata usluga",
         duration_minutes: item.duration_minutes,
         sort_order: index + 1,
       })),
     );
 
   if (appointmentServicesError) {
-    await supabase.from("appointments").delete().eq("id", appointment.id);
+    await supabase
+      .from("appointments")
+      .delete()
+      .eq("organization_id", organizationId)
+      .eq("id", appointment.id);
 
     return {
       error: appointmentServicesError.message,
@@ -1150,6 +1156,14 @@ export async function updateAppointmentAction(
     return { error: "Niste prijavljeni.", values };
   }
 
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return { error: "Nemate pristup organizaciji.", values };
+  }
+
+  const organizationId = permissions.organizationId;
+
   const clientPhone = normalizeNullableText(formData.get("client_phone"));
   const clientEmail = normalizeNullableText(formData.get("client_email"));
   const clientNote = normalizeNullableText(formData.get("client_note"));
@@ -1182,10 +1196,14 @@ export async function updateAppointmentAction(
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
-  const currentStatusResult = await getCurrentAppointmentStatus(appointmentId);
+  const currentStatusResult = await getCurrentAppointmentStatus(
+    appointmentId,
+    organizationId,
+  );
 
   if (!currentStatusResult.ok) {
     return { error: currentStatusResult.message, values };
@@ -1201,12 +1219,12 @@ export async function updateAppointmentAction(
   }
 
   const resolvedClient = await resolveClientId({
+    organizationId,
     clientId: values.client_id,
     clientName: values.client_name,
     clientPhone,
     clientEmail,
     clientNote,
-    internalNote,
   });
 
   if (!resolvedClient.ok) {
@@ -1237,6 +1255,7 @@ export async function updateAppointmentAction(
   }
 
   const appointmentValidation = await validateAppointmentRequest({
+    organizationId,
     appointmentId,
     appointmentDate: values.appointment_date,
     startTime: values.start_time,
@@ -1254,13 +1273,25 @@ export async function updateAppointmentAction(
   const primaryServiceId = appointmentValidation.primaryServiceId;
   const endTime = appointmentValidation.endTime;
 
-  const { data: primaryService } = await supabase
-    .from("services")
-    .select("name")
-    .eq("id", primaryServiceId)
-    .maybeSingle();
+  const { data: selectedServices, error: selectedServicesError } =
+    await supabase
+      .from("services")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .in(
+        "id",
+        serviceItems.map((item) => item.service_id),
+      );
 
-  const serviceName = primaryService?.name ?? "odabranu uslugu";
+  if (selectedServicesError) {
+    return { error: selectedServicesError.message, values };
+  }
+
+  const serviceNameById = new Map(
+    (selectedServices ?? []).map((service) => [service.id, service.name]),
+  );
+  const serviceName =
+    serviceNameById.get(primaryServiceId) ?? "odabranu uslugu";
 
   await cancelExistingReminderIfAny(appointmentId);
 
@@ -1271,17 +1302,16 @@ export async function updateAppointmentAction(
       client_name: values.client_name,
       client_phone: clientPhone,
       client_email: clientEmail,
-      client_note: clientNote,
-      internal_note: internalNote,
-      service_id: primaryServiceId,
+      notes: clientNote,
+      internal_notes: internalNote,
       employee_id: values.employee_id,
       room_id: values.room_id,
       appointment_date: values.appointment_date,
       start_time: values.start_time,
       end_time: endTime,
-      duration_minutes: totalDuration,
       status: values.status,
     })
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (appointmentError) {
@@ -1294,6 +1324,7 @@ export async function updateAppointmentAction(
   const { error: deleteServicesError } = await supabase
     .from("appointment_services")
     .delete()
+    .eq("organization_id", organizationId)
     .eq("appointment_id", appointmentId);
 
   if (deleteServicesError) {
@@ -1307,8 +1338,11 @@ export async function updateAppointmentAction(
     .from("appointment_services")
     .insert(
       serviceItems.map((item, index) => ({
+        organization_id: organizationId,
         appointment_id: appointmentId,
         service_id: item.service_id,
+        service_name:
+          serviceNameById.get(item.service_id) ?? "Nepoznata usluga",
         duration_minutes: item.duration_minutes,
         sort_order: index + 1,
       })),
@@ -1363,9 +1397,9 @@ export async function updateAppointmentAction(
         client_name: values.client_name,
         client_phone: clientPhone,
         client_email: clientEmail,
-        client_note: clientNote,
-        internal_note: internalNote,
-        service_id: primaryServiceId,
+        notes: clientNote,
+        internal_notes: internalNote,
+        primary_service_id: primaryServiceId,
         employee_id: values.employee_id,
         room_id: values.room_id,
         appointment_date: values.appointment_date,
@@ -1398,13 +1432,25 @@ export async function cancelAppointmentAction(
     throw new Error("Niste prijavljeni.");
   }
 
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    throw new Error("Nemate pristup organizaciji.");
+  }
+
+  const organizationId = permissions.organizationId;
+
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
-  const currentStatusResult = await getCurrentAppointmentStatus(appointmentId);
+  const currentStatusResult = await getCurrentAppointmentStatus(
+    appointmentId,
+    organizationId,
+  );
 
   if (!currentStatusResult.ok) {
     throw new Error(currentStatusResult.message);
@@ -1421,6 +1467,7 @@ export async function cancelAppointmentAction(
   const { error } = await supabase
     .from("appointments")
     .update({ status: "cancelled" })
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (error) {
@@ -1463,13 +1510,28 @@ export async function quickUpdateAppointmentStatusAction(
     };
   }
 
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return {
+      ok: false,
+      message: "Nemate pristup organizaciji.",
+    };
+  }
+
+  const organizationId = permissions.organizationId;
+
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
-  const currentStatusResult = await getCurrentAppointmentStatus(appointmentId);
+  const currentStatusResult = await getCurrentAppointmentStatus(
+    appointmentId,
+    organizationId,
+  );
 
   if (!currentStatusResult.ok) {
     return {
@@ -1490,6 +1552,7 @@ export async function quickUpdateAppointmentStatusAction(
   const { error } = await supabase
     .from("appointments")
     .update({ status })
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (error) {
@@ -1549,9 +1612,21 @@ export async function deleteAppointmentAction(
     };
   }
 
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return {
+      ok: false,
+      message: "Nemate pristup organizaciji.",
+    };
+  }
+
+  const organizationId = permissions.organizationId;
+
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -1560,6 +1635,7 @@ export async function deleteAppointmentAction(
   const { error } = await supabase
     .from("appointments")
     .delete()
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (error) {
