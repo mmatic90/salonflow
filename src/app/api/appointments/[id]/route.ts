@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
+import {
+  appointmentDatabaseErrorMessage,
+  validateAppointmentRuntime,
+} from "@/features/appointments/runtime-validation";
 
 function value(input: unknown) {
   return typeof input === "string" ? input.trim() : "";
@@ -28,7 +32,6 @@ export async function PATCH(
 ) {
   try {
     const permissions = await getCurrentUserPermissions();
-
     if (!permissions) {
       return NextResponse.json(
         { error: "Niste prijavljeni ili nemate aktivan salon." },
@@ -39,7 +42,6 @@ export async function PATCH(
     const { id } = await context.params;
     const body = await request.json();
     const organizationId = permissions.organizationId;
-
     const appointmentDate = value(body.appointment_date);
     const startTime = value(body.start_time);
     const clientName = value(body.client_name);
@@ -59,12 +61,11 @@ export async function PATCH(
       );
     }
 
-    if (!["scheduled", "completed", "cancelled", "no_show"].includes(status)) {
+    if (!["scheduled", "confirmed", "completed", "cancelled", "no_show"].includes(status)) {
       return NextResponse.json({ error: "Status termina nije valjan." }, { status: 400 });
     }
 
     const supabase = await createClient();
-
     const { data: existingAppointment, error: existingAppointmentError } = await supabase
       .from("appointments")
       .select("id")
@@ -75,7 +76,6 @@ export async function PATCH(
     if (existingAppointmentError) {
       return NextResponse.json({ error: existingAppointmentError.message }, { status: 400 });
     }
-
     if (!existingAppointment) {
       return NextResponse.json({ error: "Termin nije pronađen." }, { status: 404 });
     }
@@ -98,12 +98,8 @@ export async function PATCH(
           .maybeSingle(),
       ]);
 
-    if (employeeError) {
-      return NextResponse.json({ error: employeeError.message }, { status: 400 });
-    }
-    if (serviceError) {
-      return NextResponse.json({ error: serviceError.message }, { status: 400 });
-    }
+    if (employeeError) return NextResponse.json({ error: employeeError.message }, { status: 400 });
+    if (serviceError) return NextResponse.json({ error: serviceError.message }, { status: 400 });
     if (!employee) {
       return NextResponse.json({ error: "Odabrani zaposlenik nije dostupan." }, { status: 400 });
     }
@@ -119,10 +115,7 @@ export async function PATCH(
         .eq("organization_id", organizationId)
         .eq("is_active", true)
         .maybeSingle();
-
-      if (roomError) {
-        return NextResponse.json({ error: roomError.message }, { status: 400 });
-      }
+      if (roomError) return NextResponse.json({ error: roomError.message }, { status: 400 });
       if (!room) {
         return NextResponse.json({ error: "Odabrana soba nije dostupna." }, { status: 400 });
       }
@@ -136,8 +129,23 @@ export async function PATCH(
       );
     }
 
-    let clientId: string | null = null;
+    const endTime = addMinutes(startTime, durationMinutes);
+    if (["scheduled", "confirmed", "completed"].includes(status)) {
+      const runtimeValidation = await validateAppointmentRuntime({
+        organizationId,
+        appointmentId: id,
+        appointmentDate,
+        startTime,
+        endTime,
+        employeeId,
+        roomId,
+      });
+      if (!runtimeValidation.ok) {
+        return NextResponse.json({ error: runtimeValidation.message }, { status: 400 });
+      }
+    }
 
+    let clientId: string | null = null;
     if (clientIdInput) {
       const { data: existingClient, error: clientError } = await supabase
         .from("clients")
@@ -145,10 +153,7 @@ export async function PATCH(
         .eq("id", clientIdInput)
         .eq("organization_id", organizationId)
         .maybeSingle();
-
-      if (clientError) {
-        return NextResponse.json({ error: clientError.message }, { status: 400 });
-      }
+      if (clientError) return NextResponse.json({ error: clientError.message }, { status: 400 });
       if (!existingClient) {
         return NextResponse.json(
           { error: "Odabrani klijent ne pripada ovom salonu." },
@@ -169,7 +174,6 @@ export async function PATCH(
         })
         .select("id")
         .single();
-
       if (clientError || !newClient) {
         return NextResponse.json(
           { error: clientError?.message || "Klijenta nije moguće spremiti." },
@@ -179,10 +183,8 @@ export async function PATCH(
       clientId = newClient.id;
     }
 
-    const endTime = addMinutes(startTime, durationMinutes);
     const parsedPrice = service.price == null ? null : Number(service.price);
     const price = Number.isFinite(parsedPrice) ? parsedPrice : null;
-
     const { error: appointmentError } = await supabase
       .from("appointments")
       .update({
@@ -203,7 +205,10 @@ export async function PATCH(
       .eq("organization_id", organizationId);
 
     if (appointmentError) {
-      return NextResponse.json({ error: appointmentError.message }, { status: 400 });
+      return NextResponse.json(
+        { error: appointmentDatabaseErrorMessage(appointmentError.message) },
+        { status: 400 },
+      );
     }
 
     const { error: deleteServiceError } = await supabase
@@ -211,7 +216,6 @@ export async function PATCH(
       .delete()
       .eq("appointment_id", id)
       .eq("organization_id", organizationId);
-
     if (deleteServiceError) {
       return NextResponse.json({ error: deleteServiceError.message }, { status: 400 });
     }
@@ -227,7 +231,6 @@ export async function PATCH(
         price,
         sort_order: 0,
       });
-
     if (insertServiceError) {
       return NextResponse.json({ error: insertServiceError.message }, { status: 400 });
     }
