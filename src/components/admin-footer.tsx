@@ -1,7 +1,11 @@
-export default function AdminFooter() {
+type Props = {
+  organizationName: string;
+};
+
+export default function AdminFooter({ organizationName }: Props) {
   return (
     <footer className="border-t border-app-soft px-4 py-4 text-center text-xs text-app-muted">
-      <span>Body &amp; Soul admin sustav</span>
+      <span>{organizationName} · admin sustav</span>
       <span className="mx-2">·</span>
       <span>
         Izradio{" "}
