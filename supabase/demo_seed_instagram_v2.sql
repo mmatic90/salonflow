@@ -1,7 +1,12 @@
--- SalonFlow Instagram demo dataset v2
+-- SalonFlow clean Instagram demo dataset
 -- Run manually in Supabase SQL Editor. This is NOT a migration.
--- All people/contact data below is intentionally synthetic and non-identifying.
--- Safe to rerun: demo appointments are deleted/recreated by source='instagram_demo'.
+--
+-- IMPORTANT: this script intentionally removes existing operational/demo data
+-- for the selected organization (appointments, employees, clients, rooms,
+-- services, equipment, schedules and mappings), but it does NOT delete the
+-- organization, auth users, profiles or organization_members.
+--
+-- Use this only for a dedicated demo/test salon.
 
 do $$
 declare
@@ -9,40 +14,49 @@ declare
   org_id uuid;
   org_count integer;
 
-  emp_a uuid;
-  emp_b uuid;
-  emp_c uuid;
-  emp_d uuid;
+  emp_ana uuid;
+  emp_luka uuid;
+  emp_ivan uuid;
+  emp_petra uuid;
 
-  room_a uuid;
-  room_b uuid;
-  room_c uuid;
-  room_d uuid;
+  room_1 uuid;
+  room_2 uuid;
+  room_3 uuid;
+  room_4 uuid;
 
-  srv_a uuid;
-  srv_b uuid;
-  srv_c uuid;
-  srv_d uuid;
-  srv_e uuid;
-  srv_f uuid;
-  srv_g uuid;
-  srv_h uuid;
-  srv_i uuid;
-  srv_j uuid;
+  srv_hydra uuid;
+  srv_deep uuid;
+  srv_oxy uuid;
+  srv_laser uuid;
+  srv_body uuid;
+  srv_massage uuid;
+  srv_pedi uuid;
+  srv_mani uuid;
+  srv_brows uuid;
+  srv_lashes uuid;
 
+  client_names text[] := array[
+    'Marko Markić','Sara Sarić','Nina Ninić','Karlo Karlić','Dora Dorić',
+    'Tomislav Tomić','Ema Emić','Filip Filipić','Maja Majić','Niko Nikić',
+    'Iva Ivić','Leo Leić','Rita Ritić','Toni Tonić','Lara Larić',
+    'Dino Dinić','Tea Teić','Borna Bornić','Klara Klarić','Vito Vitić',
+    'Sanja Sanjić','Renato Renić','Marina Marinić','Paolo Paolić','Elena Elenić'
+  ];
   client_ids uuid[] := array[]::uuid[];
 
   i integer;
   dow_i integer;
+  first_name text;
+  last_name text;
   c_id uuid;
   d date;
   appt_id uuid;
-  s_id uuid;
-  s_name text;
-  s_price numeric(10,2);
-  dur integer;
-  st time;
-  et time;
+  service_id uuid;
+  service_name text;
+  service_price numeric(10,2);
+  duration_minutes integer;
+  start_at time;
+  end_at time;
   appt_status public.appointment_status;
 begin
   select count(*) into org_count
@@ -67,192 +81,197 @@ begin
     raise exception 'Target organization not found.';
   end if;
 
+  ---------------------------------------------------------------------------
+  -- 1. CLEAN ALL OLD DEMO / OPERATIONAL DATA FOR THIS SALON
+  ---------------------------------------------------------------------------
+
+  if to_regclass('public.appointment_services') is not null then
+    execute 'delete from public.appointment_services where organization_id = $1' using org_id;
+  end if;
+
+  if to_regclass('public.appointments') is not null then
+    execute 'delete from public.appointments where organization_id = $1' using org_id;
+  end if;
+
+  if to_regclass('public.service_equipment') is not null then
+    execute 'delete from public.service_equipment where organization_id = $1' using org_id;
+  end if;
+
+  if to_regclass('public.service_rooms') is not null then
+    execute 'delete from public.service_rooms where organization_id = $1' using org_id;
+  end if;
+
+  if to_regclass('public.employee_services') is not null then
+    execute 'delete from public.employee_services where organization_id = $1' using org_id;
+  end if;
+
+  if to_regclass('public.service_group_limits') is not null then
+    execute 'delete from public.service_group_limits where organization_id = $1' using org_id;
+  end if;
+
+  if to_regclass('public.employee_schedule_overrides') is not null then
+    execute 'delete from public.employee_schedule_overrides where organization_id = $1' using org_id;
+  end if;
+
+  if to_regclass('public.employee_default_schedule') is not null then
+    execute 'delete from public.employee_default_schedule where organization_id = $1' using org_id;
+  end if;
+
+  delete from public.employees where organization_id = org_id;
+  delete from public.clients where organization_id = org_id;
+  delete from public.rooms where organization_id = org_id;
+  delete from public.equipment where organization_id = org_id;
+  delete from public.services where organization_id = org_id;
+
+  ---------------------------------------------------------------------------
+  -- 2. SALON + GENERIC EMPLOYEES + ROOMS + REAL SERVICES
+  ---------------------------------------------------------------------------
+
   update public.organizations set
     name = 'Demo Salon',
-    phone = '+000000000000',
-    email = 'salon@example.invalid',
-    address_line_1 = 'Demo adresa 1',
-    city = 'Demo grad',
-    postal_code = '00000',
+    phone = '+385 91 000 0000',
+    email = 'info@demo-salon.test',
+    address_line_1 = 'Primjer ulica 1',
+    city = 'Rovinj',
+    postal_code = '52210',
     country_code = 'HR',
     timezone = 'Europe/Zagreb',
     locale = 'hr',
     currency = 'EUR'
   where id = org_id;
 
-  -- Fully synthetic employees.
   insert into public.employees (
     organization_id, first_name, last_name, email, phone, color,
     job_title, notes, is_active, sort_order
   ) values
-    (org_id, 'Terapeut', 'A', 'employee.a@example.invalid', '+000000000001', '#7C3AED', 'Senior terapeut', 'Demo zaposlenik za tretmane lica.', true, 1),
-    (org_id, 'Terapeut', 'B', 'employee.b@example.invalid', '+000000000002', '#2563EB', 'Beauty terapeut', 'Demo zaposlenik za beauty tretmane.', true, 2),
-    (org_id, 'Terapeut', 'C', 'employee.c@example.invalid', '+000000000003', '#059669', 'Body terapeut', 'Demo zaposlenik za body tretmane.', true, 3),
-    (org_id, 'Terapeut', 'D', 'employee.d@example.invalid', '+000000000004', '#DB2777', 'Nail terapeut', 'Demo zaposlenik za manikuru i pedikuru.', true, 4)
-  on conflict (organization_id, email) do update set
-    first_name = excluded.first_name,
-    last_name = excluded.last_name,
-    phone = excluded.phone,
-    color = excluded.color,
-    job_title = excluded.job_title,
-    notes = excluded.notes,
-    is_active = true,
-    sort_order = excluded.sort_order;
+    (org_id, 'Ana', 'Anić', 'ana.anic@demo-salon.test', '+385 91 000 0101', '#7C3AED', 'Senior kozmetičarka', 'Tretmani lica i napredna njega kože.', true, 1),
+    (org_id, 'Luka', 'Lukić', 'luka.lukic@demo-salon.test', '+385 91 000 0102', '#2563EB', 'Beauty terapeut', 'Obrve, trepavice i beauty tretmani.', true, 2),
+    (org_id, 'Ivan', 'Ivić', 'ivan.ivic@demo-salon.test', '+385 91 000 0103', '#059669', 'Body terapeut', 'Masaže, oblikovanje tijela i laser.', true, 3),
+    (org_id, 'Petra', 'Perić', 'petra.peric@demo-salon.test', '+385 91 000 0104', '#DB2777', 'Nail terapeut', 'Manikura i pedikura.', true, 4);
 
-  select id into emp_a from public.employees where organization_id = org_id and email = 'employee.a@example.invalid';
-  select id into emp_b from public.employees where organization_id = org_id and email = 'employee.b@example.invalid';
-  select id into emp_c from public.employees where organization_id = org_id and email = 'employee.c@example.invalid';
-  select id into emp_d from public.employees where organization_id = org_id and email = 'employee.d@example.invalid';
+  select id into emp_ana from public.employees where organization_id = org_id and email = 'ana.anic@demo-salon.test';
+  select id into emp_luka from public.employees where organization_id = org_id and email = 'luka.lukic@demo-salon.test';
+  select id into emp_ivan from public.employees where organization_id = org_id and email = 'ivan.ivic@demo-salon.test';
+  select id into emp_petra from public.employees where organization_id = org_id and email = 'petra.peric@demo-salon.test';
 
-  -- Generic rooms.
   insert into public.rooms (organization_id, name, description, capacity, color, is_active, sort_order)
   values
-    (org_id, 'Studio A', 'Demo prostor za tretmane lica.', 1, '#A78BFA', true, 1),
-    (org_id, 'Studio B', 'Demo prostor za beauty tretmane.', 1, '#60A5FA', true, 2),
-    (org_id, 'Studio C', 'Demo prostor za body tretmane.', 1, '#34D399', true, 3),
-    (org_id, 'Studio D', 'Demo prostor za nail tretmane.', 1, '#F9A8D4', true, 4)
-  on conflict (organization_id, name) do update set
-    description = excluded.description,
-    capacity = excluded.capacity,
-    color = excluded.color,
-    is_active = true,
-    sort_order = excluded.sort_order;
+    (org_id, 'Soba 1', 'Tretmani lica i njega kože.', 1, '#A78BFA', true, 1),
+    (org_id, 'Soba 2', 'Beauty tretmani, obrve i trepavice.', 1, '#60A5FA', true, 2),
+    (org_id, 'Soba 3', 'Masaže, body tretmani i laser.', 1, '#34D399', true, 3),
+    (org_id, 'Soba 4', 'Manikura i pedikura.', 1, '#F9A8D4', true, 4);
 
-  select id into room_a from public.rooms where organization_id = org_id and name = 'Studio A';
-  select id into room_b from public.rooms where organization_id = org_id and name = 'Studio B';
-  select id into room_c from public.rooms where organization_id = org_id and name = 'Studio C';
-  select id into room_d from public.rooms where organization_id = org_id and name = 'Studio D';
+  select id into room_1 from public.rooms where organization_id = org_id and name = 'Soba 1';
+  select id into room_2 from public.rooms where organization_id = org_id and name = 'Soba 2';
+  select id into room_3 from public.rooms where organization_id = org_id and name = 'Soba 3';
+  select id into room_4 from public.rooms where organization_id = org_id and name = 'Soba 4';
 
-  -- Generic service catalogue.
   insert into public.services (
     organization_id, name, category, description, duration_minutes,
     cleanup_minutes, price, currency, color, is_active, sort_order
   ) values
-    (org_id, 'Tretman lica A', 'Njega lica', 'Demo hidratacijski tretman lica.', 60, 10, 85, 'EUR', '#8B5CF6', true, 1),
-    (org_id, 'Tretman lica B', 'Njega lica', 'Demo dubinski tretman lica.', 75, 10, 78, 'EUR', '#A78BFA', true, 2),
-    (org_id, 'Tretman lica C', 'Njega lica', 'Demo osvježavajući tretman lica.', 45, 10, 65, 'EUR', '#C4B5FD', true, 3),
-    (org_id, 'Laser tretman A', 'Laser epilacija', 'Demo laserski tretman.', 60, 10, 120, 'EUR', '#0EA5E9', true, 4),
-    (org_id, 'Body tretman A', 'Oblikovanje tijela', 'Demo tretman oblikovanja tijela.', 50, 10, 75, 'EUR', '#10B981', true, 5),
-    (org_id, 'Masaža A', 'Masaže', 'Demo masaža u trajanju od 60 minuta.', 60, 10, 60, 'EUR', '#14B8A6', true, 6),
-    (org_id, 'Pedikura A', 'Ruke i stopala', 'Demo pedikura.', 60, 10, 45, 'EUR', '#EC4899', true, 7),
-    (org_id, 'Manikura A', 'Ruke i stopala', 'Demo manikura.', 60, 10, 38, 'EUR', '#F472B6', true, 8),
-    (org_id, 'Obrve A', 'Obrve i trepavice', 'Demo tretman obrva.', 30, 5, 25, 'EUR', '#F59E0B', true, 9),
-    (org_id, 'Trepavice A', 'Obrve i trepavice', 'Demo tretman trepavica.', 60, 10, 48, 'EUR', '#D97706', true, 10)
-  on conflict (organization_id, name) do update set
-    category = excluded.category,
-    description = excluded.description,
-    duration_minutes = excluded.duration_minutes,
-    cleanup_minutes = excluded.cleanup_minutes,
-    price = excluded.price,
-    currency = 'EUR',
-    color = excluded.color,
-    is_active = true,
-    sort_order = excluded.sort_order;
+    (org_id, 'Hydra Glow tretman lica', 'Njega lica', 'Dubinsko čišćenje, hidratacija i završna njega kože.', 60, 10, 85, 'EUR', '#8B5CF6', true, 1),
+    (org_id, 'Dubinsko čišćenje lica', 'Njega lica', 'Profesionalno dubinsko čišćenje prilagođeno stanju kože.', 75, 10, 78, 'EUR', '#A78BFA', true, 2),
+    (org_id, 'Oxy tretman lica', 'Njega lica', 'Oksigenacija i intenzivna hidratacija kože.', 45, 10, 65, 'EUR', '#C4B5FD', true, 3),
+    (org_id, 'Laser epilacija nogu', 'Laser epilacija', 'Laserska epilacija cijelih nogu.', 60, 10, 120, 'EUR', '#0EA5E9', true, 4),
+    (org_id, 'Body Sculpt', 'Oblikovanje tijela', 'Aparativni tretman oblikovanja i toniranja tijela.', 50, 10, 75, 'EUR', '#10B981', true, 5),
+    (org_id, 'Relax masaža 60 min', 'Masaže', 'Opuštajuća masaža cijelog tijela.', 60, 10, 60, 'EUR', '#14B8A6', true, 6),
+    (org_id, 'Spa pedikura', 'Ruke i stopala', 'Kompletna estetska pedikura s njegom.', 60, 10, 45, 'EUR', '#EC4899', true, 7),
+    (org_id, 'Gel manikura', 'Ruke i stopala', 'Uređivanje noktiju i trajni lak.', 60, 10, 38, 'EUR', '#F472B6', true, 8),
+    (org_id, 'Oblikovanje i bojenje obrva', 'Obrve i trepavice', 'Oblikovanje i bojenje obrva.', 30, 5, 25, 'EUR', '#F59E0B', true, 9),
+    (org_id, 'Lash Lift', 'Obrve i trepavice', 'Podizanje i bojenje prirodnih trepavica.', 60, 10, 48, 'EUR', '#D97706', true, 10);
 
-  select id into srv_a from public.services where organization_id = org_id and name = 'Tretman lica A';
-  select id into srv_b from public.services where organization_id = org_id and name = 'Tretman lica B';
-  select id into srv_c from public.services where organization_id = org_id and name = 'Tretman lica C';
-  select id into srv_d from public.services where organization_id = org_id and name = 'Laser tretman A';
-  select id into srv_e from public.services where organization_id = org_id and name = 'Body tretman A';
-  select id into srv_f from public.services where organization_id = org_id and name = 'Masaža A';
-  select id into srv_g from public.services where organization_id = org_id and name = 'Pedikura A';
-  select id into srv_h from public.services where organization_id = org_id and name = 'Manikura A';
-  select id into srv_i from public.services where organization_id = org_id and name = 'Obrve A';
-  select id into srv_j from public.services where organization_id = org_id and name = 'Trepavice A';
+  select id into srv_hydra from public.services where organization_id = org_id and name = 'Hydra Glow tretman lica';
+  select id into srv_deep from public.services where organization_id = org_id and name = 'Dubinsko čišćenje lica';
+  select id into srv_oxy from public.services where organization_id = org_id and name = 'Oxy tretman lica';
+  select id into srv_laser from public.services where organization_id = org_id and name = 'Laser epilacija nogu';
+  select id into srv_body from public.services where organization_id = org_id and name = 'Body Sculpt';
+  select id into srv_massage from public.services where organization_id = org_id and name = 'Relax masaža 60 min';
+  select id into srv_pedi from public.services where organization_id = org_id and name = 'Spa pedikura';
+  select id into srv_mani from public.services where organization_id = org_id and name = 'Gel manikura';
+  select id into srv_brows from public.services where organization_id = org_id and name = 'Oblikovanje i bojenje obrva';
+  select id into srv_lashes from public.services where organization_id = org_id and name = 'Lash Lift';
 
   insert into public.equipment (organization_id, name, description, quantity_total, is_active, sort_order)
   values
-    (org_id, 'Demo uređaj A', 'Sintetički demo uređaj.', 1, true, 1),
-    (org_id, 'Demo uređaj B', 'Sintetički demo uređaj.', 1, true, 2),
-    (org_id, 'Demo uređaj C', 'Sintetički demo uređaj.', 1, true, 3),
-    (org_id, 'Demo uređaj D', 'Sintetički demo uređaj.', 2, true, 4)
-  on conflict (organization_id, name) do update set
-    description = excluded.description,
-    quantity_total = excluded.quantity_total,
-    is_active = true,
-    sort_order = excluded.sort_order;
+    (org_id, 'Diode Laser 808 nm', 'Profesionalni uređaj za lasersku epilaciju.', 1, true, 1),
+    (org_id, 'Body Sculpt uređaj', 'Uređaj za oblikovanje i toniranje tijela.', 1, true, 2),
+    (org_id, 'Oxy uređaj', 'Uređaj za oksigenaciju kože.', 1, true, 3),
+    (org_id, 'LED maska', 'LED terapija kao dodatak tretmanima lica.', 2, true, 4);
 
-  -- 25 fully synthetic clients: Klijent 001 ... Klijent 025.
-  for i in 1..25 loop
-    select id into c_id
-    from public.clients
-    where organization_id = org_id
-      and email = ('client.' || lpad(i::text, 3, '0') || '@example.invalid')
-    limit 1;
+  ---------------------------------------------------------------------------
+  -- 3. GENERIC CLIENTS
+  ---------------------------------------------------------------------------
 
-    if c_id is null then
-      insert into public.clients (
-        organization_id, first_name, last_name, email, phone,
-        date_of_birth, notes, marketing_consent, is_active, created_at
-      ) values (
-        org_id,
-        'Klijent',
-        lpad(i::text, 3, '0'),
-        'client.' || lpad(i::text, 3, '0') || '@example.invalid',
-        '+000000' || lpad(i::text, 6, '0'),
-        date '1985-01-01' + ((i * 173) % 5000),
-        case
-          when i = 5 then 'Demo napomena: osjetljiva koža.'
-          when i = 8 then 'Demo napomena: redovni facial tretmani.'
-          when i = 12 then 'Demo napomena: preferira body tretmane.'
-          when i = 17 then 'Demo napomena: preferira jutarnje termine.'
-          else null
-        end,
-        (i % 3 <> 0),
-        true,
-        now() - make_interval(days => (40 - i))
-      ) returning id into c_id;
-    end if;
+  for i in 1..array_length(client_names, 1) loop
+    first_name := split_part(client_names[i], ' ', 1);
+    last_name := substring(client_names[i] from position(' ' in client_names[i]) + 1);
+
+    insert into public.clients (
+      organization_id, first_name, last_name, email, phone,
+      date_of_birth, notes, marketing_consent, is_active, created_at
+    ) values (
+      org_id,
+      first_name,
+      last_name,
+      'client' || lpad(i::text, 3, '0') || '@demo-salon.test',
+      '+385 91 100 ' || lpad(i::text, 4, '0'),
+      date '1982-01-01' + ((i * 211) % 7000),
+      case
+        when i = 4 then 'Osjetljiva koža; preferira blaže tretmane.'
+        when i = 8 then 'Redovni klijent za tretmane lica.'
+        when i = 12 then 'Najčešće rezervira masažu i body tretmane.'
+        when i = 17 then 'Preferira jutarnje termine.'
+        when i = 22 then 'Preferira termine nakon 16:00.'
+        else null
+      end,
+      (i % 3 <> 0),
+      true,
+      now() - make_interval(days => 50 - i)
+    ) returning id into c_id;
 
     client_ids := array_append(client_ids, c_id);
   end loop;
 
-  -- Weekly schedules.
-  delete from public.employee_default_schedule
-  where organization_id = org_id
-    and employee_id in (emp_a, emp_b, emp_c, emp_d);
+  ---------------------------------------------------------------------------
+  -- 4. SCHEDULES AND MAPPINGS
+  ---------------------------------------------------------------------------
 
   for dow_i in 0..6 loop
     insert into public.employee_default_schedule (
       organization_id, employee_id, day_of_week, is_working, start_time, end_time
     ) values
-      (org_id, emp_a, dow_i, (dow_i between 1 and 6), case when dow_i between 1 and 6 then '09:00'::time else null end, case when dow_i between 1 and 5 then '17:00'::time when dow_i = 6 then '14:00'::time else null end),
-      (org_id, emp_b, dow_i, (dow_i between 1 and 6), case when dow_i between 1 and 6 then '08:00'::time else null end, case when dow_i between 1 and 6 then '15:00'::time else null end),
-      (org_id, emp_c, dow_i, (dow_i between 1 and 5), case when dow_i between 1 and 5 then '12:00'::time else null end, case when dow_i between 1 and 5 then '20:00'::time else null end),
-      (org_id, emp_d, dow_i, (dow_i between 2 and 6), case when dow_i between 2 and 6 then '10:00'::time else null end, case when dow_i between 2 and 6 then '18:00'::time else null end);
+      (org_id, emp_ana, dow_i, dow_i between 1 and 6,
+        case when dow_i between 1 and 6 then '09:00'::time else null end,
+        case when dow_i between 1 and 5 then '17:00'::time when dow_i = 6 then '14:00'::time else null end),
+      (org_id, emp_luka, dow_i, dow_i between 1 and 6,
+        case when dow_i between 1 and 6 then '08:00'::time else null end,
+        case when dow_i between 1 and 6 then '15:00'::time else null end),
+      (org_id, emp_ivan, dow_i, dow_i between 1 and 5,
+        case when dow_i between 1 and 5 then '12:00'::time else null end,
+        case when dow_i between 1 and 5 then '20:00'::time else null end),
+      (org_id, emp_petra, dow_i, dow_i between 2 and 6,
+        case when dow_i between 2 and 6 then '10:00'::time else null end,
+        case when dow_i between 2 and 6 then '18:00'::time else null end);
   end loop;
 
-  delete from public.employee_services
-  where organization_id = org_id
-    and employee_id in (emp_a, emp_b, emp_c, emp_d);
-
   insert into public.employee_services (organization_id, employee_id, service_id) values
-    (org_id, emp_a, srv_a), (org_id, emp_a, srv_b), (org_id, emp_a, srv_c), (org_id, emp_a, srv_d), (org_id, emp_a, srv_e),
-    (org_id, emp_b, srv_a), (org_id, emp_b, srv_c), (org_id, emp_b, srv_i), (org_id, emp_b, srv_j),
-    (org_id, emp_c, srv_d), (org_id, emp_c, srv_e), (org_id, emp_c, srv_f),
-    (org_id, emp_d, srv_g), (org_id, emp_d, srv_h), (org_id, emp_d, srv_i), (org_id, emp_d, srv_j)
+    (org_id, emp_ana, srv_hydra), (org_id, emp_ana, srv_deep), (org_id, emp_ana, srv_oxy),
+    (org_id, emp_luka, srv_hydra), (org_id, emp_luka, srv_oxy), (org_id, emp_luka, srv_brows), (org_id, emp_luka, srv_lashes),
+    (org_id, emp_ivan, srv_laser), (org_id, emp_ivan, srv_body), (org_id, emp_ivan, srv_massage),
+    (org_id, emp_petra, srv_pedi), (org_id, emp_petra, srv_mani), (org_id, emp_petra, srv_brows), (org_id, emp_petra, srv_lashes)
   on conflict do nothing;
-
-  delete from public.service_rooms
-  where organization_id = org_id
-    and service_id in (srv_a, srv_b, srv_c, srv_d, srv_e, srv_f, srv_g, srv_h, srv_i, srv_j);
 
   insert into public.service_rooms (organization_id, service_id, room_id) values
-    (org_id, srv_a, room_a), (org_id, srv_b, room_a), (org_id, srv_c, room_a),
-    (org_id, srv_a, room_b), (org_id, srv_c, room_b), (org_id, srv_i, room_b), (org_id, srv_j, room_b),
-    (org_id, srv_d, room_c), (org_id, srv_e, room_c), (org_id, srv_f, room_c),
-    (org_id, srv_g, room_d), (org_id, srv_h, room_d), (org_id, srv_i, room_d), (org_id, srv_j, room_d)
+    (org_id, srv_hydra, room_1), (org_id, srv_deep, room_1), (org_id, srv_oxy, room_1),
+    (org_id, srv_hydra, room_2), (org_id, srv_oxy, room_2), (org_id, srv_brows, room_2), (org_id, srv_lashes, room_2),
+    (org_id, srv_laser, room_3), (org_id, srv_body, room_3), (org_id, srv_massage, room_3),
+    (org_id, srv_pedi, room_4), (org_id, srv_mani, room_4), (org_id, srv_brows, room_4), (org_id, srv_lashes, room_4)
   on conflict do nothing;
 
-  delete from public.appointments
-  where organization_id = org_id
-    and source = 'instagram_demo';
-
-  -- Temporary overrides ensure SQL Editor seeding respects the same DB runtime rules.
-  delete from public.employee_schedule_overrides
-  where organization_id = org_id
-    and employee_id in (emp_a, emp_b, emp_c, emp_d)
-    and reason = 'instagram_demo_seed';
+  ---------------------------------------------------------------------------
+  -- 5. REALISTIC APPOINTMENT HISTORY + TODAY + FUTURE
+  ---------------------------------------------------------------------------
 
   for d in select generate_series(CURRENT_DATE - 28, CURRENT_DATE + 14, interval '1 day')::date loop
     dow_i := extract(dow from d)::int;
@@ -261,182 +280,129 @@ begin
       insert into public.employee_schedule_overrides (
         organization_id, employee_id, schedule_date, is_working, start_time, end_time, reason
       ) values
-        (org_id, emp_a, d, true, '08:00', '20:00', 'instagram_demo_seed'),
-        (org_id, emp_b, d, true, '07:00', '20:00', 'instagram_demo_seed')
-      on conflict (employee_id, schedule_date) do update set
-        is_working = true,
-        start_time = excluded.start_time,
-        end_time = excluded.end_time,
-        reason = 'instagram_demo_seed';
-    end if;
-
-    if dow_i between 1 and 5 then
-      insert into public.employee_schedule_overrides (
-        organization_id, employee_id, schedule_date, is_working, start_time, end_time, reason
-      ) values
-        (org_id, emp_c, d, true, '11:00', '21:00', 'instagram_demo_seed')
-      on conflict (employee_id, schedule_date) do update set
-        is_working = true,
-        start_time = excluded.start_time,
-        end_time = excluded.end_time,
-        reason = 'instagram_demo_seed';
-    end if;
-
-    if dow_i between 2 and 6 then
-      insert into public.employee_schedule_overrides (
-        organization_id, employee_id, schedule_date, is_working, start_time, end_time, reason
-      ) values
-        (org_id, emp_d, d, true, '09:00', '19:00', 'instagram_demo_seed')
-      on conflict (employee_id, schedule_date) do update set
-        is_working = true,
-        start_time = excluded.start_time,
-        end_time = excluded.end_time,
-        reason = 'instagram_demo_seed';
+        (org_id, emp_ana, d, true, '08:00', '20:00', 'instagram_demo_seed'),
+        (org_id, emp_luka, d, true, '08:00', '20:00', 'instagram_demo_seed'),
+        (org_id, emp_ivan, d, true, '08:00', '20:00', 'instagram_demo_seed'),
+        (org_id, emp_petra, d, true, '08:00', '20:00', 'instagram_demo_seed')
+      on conflict do nothing;
     end if;
   end loop;
 
   for d in select generate_series(CURRENT_DATE - 28, CURRENT_DATE + 14, interval '1 day')::date loop
     dow_i := extract(dow from d)::int;
-    if dow_i = 0 then continue; end if;
-
-    -- Terapeut A · Studio A
-    for i in 0..3 loop
-      st := (time '09:00' + make_interval(mins => i * 90))::time;
-      s_id := case i when 0 then srv_a when 1 then srv_b when 2 then srv_c else srv_a end;
-      select name, duration_minutes, price into s_name, dur, s_price from public.services where id = s_id;
-      et := (st + make_interval(mins => dur))::time;
-      c_id := client_ids[1 + ((extract(day from d)::int + i * 3) % array_length(client_ids, 1))];
-      appt_status := case
-        when d < CURRENT_DATE then
-          (case when (extract(day from d)::int + i) % 13 = 0 then 'no_show'
-                when (extract(day from d)::int + i) % 11 = 0 then 'cancelled'
-                else 'completed' end)::public.appointment_status
-        when d = CURRENT_DATE and st < localtime then 'completed'
-        when d <= CURRENT_DATE + 2 then 'confirmed'
-        else 'scheduled'
-      end;
-
-      insert into public.appointments (
-        organization_id, client_id, employee_id, room_id, appointment_date,
-        start_time, end_time, status, client_name, client_phone, client_email,
-        notes, source, total_price, currency
-      )
-      select org_id, c_id, emp_a, room_a, d, st, et, appt_status,
-             trim(c.first_name || ' ' || coalesce(c.last_name, '')), c.phone, c.email,
-             case when d = CURRENT_DATE and i = 0 then 'Demo kontrolna napomena.' end,
-             'instagram_demo', s_price, 'EUR'
-      from public.clients c where c.id = c_id
-      returning id into appt_id;
-
-      insert into public.appointment_services (
-        organization_id, appointment_id, service_id, service_name,
-        duration_minutes, price, currency, sort_order
-      ) values (org_id, appt_id, s_id, s_name, dur, s_price, 'EUR', 0);
-    end loop;
-
-    -- Terapeut B · Studio B
-    for i in 0..3 loop
-      st := (time '08:00' + make_interval(mins => i * 90))::time;
-      s_id := case i when 0 then srv_j when 1 then srv_a when 2 then srv_i else srv_c end;
-      select name, duration_minutes, price into s_name, dur, s_price from public.services where id = s_id;
-      et := (st + make_interval(mins => dur))::time;
-      c_id := client_ids[1 + ((extract(day from d)::int + i * 4 + 5) % array_length(client_ids, 1))];
-      appt_status := case
-        when d < CURRENT_DATE then 'completed'
-        when d = CURRENT_DATE and st < localtime then 'completed'
-        when d <= CURRENT_DATE + 3 then 'confirmed'
-        else 'scheduled'
-      end;
-
-      insert into public.appointments (
-        organization_id, client_id, employee_id, room_id, appointment_date,
-        start_time, end_time, status, client_name, client_phone, client_email,
-        source, total_price, currency
-      )
-      select org_id, c_id, emp_b, room_b, d, st, et, appt_status,
-             trim(c.first_name || ' ' || coalesce(c.last_name, '')), c.phone, c.email,
-             'instagram_demo', s_price, 'EUR'
-      from public.clients c where c.id = c_id
-      returning id into appt_id;
-
-      insert into public.appointment_services (
-        organization_id, appointment_id, service_id, service_name,
-        duration_minutes, price, currency, sort_order
-      ) values (org_id, appt_id, s_id, s_name, dur, s_price, 'EUR', 0);
-    end loop;
-
-    if dow_i between 1 and 5 then
-      -- Terapeut C · Studio C
-      for i in 0..3 loop
-        st := (time '12:00' + make_interval(mins => i * 105))::time;
-        s_id := case i when 0 then srv_f when 1 then srv_e when 2 then srv_d else srv_e end;
-        select name, duration_minutes, price into s_name, dur, s_price from public.services where id = s_id;
-        et := (st + make_interval(mins => dur))::time;
-        c_id := client_ids[1 + ((extract(day from d)::int + i * 5 + 9) % array_length(client_ids, 1))];
-        appt_status := case
-          when d < CURRENT_DATE then
-            (case when (extract(day from d)::int + i) % 17 = 0 then 'no_show' else 'completed' end)::public.appointment_status
-          when d <= CURRENT_DATE + 2 then 'confirmed'
-          else 'scheduled'
-        end;
-
-        insert into public.appointments (
-          organization_id, client_id, employee_id, room_id, appointment_date,
-          start_time, end_time, status, client_name, client_phone, client_email,
-          source, total_price, currency
-        )
-        select org_id, c_id, emp_c, room_c, d, st, et, appt_status,
-               trim(c.first_name || ' ' || coalesce(c.last_name, '')), c.phone, c.email,
-               'instagram_demo', s_price, 'EUR'
-        from public.clients c where c.id = c_id
-        returning id into appt_id;
-
-        insert into public.appointment_services (
-          organization_id, appointment_id, service_id, service_name,
-          duration_minutes, price, currency, sort_order
-        ) values (org_id, appt_id, s_id, s_name, dur, s_price, 'EUR', 0);
-      end loop;
+    if dow_i = 0 then
+      continue;
     end if;
 
+    if d < CURRENT_DATE then
+      appt_status := case
+        when extract(day from d)::int % 13 = 0 then 'no_show'::public.appointment_status
+        when extract(day from d)::int % 11 = 0 then 'cancelled'::public.appointment_status
+        else 'completed'::public.appointment_status
+      end;
+    elsif d = CURRENT_DATE then
+      appt_status := 'confirmed'::public.appointment_status;
+    else
+      appt_status := case
+        when extract(day from d)::int % 3 = 0 then 'confirmed'::public.appointment_status
+        else 'scheduled'::public.appointment_status
+      end;
+    end if;
+
+    -- Ana / Soba 1
+    c_id := client_ids[((extract(day from d)::int + 2) % array_length(client_ids,1)) + 1];
+    service_id := case when extract(day from d)::int % 2 = 0 then srv_hydra else srv_deep end;
+    select name, price, duration_minutes into service_name, service_price, duration_minutes from public.services where id = service_id;
+    start_at := '09:00';
+    end_at := start_at + make_interval(mins => duration_minutes);
+
+    insert into public.appointments (
+      organization_id,client_id,employee_id,room_id,appointment_date,start_time,end_time,
+      status,client_name,client_phone,client_email,notes,source,total_price,currency
+    )
+    select org_id,c.id,emp_ana,room_1,d,start_at,end_at,appt_status,
+      trim(c.first_name||' '||coalesce(c.last_name,'')),c.phone,c.email,null,
+      'instagram_demo',service_price,'EUR'
+    from public.clients c where c.id = c_id
+    returning id into appt_id;
+
+    insert into public.appointment_services (
+      organization_id,appointment_id,service_id,service_name,duration_minutes,price,currency,sort_order
+    ) values (org_id,appt_id,service_id,service_name,duration_minutes,service_price,'EUR',0);
+
+    -- Luka / Soba 2
+    c_id := client_ids[((extract(day from d)::int + 7) % array_length(client_ids,1)) + 1];
+    service_id := case when extract(day from d)::int % 2 = 0 then srv_brows else srv_lashes end;
+    select name, price, duration_minutes into service_name, service_price, duration_minutes from public.services where id = service_id;
+    start_at := '11:00';
+    end_at := start_at + make_interval(mins => duration_minutes);
+
+    insert into public.appointments (
+      organization_id,client_id,employee_id,room_id,appointment_date,start_time,end_time,
+      status,client_name,client_phone,client_email,notes,source,total_price,currency
+    )
+    select org_id,c.id,emp_luka,room_2,d,start_at,end_at,appt_status,
+      trim(c.first_name||' '||coalesce(c.last_name,'')),c.phone,c.email,null,
+      'instagram_demo',service_price,'EUR'
+    from public.clients c where c.id = c_id
+    returning id into appt_id;
+
+    insert into public.appointment_services (
+      organization_id,appointment_id,service_id,service_name,duration_minutes,price,currency,sort_order
+    ) values (org_id,appt_id,service_id,service_name,duration_minutes,service_price,'EUR',0);
+
+    -- Ivan / Soba 3
+    if dow_i between 1 and 5 then
+      c_id := client_ids[((extract(day from d)::int + 12) % array_length(client_ids,1)) + 1];
+      service_id := case when extract(day from d)::int % 2 = 0 then srv_massage else srv_body end;
+      select name, price, duration_minutes into service_name, service_price, duration_minutes from public.services where id = service_id;
+      start_at := '14:00';
+      end_at := start_at + make_interval(mins => duration_minutes);
+
+      insert into public.appointments (
+        organization_id,client_id,employee_id,room_id,appointment_date,start_time,end_time,
+        status,client_name,client_phone,client_email,notes,source,total_price,currency
+      )
+      select org_id,c.id,emp_ivan,room_3,d,start_at,end_at,appt_status,
+        trim(c.first_name||' '||coalesce(c.last_name,'')),c.phone,c.email,
+        case when d = CURRENT_DATE then 'Klijent preferira laganiji intenzitet tretmana.' end,
+        'instagram_demo',service_price,'EUR'
+      from public.clients c where c.id = c_id
+      returning id into appt_id;
+
+      insert into public.appointment_services (
+        organization_id,appointment_id,service_id,service_name,duration_minutes,price,currency,sort_order
+      ) values (org_id,appt_id,service_id,service_name,duration_minutes,service_price,'EUR',0);
+    end if;
+
+    -- Petra / Soba 4
     if dow_i between 2 and 6 then
-      -- Terapeut D · Studio D
-      for i in 0..3 loop
-        st := (time '10:00' + make_interval(mins => i * 105))::time;
-        s_id := case when i % 2 = 0 then srv_g else srv_h end;
-        select name, duration_minutes, price into s_name, dur, s_price from public.services where id = s_id;
-        et := (st + make_interval(mins => dur))::time;
-        c_id := client_ids[1 + ((extract(day from d)::int + i * 2 + 14) % array_length(client_ids, 1))];
-        appt_status := case
-          when d < CURRENT_DATE then 'completed'
-          when d <= CURRENT_DATE + 2 then 'confirmed'
-          else 'scheduled'
-        end;
+      c_id := client_ids[((extract(day from d)::int + 17) % array_length(client_ids,1)) + 1];
+      service_id := case when extract(day from d)::int % 2 = 0 then srv_mani else srv_pedi end;
+      select name, price, duration_minutes into service_name, service_price, duration_minutes from public.services where id = service_id;
+      start_at := '16:00';
+      end_at := start_at + make_interval(mins => duration_minutes);
 
-        insert into public.appointments (
-          organization_id, client_id, employee_id, room_id, appointment_date,
-          start_time, end_time, status, client_name, client_phone, client_email,
-          source, total_price, currency
-        )
-        select org_id, c_id, emp_d, room_d, d, st, et, appt_status,
-               trim(c.first_name || ' ' || coalesce(c.last_name, '')), c.phone, c.email,
-               'instagram_demo', s_price, 'EUR'
-        from public.clients c where c.id = c_id
-        returning id into appt_id;
+      insert into public.appointments (
+        organization_id,client_id,employee_id,room_id,appointment_date,start_time,end_time,
+        status,client_name,client_phone,client_email,notes,source,total_price,currency
+      )
+      select org_id,c.id,emp_petra,room_4,d,start_at,end_at,appt_status,
+        trim(c.first_name||' '||coalesce(c.last_name,'')),c.phone,c.email,null,
+        'instagram_demo',service_price,'EUR'
+      from public.clients c where c.id = c_id
+      returning id into appt_id;
 
-        insert into public.appointment_services (
-          organization_id, appointment_id, service_id, service_name,
-          duration_minutes, price, currency, sort_order
-        ) values (org_id, appt_id, s_id, s_name, dur, s_price, 'EUR', 0);
-      end loop;
+      insert into public.appointment_services (
+        organization_id,appointment_id,service_id,service_name,duration_minutes,price,currency,sort_order
+      ) values (org_id,appt_id,service_id,service_name,duration_minutes,service_price,'EUR',0);
     end if;
   end loop;
 
-  -- Restore the normal weekly schedule after demo appointments are created.
   delete from public.employee_schedule_overrides
   where organization_id = org_id
-    and employee_id in (emp_a, emp_b, emp_c, emp_d)
     and reason = 'instagram_demo_seed';
 
-  raise notice 'SalonFlow synthetic Instagram demo seed complete. Organization: %', org_id;
-  raise notice '4 synthetic employees · 4 rooms · 10 services · 4 equipment items · 25 synthetic clients · 43-day appointment window';
+  raise notice 'SalonFlow clean demo seed complete for organization %.', org_id;
+  raise notice 'Created: Ana Anić, Luka Lukić, Ivan Ivić, Petra Perić; Soba 1-4; 10 real services; 25 generic clients; 43 days of appointments.';
 end $$;
