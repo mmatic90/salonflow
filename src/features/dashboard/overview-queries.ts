@@ -22,9 +22,18 @@ export async function getDashboardOverviewStats(organizationId: string) {
   const todayValue = formatDateInputValue(today);
   const tomorrowValue = formatDateInputValue(tomorrow);
   const monthStartValue = getMonthStartValue(today);
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString();
+  const monthStartIso = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
-  const [todayResult, tomorrowResult, completedResult, noShowResult] =
-    await Promise.all([
+  const [
+    todayResult,
+    tomorrowResult,
+    completedResult,
+    noShowResult,
+    pendingOnlineResult,
+    todayOnlineResult,
+    onlineMonthResult,
+  ] = await Promise.all([
       supabase
         .from("appointments")
         .select("id", { count: "exact", head: true })
@@ -49,35 +58,43 @@ export async function getDashboardOverviewStats(organizationId: string) {
         .eq("organization_id", organizationId)
         .gte("appointment_date", monthStartValue)
         .eq("status", "no_show"),
+      supabase
+        .from("online_booking_requests")
+        .select("id", { count: "exact", head: true })
+        .is("archived_at", null)
+        .eq("status", "pending"),
+      supabase
+        .from("online_booking_requests")
+        .select("id", { count: "exact", head: true })
+        .is("archived_at", null)
+        .eq("requested_date", todayValue),
+      supabase
+        .from("online_booking_requests")
+        .select("id, status, created_at")
+        .gte("created_at", monthStartIso)
+        .lt("created_at", nextMonthStart),
     ]);
 
-  const hasError = [todayResult, tomorrowResult, completedResult, noShowResult].some(
+  const appointmentHasError = [todayResult, tomorrowResult, completedResult, noShowResult].some(
     (result) => Boolean(result.error),
   );
 
-  if (hasError) {
-    return {
-      pendingOnlineCount: 0,
-      todayOnlineCount: 0,
-      todayAppointmentsCount: 0,
-      tomorrowAppointmentsCount: 0,
-      completedThisMonthCount: 0,
-      noShowThisMonthCount: 0,
-      onlineThisMonthCount: 0,
-      onlineAcceptedThisMonthCount: 0,
-      onlineConversionRate: 0,
-    };
-  }
+  const onlineRows = onlineMonthResult.error ? [] : (onlineMonthResult.data ?? []);
+  const onlineThisMonthCount = onlineRows.length;
+  const onlineAcceptedThisMonthCount = onlineRows.filter((item: any) => item.status === "accepted").length;
+  const onlineConversionRate = onlineThisMonthCount > 0
+    ? Math.round((onlineAcceptedThisMonthCount / onlineThisMonthCount) * 100)
+    : 0;
 
   return {
-    pendingOnlineCount: 0,
-    todayOnlineCount: 0,
-    todayAppointmentsCount: todayResult.count ?? 0,
-    tomorrowAppointmentsCount: tomorrowResult.count ?? 0,
-    completedThisMonthCount: completedResult.count ?? 0,
-    noShowThisMonthCount: noShowResult.count ?? 0,
-    onlineThisMonthCount: 0,
-    onlineAcceptedThisMonthCount: 0,
-    onlineConversionRate: 0,
+    pendingOnlineCount: pendingOnlineResult.error ? 0 : (pendingOnlineResult.count ?? 0),
+    todayOnlineCount: todayOnlineResult.error ? 0 : (todayOnlineResult.count ?? 0),
+    todayAppointmentsCount: appointmentHasError ? 0 : (todayResult.count ?? 0),
+    tomorrowAppointmentsCount: appointmentHasError ? 0 : (tomorrowResult.count ?? 0),
+    completedThisMonthCount: appointmentHasError ? 0 : (completedResult.count ?? 0),
+    noShowThisMonthCount: appointmentHasError ? 0 : (noShowResult.count ?? 0),
+    onlineThisMonthCount,
+    onlineAcceptedThisMonthCount,
+    onlineConversionRate,
   };
 }
