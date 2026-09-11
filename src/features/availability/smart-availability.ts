@@ -4,27 +4,18 @@ import type { AppointmentServiceInput } from "@/features/appointments/types";
 
 type AppointmentRow = {
   id: string;
-  employee_id: string;
-  room_id: string;
+  employee_id: string | null;
+  room_id: string | null;
   start_time: string;
   end_time: string;
   status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
-  service?:
-    | {
-        id: string;
-        service_group: string | null;
-      }
-    | {
-        id: string;
-        service_group: string | null;
-      }[]
-    | null;
 };
 
 type EmployeeRow = {
   id: string;
-  display_name: string;
-  color_hex: string | null;
+  first_name: string;
+  last_name: string | null;
+  color: string | null;
 };
 
 type RoomRow = {
@@ -56,7 +47,7 @@ function timeToMinutes(value: string) {
 function minutesToTime(value: number) {
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  return \`\${String(hours).padStart(2, "0")}:\${String(minutes).padStart(2, "0")}\`;
 }
 
 function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
@@ -78,20 +69,8 @@ function uniqueByKey<T>(items: T[], getKey: (item: T) => string) {
   return result;
 }
 
-function getSingleService(
-  service:
-    | {
-        id: string;
-        service_group: string | null;
-      }
-    | {
-        id: string;
-        service_group: string | null;
-      }[]
-    | null
-    | undefined,
-) {
-  return Array.isArray(service) ? (service[0] ?? null) : (service ?? null);
+function employeeDisplayName(employee: EmployeeRow) {
+  return [employee.first_name, employee.last_name].filter(Boolean).join(" ") || "Zaposlenik";
 }
 
 export async function getSmartAvailability(options: {
@@ -110,10 +89,7 @@ export async function getSmartAvailability(options: {
   } = options;
 
   if (!date) {
-    return {
-      suggestions: [] as Suggestion[],
-      reason: "Datum je obavezan.",
-    };
+    return { suggestions: [] as Suggestion[], reason: "Datum je obavezan." };
   }
 
   if (!items.length) {
@@ -124,7 +100,6 @@ export async function getSmartAvailability(options: {
   }
 
   const totalDuration = calculateTotalDuration(items);
-
   if (!Number.isFinite(totalDuration) || totalDuration <= 0) {
     return {
       suggestions: [] as Suggestion[],
@@ -134,91 +109,90 @@ export async function getSmartAvailability(options: {
 
   const supabase = await createClient();
   const serviceIds = items.map((item) => item.service_id);
-  const primaryServiceId = items[0]?.service_id;
+
+  const { data: services, error: servicesError } = await supabase
+    .from("services")
+    .select("id, organization_id, name, duration_minutes, is_active")
+    .in("id", serviceIds)
+    .eq("is_active", true);
+
+  if (servicesError) throw new Error(servicesError.message);
+
+  const typedServices = services ?? [];
+  if (typedServices.length !== serviceIds.length) {
+    return {
+      suggestions: [] as Suggestion[],
+      reason: "Jedna ili više odabranih usluga nisu pronađene ili nisu aktivne.",
+    };
+  }
+
+  const organizationIds = Array.from(
+    new Set(typedServices.map((service) => service.organization_id)),
+  );
+
+  if (organizationIds.length !== 1) {
+    return {
+      suggestions: [] as Suggestion[],
+      reason: "Odabrane usluge ne pripadaju istom salonu.",
+    };
+  }
+
+  const organizationId = organizationIds[0];
 
   const [
-    { data: services, error: servicesError },
     { data: salonHours, error: salonHoursError },
     { data: employeeMappings, error: employeeMappingsError },
     { data: roomMappings, error: roomMappingsError },
     { data: employees, error: employeesError },
     { data: rooms, error: roomsError },
     { data: appointments, error: appointmentsError },
-    { data: groupLimits, error: groupLimitsError },
   ] = await Promise.all([
     supabase
-      .from("services")
-      .select("id, name, service_group, priority_room")
-      .in("id", serviceIds),
-
-    supabase
       .from("salon_working_hours")
-      .select("day_of_week, opens_at, closes_at, is_closed"),
+      .select("day_of_week, opens_at, closes_at, is_closed")
+      .eq("organization_id", organizationId),
 
     supabase
       .from("employee_services")
       .select("employee_id, service_id")
+      .eq("organization_id", organizationId)
       .in("service_id", serviceIds),
 
     supabase
       .from("service_rooms")
       .select("service_id, room_id")
+      .eq("organization_id", organizationId)
       .in("service_id", serviceIds),
 
     supabase
       .from("employees")
-      .select("id, display_name, color_hex")
+      .select("id, first_name, last_name, color")
+      .eq("organization_id", organizationId)
       .eq("is_active", true),
 
-    supabase.from("rooms").select("id, name").eq("is_active", true),
+    supabase
+      .from("rooms")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true),
 
     supabase
       .from("appointments")
-      .select(
-        `
-        id,
-        employee_id,
-        room_id,
-        start_time,
-        end_time,
-        status,
-        service:services (
-          id,
-          service_group
-        )
-      `,
-      )
+      .select("id, employee_id, room_id, start_time, end_time, status")
+      .eq("organization_id", organizationId)
       .eq("appointment_date", date)
-      .in("status", ["scheduled", "completed"]),
-
-    supabase.from("service_group_limits").select("group_name, max_parallel"),
+      .in("status", ["scheduled", "confirmed", "completed"]),
   ]);
 
-  if (servicesError) throw new Error(servicesError.message);
   if (salonHoursError) throw new Error(salonHoursError.message);
   if (employeeMappingsError) throw new Error(employeeMappingsError.message);
   if (roomMappingsError) throw new Error(roomMappingsError.message);
   if (employeesError) throw new Error(employeesError.message);
   if (roomsError) throw new Error(roomsError.message);
   if (appointmentsError) throw new Error(appointmentsError.message);
-  if (groupLimitsError) throw new Error(groupLimitsError.message);
 
-  const typedServices = services ?? [];
-
-  if (typedServices.length !== serviceIds.length) {
-    return {
-      suggestions: [] as Suggestion[],
-      reason: "Jedna ili više odabranih usluga nisu pronađene.",
-    };
-  }
-
-  const primaryService =
-    typedServices.find((service) => service.id === primaryServiceId) ?? null;
-
-  const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
-  const salonDay = (salonHours ?? []).find(
-    (row) => row.day_of_week === dayOfWeek,
-  );
+  const dayOfWeek = new Date(\`\${date}T00:00:00\`).getDay();
+  const salonDay = (salonHours ?? []).find((row) => row.day_of_week === dayOfWeek);
 
   if (!salonDay || salonDay.is_closed) {
     return {
@@ -240,17 +214,12 @@ export async function getSmartAvailability(options: {
 
   let allowedEmployeeIds: Set<string> | null = null;
   for (const serviceId of serviceIds) {
-    const current: Set<string> =
-      serviceToEmployeeIds.get(serviceId) ?? new Set<string>();
+    const current = serviceToEmployeeIds.get(serviceId) ?? new Set<string>();
 
-    if (allowedEmployeeIds === null) {
-      allowedEmployeeIds = new Set<string>(current);
-    } else {
-      const filtered: string[] = Array.from(allowedEmployeeIds).filter(
-        (id: string) => current.has(id),
-      );
-      allowedEmployeeIds = new Set<string>(filtered);
-    }
+    allowedEmployeeIds =
+      allowedEmployeeIds === null
+        ? new Set(current)
+        : new Set(Array.from(allowedEmployeeIds).filter((id) => current.has(id)));
   }
 
   const serviceToRoomIds = new Map<string, Set<string>>();
@@ -263,24 +232,19 @@ export async function getSmartAvailability(options: {
 
   let allowedRoomIds: Set<string> | null = null;
   for (const serviceId of serviceIds) {
-    const current: Set<string> =
-      serviceToRoomIds.get(serviceId) ?? new Set<string>();
+    const current = serviceToRoomIds.get(serviceId) ?? new Set<string>();
 
-    if (allowedRoomIds === null) {
-      allowedRoomIds = new Set<string>(current);
-    } else {
-      const filtered: string[] = Array.from(allowedRoomIds).filter(
-        (id: string) => current.has(id),
-      );
-      allowedRoomIds = new Set<string>(filtered);
-    }
+    allowedRoomIds =
+      allowedRoomIds === null
+        ? new Set(current)
+        : new Set(Array.from(allowedRoomIds).filter((id) => current.has(id)));
   }
 
-  let allowedEmployees = ((employees ?? []) as EmployeeRow[]).filter(
-    (employee) => allowedEmployeeIds?.has(employee.id),
+  const allowedEmployees = ((employees ?? []) as EmployeeRow[]).filter((employee) =>
+    allowedEmployeeIds?.has(employee.id),
   );
 
-  let allowedRooms = ((rooms ?? []) as RoomRow[]).filter((room) =>
+  const allowedRooms = ((rooms ?? []) as RoomRow[]).filter((room) =>
     allowedRoomIds?.has(room.id),
   );
 
@@ -298,31 +262,12 @@ export async function getSmartAvailability(options: {
     };
   }
 
-  if (primaryService?.priority_room) {
-    const priorityRoomName = primaryService.priority_room.trim();
-    if (priorityRoomName) {
-      const priorityRoom = allowedRooms.find(
-        (room) => room.name === priorityRoomName,
-      );
-
-      if (priorityRoom) {
-        allowedRooms = [
-          priorityRoom,
-          ...allowedRooms.filter((room) => room.id !== priorityRoom.id),
-        ];
-      }
-    }
-  }
-
   const effectiveSchedules = await Promise.all(
     allowedEmployees.map(async (employee) => {
-      const { data, error } = await supabase.rpc(
-        "get_employee_effective_schedule",
-        {
-          p_employee_id: employee.id,
-          p_date: date,
-        },
-      );
+      const { data, error } = await supabase.rpc("get_employee_effective_schedule", {
+        p_employee_id: employee.id,
+        p_date: date,
+      });
 
       if (error) {
         return {
@@ -349,7 +294,7 @@ export async function getSmartAvailability(options: {
       (row) => row.employee_id === employee.id,
     );
 
-    return schedule?.is_working && schedule.start_time && schedule.end_time;
+    return Boolean(schedule?.is_working && schedule.start_time && schedule.end_time);
   });
 
   if (workingEmployees.length === 0) {
@@ -364,12 +309,6 @@ export async function getSmartAvailability(options: {
       excludeAppointmentId ? appointment.id !== excludeAppointmentId : true,
   );
 
-  const primaryGroup = primaryService?.service_group ?? null;
-  const groupLimit = primaryGroup
-    ? ((groupLimits ?? []).find((row) => row.group_name === primaryGroup)
-        ?.max_parallel ?? 999)
-    : 999;
-
   const suggestions: Suggestion[] = [];
 
   for (
@@ -379,46 +318,20 @@ export async function getSmartAvailability(options: {
   ) {
     const end = start + totalDuration;
 
-    if (primaryGroup) {
-      const overlappingSameGroup = typedAppointments.filter((appointment) => {
-        const service = getSingleService(appointment.service);
-
-        return (
-          service?.service_group === primaryGroup &&
-          overlaps(
-            start,
-            end,
-            timeToMinutes(appointment.start_time),
-            timeToMinutes(appointment.end_time),
-          )
-        );
-      }).length;
-
-      if (overlappingSameGroup >= groupLimit) {
-        continue;
-      }
-    }
-
     for (const employee of workingEmployees) {
       const schedule = effectiveSchedules.find(
         (row) => row.employee_id === employee.id,
       );
 
-      if (!schedule?.start_time || !schedule?.end_time) {
-        continue;
-      }
+      if (!schedule?.start_time || !schedule?.end_time) continue;
 
       const employeeStart = timeToMinutes(schedule.start_time);
       const employeeEnd = timeToMinutes(schedule.end_time);
 
-      if (start < employeeStart || end > employeeEnd) {
-        continue;
-      }
+      if (start < employeeStart || end > employeeEnd) continue;
 
       const employeeConflict = typedAppointments.some((appointment) => {
-        if (appointment.employee_id !== employee.id) {
-          return false;
-        }
+        if (appointment.employee_id !== employee.id) return false;
 
         return overlaps(
           start,
@@ -428,15 +341,11 @@ export async function getSmartAvailability(options: {
         );
       });
 
-      if (employeeConflict) {
-        continue;
-      }
+      if (employeeConflict) continue;
 
       const firstAvailableRoom = allowedRooms.find((room) => {
-        const roomConflict = typedAppointments.some((appointment) => {
-          if (appointment.room_id !== room.id) {
-            return false;
-          }
+        return !typedAppointments.some((appointment) => {
+          if (appointment.room_id !== room.id) return false;
 
           return overlaps(
             start,
@@ -445,19 +354,15 @@ export async function getSmartAvailability(options: {
             timeToMinutes(appointment.end_time),
           );
         });
-
-        return !roomConflict;
       });
 
-      if (!firstAvailableRoom) {
-        continue;
-      }
+      if (!firstAvailableRoom) continue;
 
       suggestions.push({
         start_time: minutesToTime(start),
         end_time: minutesToTime(end),
         employee_id: employee.id,
-        employee_name: employee.display_name,
+        employee_name: employeeDisplayName(employee),
         room_id: firstAvailableRoom.id,
         room_name: firstAvailableRoom.name,
       });
@@ -466,7 +371,8 @@ export async function getSmartAvailability(options: {
         return {
           suggestions: uniqueByKey(
             suggestions,
-            (item) => `${item.start_time}-${item.employee_id}-${item.room_id}`,
+            (item) =>
+              \`\${item.start_time}-\${item.employee_id}-\${item.room_id}\`,
           ).slice(0, maxSuggestions),
           reason: "",
         };
@@ -476,7 +382,8 @@ export async function getSmartAvailability(options: {
 
   const uniqueSuggestions = uniqueByKey(
     suggestions,
-    (item) => `${item.start_time}-${item.employee_id}-${item.room_id}`,
+    (item) =>
+      \`\${item.start_time}-\${item.employee_id}-\${item.room_id}\`,
   ).slice(0, maxSuggestions);
 
   return {
