@@ -85,12 +85,6 @@ export default async function SettingsPage() {
           />
 
           <SettingsCard
-            href="/dashboard/settings/group-limits"
-            title="Group limits"
-            description="Odredi koliko termina iz iste grupe može ići paralelno."
-          />
-
-          <SettingsCard
             href="/dashboard/settings/employees"
             title="Djelatnici"
             description="Dodavanje, uređivanje, deaktivacija i reset lozinke djelatnika."
