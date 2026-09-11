@@ -8,6 +8,7 @@ import {
   sendBookingAcceptedEmail,
   sendBookingRejectedEmail,
 } from "@/lib/email/booking-email";
+import { requireDashboardUser } from "@/lib/page-guards";
 
 type NotificationLang = "hr" | "en";
 
@@ -35,6 +36,14 @@ function addMinutesToTimeString(time: string, minutesToAdd: number) {
 
 function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
+}
+
+function splitFullName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts.shift() || fullName.trim(),
+    lastName: parts.length ? parts.join(" ") : null,
+  };
 }
 
 function getServiceName(service: { name?: string | null } | null | undefined) {
@@ -136,6 +145,7 @@ async function getCurrentUserId() {
 export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const supabase = await createClient();
   const userId = await getCurrentUserId();
+  const permissions = await requireDashboardUser();
 
   const requestId = String(formData.get("request_id") ?? "").trim();
   const employeeId = String(formData.get("employee_id") ?? "").trim();
@@ -153,10 +163,13 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
       *,
       services (
         id,
-        name
+        name,
+        price,
+        currency
       )
     `,
     )
+    .eq("organization_id", permissions.organizationId)
     .eq("id", requestId)
     .maybeSingle();
 
@@ -185,8 +198,9 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const { data: existingAppointments, error: existingError } = await supabase
     .from("appointments")
     .select("id, employee_id, room_id, start_time, end_time")
+    .eq("organization_id", permissions.organizationId)
     .eq("appointment_date", request.requested_date)
-    .in("status", ["scheduled", "completed"]);
+    .in("status", ["scheduled", "confirmed", "completed"]);
 
   if (existingError) {
     throw new Error(existingError.message);
@@ -211,14 +225,17 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
     );
   }
 
+  const { firstName, lastName } = splitFullName(request.client_full_name);
   const { data: client, error: clientError } = await supabase
     .from("clients")
     .insert({
-      full_name: request.client_full_name,
-      phone: request.client_phone,
-      email: request.client_email,
-      note: request.client_note,
-      internal_note: "Klijent kreiran iz online zahtjeva za rezervaciju.",
+      organization_id: permissions.organizationId,
+      first_name: firstName,
+      last_name: lastName,
+      phone: request.client_phone || null,
+      email: request.client_email || null,
+      notes: request.client_note || "Klijent kreiran iz online zahtjeva za rezervaciju.",
+      marketing_consent: false,
       is_active: true,
     })
     .select("id")
@@ -231,20 +248,22 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .insert({
+      organization_id: permissions.organizationId,
       client_id: client.id,
-      client_name: request.client_full_name,
-      client_phone: request.client_phone,
-      client_email: request.client_email,
-      client_note: request.client_note,
-      internal_note: "Termin potvrđen iz online zahtjeva.",
-      service_id: request.service_id,
       employee_id: employeeId,
       room_id: roomId,
       appointment_date: request.requested_date,
       start_time: startTime,
       end_time: endTime,
-      duration_minutes: durationMinutes,
-      status: "scheduled",
+      status: "confirmed",
+      client_name: request.client_full_name,
+      client_phone: request.client_phone || null,
+      client_email: request.client_email || null,
+      notes: request.client_note || null,
+      internal_notes: "Termin potvrđen iz online zahtjeva.",
+      source: "online_booking",
+      total_price: request.services?.price ?? null,
+      currency: request.services?.currency || "EUR",
     })
     .select("id")
     .single();
@@ -259,10 +278,14 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const { error: appointmentServicesError } = await supabase
     .from("appointment_services")
     .insert({
+      organization_id: permissions.organizationId,
       appointment_id: appointment.id,
       service_id: request.service_id,
+      service_name: getServiceName(request.services),
       duration_minutes: durationMinutes,
-      sort_order: 1,
+      price: request.services?.price ?? null,
+      currency: request.services?.currency || "EUR",
+      sort_order: 0,
     });
 
   if (appointmentServicesError) {
@@ -282,6 +305,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
       reviewed_at: new Date().toISOString(),
       reviewed_by: userId,
     })
+    .eq("organization_id", permissions.organizationId)
     .eq("id", requestId);
 
   if (updateRequestError) {
@@ -348,6 +372,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
 export async function rejectOnlineBookingRequestAction(formData: FormData) {
   const supabase = await createClient();
   const userId = await getCurrentUserId();
+  const permissions = await requireDashboardUser();
 
   const requestId = String(formData.get("request_id") ?? "").trim();
   const rejectionReason = String(formData.get("rejection_reason") ?? "").trim();
@@ -366,6 +391,7 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
       )
     `,
     )
+    .eq("organization_id", permissions.organizationId)
     .eq("id", requestId)
     .maybeSingle();
 
@@ -404,6 +430,7 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
       reviewed_at: new Date().toISOString(),
       reviewed_by: userId,
     })
+    .eq("organization_id", permissions.organizationId)
     .eq("id", requestId);
 
   if (updateError) {
