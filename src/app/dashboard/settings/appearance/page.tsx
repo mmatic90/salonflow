@@ -69,11 +69,11 @@ export default async function AppearanceSettingsPage() {
               return (
                 <label
                   key={theme.value}
-                  className={\`relative cursor-pointer rounded-2xl border p-4 transition \${
+                  className={`relative cursor-pointer rounded-2xl border p-4 transition ${
                     active
                       ? "border-app-accent ring-2 ring-app-accent/15"
                       : "border-app-soft hover:bg-app-bg"
-                  }\`}
+                  }`}
                 >
                   <input
                     type="radio"
