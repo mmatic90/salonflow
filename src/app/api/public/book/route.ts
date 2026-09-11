@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
     const { data: service, error: serviceError } = await supabase
       .from("services")
-      .select("id, duration_minutes, is_active, is_online_bookable")
+      .select("id, organization_id, duration_minutes, is_active, is_online_bookable")
       .eq("id", serviceId)
       .eq("is_active", true)
       .eq("is_online_bookable", true)
@@ -102,6 +102,7 @@ export async function POST(request: Request) {
       await supabase
         .from("online_booking_requests")
         .select("id")
+        .eq("organization_id", service.organization_id)
         .eq("client_phone", phone)
         .eq("service_id", serviceId)
         .eq("requested_date", date)
@@ -127,6 +128,7 @@ export async function POST(request: Request) {
       await supabase
         .from("online_booking_requests")
         .select("id")
+        .eq("organization_id", service.organization_id)
         .eq("requested_date", date)
         .eq("start_time", slot.start_time)
         .eq("suggested_employee_id", slot.employee_id)
@@ -154,6 +156,7 @@ export async function POST(request: Request) {
       await supabase
         .from("appointments")
         .select("id")
+        .eq("organization_id", service.organization_id)
         .eq("appointment_date", date)
         .eq("start_time", slot.start_time)
         .eq("employee_id", slot.employee_id)
@@ -180,6 +183,7 @@ export async function POST(request: Request) {
     const { data: requestRow, error: requestError } = await supabase
       .from("online_booking_requests")
       .insert({
+        organization_id: service.organization_id,
         service_id: serviceId,
         requested_date: date,
         start_time: slot.start_time,
