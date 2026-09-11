@@ -733,6 +733,7 @@ export async function bulkUpdateServiceEquipmentAction(
   }
 }
 
+
 export async function bulkUpdateSalonWorkingHoursAction(
   items: Array<{
     day_of_week: number;
@@ -743,62 +744,54 @@ export async function bulkUpdateSalonWorkingHoursAction(
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     for (const item of items) {
-      if (!item.is_closed) {
-        if (!item.opens_at || !item.closes_at) {
-          return {
-            ok: false,
-            message:
-              "Za radne dane moraš unijeti vrijeme otvaranja i zatvaranja.",
-          };
-        }
+      if (!item.is_closed && (!item.opens_at || !item.closes_at)) {
+        return {
+          ok: false,
+          message: "Za radne dane moraš unijeti vrijeme otvaranja i zatvaranja.",
+        };
       }
     }
 
     const { data: beforeRows } = await supabase
       .from("salon_working_hours")
-      .select("*");
+      .select("*")
+      .eq("organization_id", permissions.organizationId);
+
+    const { error: deleteError } = await supabase
+      .from("salon_working_hours")
+      .delete()
+      .eq("organization_id", permissions.organizationId);
+
+    if (deleteError) return { ok: false, message: deleteError.message };
 
     const payload = items.map((item) => ({
+      organization_id: permissions.organizationId,
       day_of_week: item.day_of_week,
       opens_at: item.is_closed ? "00:00" : item.opens_at,
       closes_at: item.is_closed ? "00:00" : item.closes_at,
       is_closed: item.is_closed,
     }));
 
-    const { error } = await supabase
-      .from("salon_working_hours")
-      .upsert(payload, { onConflict: "day_of_week" });
-
-    if (error) {
-      return {
-        ok: false,
-        message: error.message,
-      };
-    }
+    const { error } = await supabase.from("salon_working_hours").insert(payload);
+    if (error) return { ok: false, message: error.message };
 
     await writeAuditLog({
       action: "salon_hours_bulk_updated",
       entityType: "salon_working_hours",
       entityLabel: "bulk update salon hours",
-      details: {
-        before: beforeRows ?? [],
-        after: payload,
-      },
+      details: { before: beforeRows ?? [], after: payload },
     });
 
     revalidatePath("/dashboard/settings/salon-hours");
     revalidatePath("/dashboard/appointments");
     revalidatePath("/dashboard/appointments/new");
-    revalidatePath("/dashboard/appointments/[id]/edit");
     revalidatePath("/dashboard/calendar");
     revalidatePath("/dashboard/calendar/time-grid");
 
-    return {
-      ok: true,
-      message: "Radno vrijeme salona je spremljeno.",
-    };
+    return { ok: true, message: "Radno vrijeme salona je spremljeno." };
   } catch (error) {
     return {
       ok: false,
