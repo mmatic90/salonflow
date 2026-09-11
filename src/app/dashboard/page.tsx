@@ -262,12 +262,11 @@ export default async function DashboardPage() {
                     className="group grid gap-3 border-l-4 border-transparent p-4 transition hover:border-l-app-accent hover:bg-app-card-alt sm:grid-cols-[110px_1.2fr_1fr_auto] sm:items-center sm:px-6"
                   >
                     <div>
-                      <p className="font-bold text-app-text">
-                        {formatTime(appointment.start_time)} –{" "}
-                        {formatTime(appointment.end_time)}
+                      <p className="text-lg font-extrabold tracking-tight text-app-text">
+                        {formatTime(appointment.start_time)}
                       </p>
-                      <p className="mt-1 text-xs text-app-muted">
-                        {appointment.duration_minutes} min
+                      <p className="mt-1 text-xs font-medium text-app-muted">
+                        do {formatTime(appointment.end_time)} · {appointment.duration_minutes} min
                       </p>
                     </div>
 
@@ -295,7 +294,7 @@ export default async function DashboardPage() {
                       </p>
                     </div>
 
-                    <span className="w-fit rounded-full bg-app-bg px-3 py-1 text-xs font-semibold text-app-text">
+                    <span className="w-fit rounded-full border border-app-soft bg-white px-3 py-1 text-xs font-semibold text-app-text shadow-sm">
                       {statusLabel(appointment.status)}
                     </span>
                   </Link>
@@ -306,10 +305,10 @@ export default async function DashboardPage() {
         </section>
 
         {canViewAudit ? (
-          <section className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
+          <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="rounded-xl bg-app-card-alt p-2 text-app-accent">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent shadow-sm">
                   <Activity className="h-5 w-5" />
                 </span>
                 <div>
@@ -338,7 +337,7 @@ export default async function DashboardPage() {
                   <Link
                     key={log.id}
                     href={`/dashboard/settings/audit-log?selected=${log.id}`}
-                    className="flex items-center justify-between gap-4 py-3 transition hover:bg-app-card-alt sm:px-2"
+                    className="group flex items-center justify-between gap-4 rounded-2xl py-3 transition hover:bg-app-card-alt sm:px-3"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-app-text">
@@ -361,7 +360,12 @@ export default async function DashboardPage() {
           </section>
         ) : null}
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+          <div className="mb-5">
+            <p className="text-sm font-semibold text-app-muted">Navigacija</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-app-text">Upravljanje salonom</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <DashboardLinkCard
             href="/dashboard/appointments"
             title="Termini"
@@ -418,7 +422,8 @@ export default async function DashboardPage() {
               icon={Settings}
             />
           ) : null}
-        </div>
+          </div>
+        </section>
       </div>
     </main>
   );
