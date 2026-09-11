@@ -42,7 +42,7 @@ export default function EquipmentCreateForm() {
         required
       />
       <input
-        name="quantity"
+        name="quantity_total"
         type="number"
         min={1}
         placeholder="Količina"
