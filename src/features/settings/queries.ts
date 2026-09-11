@@ -132,6 +132,11 @@ export async function getServiceRoomMappingData() {
 }
 
 
+export type EmployeeServiceMappingRow = {
+  employee_id: string;
+  service_id: string;
+};
+
 export async function getEmployeeServiceMappingData() {
   const supabase = await createClient();
   const permissions = await getCurrentUserPermissions();
@@ -172,6 +177,11 @@ export async function getEmployeeServiceMappingData() {
   };
 }
 
+
+export type ServiceEquipmentMappingRow = {
+  service_id: string;
+  equipment_id: string;
+};
 
 export async function getServiceEquipmentMappingData() {
   const supabase = await createClient();
