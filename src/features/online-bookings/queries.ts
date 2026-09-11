@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSmartAvailability } from "@/features/availability/smart-availability";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 export type OnlineBookingStatus =
   | "today"
@@ -18,7 +19,8 @@ const onlineBookingSelect = `
   ),
   suggested_employee:employees!online_booking_requests_suggested_employee_id_fkey (
     id,
-    display_name
+    first_name,
+    last_name
   ),
   suggested_room:rooms!online_booking_requests_suggested_room_id_fkey (
     id,
@@ -26,13 +28,39 @@ const onlineBookingSelect = `
   ),
   final_employee:employees!online_booking_requests_final_employee_id_fkey (
     id,
-    display_name
+    first_name,
+    last_name
   ),
   final_room:rooms!online_booking_requests_final_room_id_fkey (
     id,
     name
   )
 `;
+
+function normalizeEmployee(value: any) {
+  const employee = Array.isArray(value) ? value[0] ?? null : value ?? null;
+  if (!employee) return null;
+  return {
+    id: String(employee.id),
+    display_name:
+      [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
+      "Zaposlenik",
+  };
+}
+
+function normalizeBookingRow(row: any) {
+  return {
+    ...row,
+    suggested_employee: normalizeEmployee(row.suggested_employee),
+    final_employee: normalizeEmployee(row.final_employee),
+  };
+}
+
+async function getActiveOrganizationId() {
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
+  return permissions.organizationId;
+}
 
 function getTodayValue() {
   const date = new Date();
@@ -46,10 +74,12 @@ function getTodayValue() {
 
 export async function getOnlineBookings(status: OnlineBookingStatus = "pending") {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
 
   let query = supabase
     .from("online_booking_requests")
     .select(onlineBookingSelect)
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
   if (status === "archive") {
@@ -70,7 +100,7 @@ export async function getOnlineBookings(status: OnlineBookingStatus = "pending")
     throw new Error(error.message);
   }
 
-  return data ?? [];
+  return (data ?? []).map(normalizeBookingRow);
 }
 
 export async function getPendingOnlineBookings() {
@@ -79,6 +109,7 @@ export async function getPendingOnlineBookings() {
 
 export async function getOnlineBookingCounts() {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
   const todayValue = getTodayValue();
 
   const [
@@ -92,35 +123,41 @@ export async function getOnlineBookingCounts() {
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("requested_date", todayValue),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("status", "pending"),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("status", "accepted"),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("status", "rejected"),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .not("archived_at", "is", null),
   ]);
 
@@ -136,10 +173,12 @@ export async function getOnlineBookingCounts() {
 
 export async function getOnlineBookingRequestById(id: string) {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
 
   const { data, error } = await supabase
     .from("online_booking_requests")
     .select(onlineBookingSelect)
+    .eq("organization_id", organizationId)
     .eq("id", id)
     .maybeSingle();
 
@@ -147,7 +186,7 @@ export async function getOnlineBookingRequestById(id: string) {
     throw new Error(error.message);
   }
 
-  return data;
+  return data ? normalizeBookingRow(data) : null;
 }
 
 function timeToMinutes(value: string) {
