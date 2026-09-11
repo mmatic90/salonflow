@@ -1,13 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   createServiceAction,
   type SettingsActionState,
 } from "@/features/settings/actions";
-import { useEffect } from "react";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 
 const initialState: SettingsActionState = {
   error: "",
@@ -22,10 +21,7 @@ export default function ServiceCreateForm() {
   const router = useRouter();
 
   useEffect(() => {
-    if (state.error) {
-      toast.error(state.error);
-    }
-
+    if (state.error) toast.error(state.error);
     if (state.success) {
       toast.success(state.success);
       router.refresh();
@@ -33,14 +29,11 @@ export default function ServiceCreateForm() {
   }, [state, router]);
 
   return (
-    <form
-      action={formAction}
-      className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
-    >
+    <form action={formAction} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <input
         name="name"
         placeholder="Naziv usluge"
-        className="rounded-xl border border-neutral-300 px-4 py-3 outline-none"
+        className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
         required
       />
       <input
@@ -48,25 +41,34 @@ export default function ServiceCreateForm() {
         type="number"
         min={1}
         placeholder="Trajanje (min)"
-        className="rounded-xl border border-neutral-300 px-4 py-3 outline-none"
+        className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
         required
       />
       <input
-        name="service_group"
-        placeholder="Grupa usluge"
-        className="rounded-xl border border-neutral-300 px-4 py-3 outline-none"
+        name="price"
+        type="number"
+        min={0}
+        step="0.01"
+        placeholder="Cijena (€)"
+        className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
       />
       <input
-        name="priority_room"
-        placeholder="Prioritetna soba"
-        className="rounded-xl border border-neutral-300 px-4 py-3 outline-none"
+        name="category"
+        placeholder="Kategorija"
+        className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
+      />
+      <textarea
+        name="description"
+        placeholder="Opis usluge"
+        rows={3}
+        className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none md:col-span-2"
       />
 
-      <div className="md:col-span-2 xl:col-span-4 flex justify-end">
+      <div className="md:col-span-2 xl:col-span-3 flex justify-end">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-black px-5 py-3 font-medium text-white disabled:opacity-50"
+          className="rounded-xl bg-app-accent px-5 py-3 font-medium text-white disabled:opacity-50"
         >
           {pending ? "Dodavanje..." : "Dodaj uslugu"}
         </button>
