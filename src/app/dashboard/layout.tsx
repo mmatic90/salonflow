@@ -19,12 +19,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-text">
+    <div
+      className="min-h-screen bg-app-bg text-app-text"
+      data-theme={permissions.organizationTheme}
+      lang={permissions.organizationLocale}
+    >
       <div className="lg:flex">
         <DashboardSidebar
           role={permissions.role}
           displayName={permissions.displayName}
           organizationName={permissions.organizationName}
+          locale={permissions.organizationLocale}
         />
 
         <main className="flex min-w-0 flex-1 flex-col transition-all duration-200">
