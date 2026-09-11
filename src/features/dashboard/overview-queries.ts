@@ -61,16 +61,19 @@ export async function getDashboardOverviewStats(organizationId: string) {
       supabase
         .from("online_booking_requests")
         .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
         .is("archived_at", null)
         .eq("status", "pending"),
       supabase
         .from("online_booking_requests")
         .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
         .is("archived_at", null)
         .eq("requested_date", todayValue),
       supabase
         .from("online_booking_requests")
         .select("id, status, created_at")
+        .eq("organization_id", organizationId)
         .gte("created_at", monthStartIso)
         .lt("created_at", nextMonthStart),
     ]);
