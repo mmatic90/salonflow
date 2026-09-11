@@ -355,249 +355,190 @@ export async function deleteEquipmentAction(equipmentId: string) {
   }
 }
 
+
 export async function bulkUpdateServicesAction(
   items: Array<{
     id: string;
     name: string;
     description: string | null;
     duration_minutes: number;
-    price_cents: number | null;
-    service_group: string | null;
-    priority_room: string | null;
+    price: number | null;
+    category: string | null;
     is_active: boolean;
     is_online_bookable: boolean;
   }>,
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     for (const item of items) {
       if (!item.name.trim()) {
-        return {
-          ok: false,
-          message: "Svaka usluga mora imati naziv.",
-        };
+        return { ok: false, message: "Svaka usluga mora imati naziv." };
       }
 
-      if (
-        !Number.isFinite(item.duration_minutes) ||
-        item.duration_minutes <= 0
-      ) {
-        return {
-          ok: false,
-          message: "Trajanje svake usluge mora biti veće od 0.",
-        };
+      if (!Number.isFinite(item.duration_minutes) || item.duration_minutes <= 0) {
+        return { ok: false, message: "Trajanje svake usluge mora biti veće od 0." };
+      }
+
+      if (item.price !== null && (!Number.isFinite(item.price) || item.price < 0)) {
+        return { ok: false, message: "Cijena usluge nije ispravna." };
       }
     }
 
     const ids = items.map((item) => item.id);
-
     const { data: beforeItems } = await supabase
       .from("services")
       .select("*")
+      .eq("organization_id", permissions.organizationId)
       .in("id", ids);
 
-    const payload = items.map((item) => ({
-      id: item.id,
-      name: item.name.trim(),
-      description: item.description?.trim() || null,
-      duration_minutes: item.duration_minutes,
-      price_cents:
-        item.price_cents === null || item.price_cents === undefined
-          ? null
-          : Number(item.price_cents),
-      service_group: item.service_group?.trim() || null,
-      priority_room: item.priority_room?.trim() || null,
-      is_active: Boolean(item.is_active),
-      is_online_bookable: Boolean(item.is_online_bookable),
-    }));
+    for (const item of items) {
+      const { error } = await supabase
+        .from("services")
+        .update({
+          name: item.name.trim(),
+          description: item.description?.trim() || null,
+          duration_minutes: item.duration_minutes,
+          price: item.price,
+          category: item.category?.trim() || null,
+          is_active: Boolean(item.is_active),
+          is_online_bookable: Boolean(item.is_online_bookable),
+        })
+        .eq("organization_id", permissions.organizationId)
+        .eq("id", item.id);
 
-    const { error } = await supabase
-      .from("services")
-      .upsert(payload, { onConflict: "id" });
-
-    if (error) {
-      return {
-        ok: false,
-        message: error.message,
-      };
+      if (error) return { ok: false, message: error.message };
     }
 
     await writeAuditLog({
       action: "services_bulk_updated",
       entityType: "service",
       entityLabel: "bulk update services",
-      details: {
-        before: beforeItems ?? [],
-        after: payload,
-      },
+      details: { before: beforeItems ?? [], after: items },
     });
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/services");
-
-    return {
-      ok: true,
-      message: "Izmjene usluga su spremljene.",
-    };
+    return { ok: true, message: "Izmjene usluga su spremljene." };
   } catch (error) {
     return {
       ok: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
     };
   }
 }
 
+
 export async function bulkUpdateRoomsAction(
-  items: Array<{
-    id: string;
-    name: string;
-    is_active: boolean;
-  }>,
+  items: Array<{ id: string; name: string; is_active: boolean }>,
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     for (const item of items) {
       if (!item.name.trim()) {
-        return {
-          ok: false,
-          message: "Svaka soba mora imati naziv.",
-        };
+        return { ok: false, message: "Svaka soba mora imati naziv." };
       }
     }
 
     const ids = items.map((item) => item.id);
-
     const { data: beforeItems } = await supabase
       .from("rooms")
       .select("*")
+      .eq("organization_id", permissions.organizationId)
       .in("id", ids);
 
-    const payload = items.map((item) => ({
-      id: item.id,
-      name: item.name.trim(),
-      is_active: item.is_active,
-    }));
+    for (const item of items) {
+      const { error } = await supabase
+        .from("rooms")
+        .update({
+          name: item.name.trim(),
+          is_active: Boolean(item.is_active),
+        })
+        .eq("organization_id", permissions.organizationId)
+        .eq("id", item.id);
 
-    const { error } = await supabase
-      .from("rooms")
-      .upsert(payload, { onConflict: "id" });
-
-    if (error) {
-      return {
-        ok: false,
-        message: error.message,
-      };
+      if (error) return { ok: false, message: error.message };
     }
 
     await writeAuditLog({
       action: "rooms_bulk_updated",
       entityType: "room",
       entityLabel: "bulk update rooms",
-      details: {
-        before: beforeItems ?? [],
-        after: payload,
-      },
+      details: { before: beforeItems ?? [], after: items },
     });
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/rooms");
-
-    return {
-      ok: true,
-      message: "Izmjene soba su spremljene.",
-    };
+    return { ok: true, message: "Izmjene soba su spremljene." };
   } catch (error) {
     return {
       ok: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
     };
   }
 }
+
 
 export async function bulkUpdateEquipmentAction(
   items: Array<{
     id: string;
     name: string;
-    quantity: number;
+    quantity_total: number;
     is_active: boolean;
   }>,
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     for (const item of items) {
       if (!item.name.trim()) {
-        return {
-          ok: false,
-          message: "Svaka oprema mora imati naziv.",
-        };
+        return { ok: false, message: "Svaka oprema mora imati naziv." };
       }
 
-      if (!Number.isFinite(item.quantity) || item.quantity <= 0) {
-        return {
-          ok: false,
-          message: "Količina svake opreme mora biti veća od 0.",
-        };
+      if (!Number.isFinite(item.quantity_total) || item.quantity_total <= 0) {
+        return { ok: false, message: "Količina svake opreme mora biti veća od 0." };
       }
     }
 
     const ids = items.map((item) => item.id);
-
     const { data: beforeItems } = await supabase
       .from("equipment")
       .select("*")
+      .eq("organization_id", permissions.organizationId)
       .in("id", ids);
 
-    const payload = items.map((item) => ({
-      id: item.id,
-      name: item.name.trim(),
-      quantity: item.quantity,
-      is_active: item.is_active,
-    }));
+    for (const item of items) {
+      const { error } = await supabase
+        .from("equipment")
+        .update({
+          name: item.name.trim(),
+          quantity_total: item.quantity_total,
+          is_active: Boolean(item.is_active),
+        })
+        .eq("organization_id", permissions.organizationId)
+        .eq("id", item.id);
 
-    const { error } = await supabase
-      .from("equipment")
-      .upsert(payload, { onConflict: "id" });
-
-    if (error) {
-      return {
-        ok: false,
-        message: error.message,
-      };
+      if (error) return { ok: false, message: error.message };
     }
 
     await writeAuditLog({
       action: "equipment_bulk_updated",
       entityType: "equipment",
       entityLabel: "bulk update equipment",
-      details: {
-        before: beforeItems ?? [],
-        after: payload,
-      },
+      details: { before: beforeItems ?? [], after: items },
     });
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/equipment");
-
-    return {
-      ok: true,
-      message: "Izmjene opreme su spremljene.",
-    };
+    return { ok: true, message: "Izmjene opreme su spremljene." };
   } catch (error) {
     return {
       ok: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
     };
   }
 }
