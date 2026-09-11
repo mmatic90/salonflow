@@ -972,52 +972,50 @@ export async function bulkUpdateServiceGroupLimitsAction(
   }
 }
 
+
 export async function bulkUpdateEmployeesAction(
   items: Array<{
     id: string;
     display_name: string;
-    color_hex: string | null;
+    email: string | null;
+    phone: string | null;
+    color: string | null;
     is_active: boolean;
   }>,
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     for (const item of items) {
       if (!item.display_name.trim()) {
-        return {
-          ok: false,
-          message: "Svaki djelatnik mora imati ime.",
-        };
+        return { ok: false, message: "Svaki djelatnik mora imati ime." };
       }
     }
 
     const ids = items.map((item) => item.id);
-
     const { data: beforeItems, error: fetchError } = await supabase
       .from("employees")
-      .select("id, display_name, color_hex, is_active, profile_id")
+      .select("id, user_id, first_name, last_name, email, phone, color, is_active")
+      .eq("organization_id", permissions.organizationId)
       .in("id", ids);
 
-    if (fetchError) {
-      return {
-        ok: false,
-        message: fetchError.message,
-      };
-    }
+    if (fetchError) return { ok: false, message: fetchError.message };
 
     for (const item of items) {
-      const beforeEmployee = (beforeItems ?? []).find(
-        (row) => row.id === item.id,
-      );
+      const { firstName, lastName } = splitDisplayName(item.display_name);
 
       const { error: employeeError } = await supabase
         .from("employees")
         .update({
-          display_name: item.display_name.trim(),
-          color_hex: item.color_hex?.trim() || null,
-          is_active: item.is_active,
+          first_name: firstName,
+          last_name: lastName,
+          email: item.email?.trim() || null,
+          phone: item.phone?.trim() || null,
+          color: item.color?.trim() || "#2563eb",
+          is_active: Boolean(item.is_active),
         })
+        .eq("organization_id", permissions.organizationId)
         .eq("id", item.id);
 
       if (employeeError) {
@@ -1027,18 +1025,22 @@ export async function bulkUpdateEmployeesAction(
         };
       }
 
-      if (beforeEmployee?.profile_id) {
-        const { error: profileError } = await supabase
-          .from("profiles")
+      const beforeEmployee = (beforeItems ?? []).find((row) => row.id === item.id);
+
+      if (beforeEmployee?.user_id) {
+        const { error: membershipError } = await supabase
+          .from("organization_members")
           .update({
             display_name: item.display_name.trim(),
+            is_active: Boolean(item.is_active),
           })
-          .eq("id", beforeEmployee.profile_id);
+          .eq("organization_id", permissions.organizationId)
+          .eq("user_id", beforeEmployee.user_id);
 
-        if (profileError) {
+        if (membershipError) {
           return {
             ok: false,
-            message: `Greška pri spremanju profila za "${item.display_name}": ${profileError.message}`,
+            message: `Greška pri spremanju članstva za "${item.display_name}": ${membershipError.message}`,
           };
         }
       }
@@ -1048,15 +1050,7 @@ export async function bulkUpdateEmployeesAction(
       action: "employee_updated",
       entityType: "employee",
       entityLabel: "bulk update employees",
-      details: {
-        before: beforeItems ?? [],
-        after: items.map((item) => ({
-          id: item.id,
-          display_name: item.display_name.trim(),
-          color_hex: item.color_hex?.trim() || null,
-          is_active: item.is_active,
-        })),
-      },
+      details: { before: beforeItems ?? [], after: items },
     });
 
     revalidatePath("/dashboard");
@@ -1064,15 +1058,10 @@ export async function bulkUpdateEmployeesAction(
     revalidatePath("/dashboard/settings/employees");
     revalidatePath("/dashboard/appointments");
     revalidatePath("/dashboard/appointments/new");
-    revalidatePath("/dashboard/appointments/[id]/edit");
     revalidatePath("/dashboard/calendar");
-    revalidatePath("/dashboard/calendar/time-grid");
     revalidatePath("/dashboard/schedule");
 
-    return {
-      ok: true,
-      message: "Izmjene djelatnika su spremljene.",
-    };
+    return { ok: true, message: "Izmjene djelatnika su spremljene." };
   } catch (error) {
     return {
       ok: false,
@@ -1084,113 +1073,75 @@ export async function bulkUpdateEmployeesAction(
   }
 }
 
+
 export async function deactivateEmployeeAction(employeeId: string) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const { data: beforeEmployee, error: fetchError } = await supabase
       .from("employees")
-      .select("id, display_name, color_hex, is_active, profile_id")
+      .select("id, user_id, first_name, last_name, color, is_active")
+      .eq("organization_id", permissions.organizationId)
       .eq("id", employeeId)
       .maybeSingle();
 
-    if (fetchError) {
-      return {
-        ok: false,
-        message: fetchError.message,
-      };
-    }
-
-    if (!beforeEmployee) {
-      return {
-        ok: false,
-        message: "Djelatnik nije pronađen.",
-      };
-    }
-
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-
-    if (!serviceRoleKey || !supabaseUrl) {
-      return {
-        ok: false,
-        message: "Nedostaje SUPABASE_SERVICE_ROLE_KEY ili SUPABASE URL.",
-      };
-    }
-
-    const { createClient: createAdminClient } =
-      await import("@supabase/supabase-js");
-
-    const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
+    if (fetchError) return { ok: false, message: fetchError.message };
+    if (!beforeEmployee) return { ok: false, message: "Djelatnik nije pronađen." };
 
     const { error: employeeError } = await supabase
       .from("employees")
       .update({ is_active: false })
+      .eq("organization_id", permissions.organizationId)
       .eq("id", employeeId);
 
-    if (employeeError) {
-      return {
-        ok: false,
-        message: employeeError.message,
-      };
-    }
+    if (employeeError) return { ok: false, message: employeeError.message };
 
-    if (beforeEmployee.profile_id) {
-      const { error: profileError } = await supabase
-        .from("profiles")
+    if (beforeEmployee.user_id) {
+      const { error: membershipError } = await supabase
+        .from("organization_members")
         .update({ is_active: false })
-        .eq("id", beforeEmployee.profile_id);
+        .eq("organization_id", permissions.organizationId)
+        .eq("user_id", beforeEmployee.user_id);
 
-      if (profileError) {
-        return {
-          ok: false,
-          message: profileError.message,
-        };
-      }
+      if (membershipError) return { ok: false, message: membershipError.message };
 
-      const { error: signOutError } = await adminClient.auth.admin.signOut(
-        beforeEmployee.profile_id,
-        "global",
-      );
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-      if (signOutError) {
-        console.error("Greška pri global sign out:", signOutError);
+      if (serviceRoleKey && supabaseUrl) {
+        const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+        const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+
+        const { error: signOutError } = await adminClient.auth.admin.signOut(
+          beforeEmployee.user_id,
+          "global",
+        );
+        if (signOutError) console.error("Greška pri global sign out:", signOutError);
       }
     }
+
+    const displayName =
+      [beforeEmployee.first_name, beforeEmployee.last_name].filter(Boolean).join(" ") ||
+      "Djelatnik";
 
     await writeAuditLog({
       action: "employee_deactivated",
       entityType: "employee",
       entityId: employeeId,
-      entityLabel: beforeEmployee.display_name,
-      details: {
-        before: beforeEmployee,
-        after: {
-          is_active: false,
-          profile_is_active: false,
-        },
-      },
+      entityLabel: displayName,
+      details: { before: beforeEmployee, after: { is_active: false } },
     });
 
     revalidatePath("/dashboard");
-    revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/employees");
     revalidatePath("/dashboard/appointments");
-    revalidatePath("/dashboard/appointments/new");
-    revalidatePath("/dashboard/appointments/[id]/edit");
     revalidatePath("/dashboard/calendar");
-    revalidatePath("/dashboard/calendar/time-grid");
     revalidatePath("/dashboard/schedule");
 
-    return {
-      ok: true,
-      message: "Djelatnik je deaktiviran.",
-    };
+    return { ok: true, message: "Djelatnik je deaktiviran." };
   } catch (error) {
     return {
       ok: false,
@@ -1202,28 +1153,22 @@ export async function deactivateEmployeeAction(employeeId: string) {
   }
 }
 
+
 export async function resetEmployeePasswordAction(employeeId: string) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const { data: employee, error: employeeError } = await supabase
       .from("employees")
-      .select("id, display_name, profile_id")
+      .select("id, user_id, first_name, last_name")
+      .eq("organization_id", permissions.organizationId)
       .eq("id", employeeId)
       .maybeSingle();
 
-    if (employeeError) {
-      return {
-        ok: false,
-        message: employeeError.message,
-      };
-    }
-
-    if (!employee?.profile_id) {
-      return {
-        ok: false,
-        message: "Djelatnik nema povezan korisnički račun.",
-      };
+    if (employeeError) return { ok: false, message: employeeError.message };
+    if (!employee?.user_id) {
+      return { ok: false, message: "Djelatnik nema povezan korisnički račun." };
     }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1236,44 +1181,31 @@ export async function resetEmployeePasswordAction(employeeId: string) {
       };
     }
 
-    const { createClient: createAdminClient } =
-      await import("@supabase/supabase-js");
-
+    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
     const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
     const { error: resetError } = await adminClient.auth.admin.updateUserById(
-      employee.profile_id,
-      {
-        password: "1234",
-      },
+      employee.user_id,
+      { password: "1234" },
     );
 
-    if (resetError) {
-      return {
-        ok: false,
-        message: resetError.message,
-      };
-    }
+    if (resetError) return { ok: false, message: resetError.message };
+
+    const displayName =
+      [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
+      "Djelatnik";
 
     await writeAuditLog({
       action: "employee_password_reset",
       entityType: "employee",
       entityId: employeeId,
-      entityLabel: employee.display_name,
-      details: {
-        reset_to: "1234",
-      },
+      entityLabel: displayName,
+      details: { reset_to: "1234" },
     });
 
-    return {
-      ok: true,
-      message: "Lozinka je resetirana na 1234.",
-    };
+    return { ok: true, message: "Lozinka je resetirana na 1234." };
   } catch (error) {
     return {
       ok: false,
@@ -1285,37 +1217,28 @@ export async function resetEmployeePasswordAction(employeeId: string) {
   }
 }
 
+
 export async function createEmployeeAction(
   _prevState: EmployeeActionState,
   formData: FormData,
 ): Promise<EmployeeActionState> {
+  const values: EmployeeFormValues = {
+    display_name: String(formData.get("display_name") ?? "").trim(),
+    email: String(formData.get("email") ?? "").trim().toLowerCase(),
+    phone: String(formData.get("phone") ?? "").trim(),
+    color_hex: String(formData.get("color_hex") ?? "").trim(),
+    password: String(formData.get("password") ?? "1234").trim(),
+  };
+
   try {
     const supabase = await requireUser();
-
-    const values: EmployeeFormValues = {
-      display_name: String(formData.get("display_name") ?? "").trim(),
-      email: String(formData.get("email") ?? "")
-        .trim()
-        .toLowerCase(),
-      phone: String(formData.get("phone") ?? "").trim(),
-      color_hex: String(formData.get("color_hex") ?? "").trim(),
-      password: String(formData.get("password") ?? "1234").trim(),
-    };
+    const permissions = await requireAdminForSettings();
 
     if (!values.display_name) {
-      return {
-        error: "Ime djelatnika je obavezno.",
-        success: "",
-        values,
-      };
+      return { error: "Ime djelatnika je obavezno.", success: "", values };
     }
-
     if (!values.email) {
-      return {
-        error: "Email je obavezan.",
-        success: "",
-        values,
-      };
+      return { error: "Email je obavezan.", success: "", values };
     }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1329,14 +1252,9 @@ export async function createEmployeeAction(
       };
     }
 
-    const { createClient: createAdminClient } =
-      await import("@supabase/supabase-js");
-
+    const { createClient: createAdminClient } = await import("@supabase/supabase-js");
     const adminClient = createAdminClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
     const { data: createdUser, error: createUserError } =
@@ -1344,9 +1262,7 @@ export async function createEmployeeAction(
         email: values.email,
         password: values.password || "1234",
         email_confirm: true,
-        user_metadata: {
-          display_name: values.display_name,
-        },
+        user_metadata: { display_name: values.display_name },
       });
 
     if (createUserError || !createdUser.user) {
@@ -1358,40 +1274,44 @@ export async function createEmployeeAction(
     }
 
     const userId = createdUser.user.id;
+    const { firstName, lastName } = splitDisplayName(values.display_name);
 
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: userId,
-      email: values.email,
-      display_name: values.display_name,
-      phone: values.phone || null,
-      is_active: true,
-    });
+    const { error: membershipError } = await supabase
+      .from("organization_members")
+      .insert({
+        organization_id: permissions.organizationId,
+        user_id: userId,
+        role: "employee",
+        display_name: values.display_name,
+        is_active: true,
+      });
 
-    if (profileError) {
+    if (membershipError) {
       await adminClient.auth.admin.deleteUser(userId);
-
-      return {
-        error: profileError.message,
-        success: "",
-        values,
-      };
+      return { error: membershipError.message, success: "", values };
     }
 
     const { data: employee, error: employeeError } = await supabase
       .from("employees")
       .insert({
-        profile_id: userId,
-        display_name: values.display_name,
+        organization_id: permissions.organizationId,
+        user_id: userId,
+        first_name: firstName,
+        last_name: lastName,
         phone: values.phone || null,
         email: values.email,
-        color_hex: values.color_hex || null,
+        color: values.color_hex || "#2563eb",
         is_active: true,
       })
       .select("id")
       .single();
 
     if (employeeError || !employee) {
-      await supabase.from("profiles").delete().eq("id", userId);
+      await supabase
+        .from("organization_members")
+        .delete()
+        .eq("organization_id", permissions.organizationId)
+        .eq("user_id", userId);
       await adminClient.auth.admin.deleteUser(userId);
 
       return {
@@ -1407,21 +1327,17 @@ export async function createEmployeeAction(
       entityId: employee.id,
       entityLabel: values.display_name,
       details: {
-        display_name: values.display_name,
         email: values.email,
         phone: values.phone || null,
-        color_hex: values.color_hex || null,
-        profile_id: userId,
+        color: values.color_hex || "#2563eb",
+        user_id: userId,
       },
     });
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/employees");
     revalidatePath("/dashboard/appointments");
-    revalidatePath("/dashboard/appointments/new");
-    revalidatePath("/dashboard/appointments/[id]/edit");
     revalidatePath("/dashboard/calendar");
-    revalidatePath("/dashboard/calendar/time-grid");
     revalidatePath("/dashboard/schedule");
 
     return {
@@ -1442,15 +1358,8 @@ export async function createEmployeeAction(
           ? error.message
           : "Došlo je do greške pri dodavanju djelatnika.",
       success: "",
-      values: {
-        display_name: String(formData.get("display_name") ?? "").trim(),
-        email: String(formData.get("email") ?? "")
-          .trim()
-          .toLowerCase(),
-        phone: String(formData.get("phone") ?? "").trim(),
-        color_hex: String(formData.get("color_hex") ?? "").trim(),
-        password: String(formData.get("password") ?? "1234").trim(),
-      },
+      values,
     };
   }
 }
+
