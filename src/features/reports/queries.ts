@@ -106,6 +106,7 @@ export async function getReportsDashboardData() {
     supabase
       .from("online_booking_requests")
       .select("id, status, created_at")
+      .eq("organization_id", permissions.organizationId)
       .gte("created_at", monthStartIso)
       .lt("created_at", nextMonthStartIso),
   ]);
