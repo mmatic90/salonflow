@@ -19,7 +19,7 @@ type EditableEmployee = {
   display_name: string;
   email: string;
   phone: string;
-  color_hex: string;
+  color: string;
   is_active: boolean;
 };
 
@@ -29,7 +29,7 @@ function toEditable(employee: EmployeeItem): EditableEmployee {
     display_name: employee.display_name,
     email: employee.email ?? "",
     phone: employee.phone ?? "",
-    color_hex: employee.color_hex ?? "",
+    color: employee.color ?? "",
     is_active: employee.is_active,
   };
 }
@@ -64,7 +64,7 @@ export default function EmployeesTable({ employees }: Props) {
           ...item,
           email: item.email.trim() || null,
           phone: item.phone.trim() || null,
-          color_hex: item.color_hex.trim() || null,
+          color: item.color.trim() || null,
         })),
       );
 
@@ -196,15 +196,15 @@ export default function EmployeesTable({ employees }: Props) {
                   <div className="flex items-center gap-3">
                     <input
                       type="color"
-                      value={employee.color_hex || "#C084FC"}
+                      value={employee.color || "#C084FC"}
                       onChange={(e) =>
-                        updateItem(employee.id, "color_hex", e.target.value)
+                        updateItem(employee.id, "color", e.target.value)
                       }
                       className="h-10 w-14 cursor-pointer rounded-lg border border-app-soft bg-white p-1"
                     />
 
                     <span className="text-xs text-app-muted">
-                      {employee.color_hex || "#C084FC"}
+                      {employee.color || "#C084FC"}
                     </span>
                   </div>
                 </td>
