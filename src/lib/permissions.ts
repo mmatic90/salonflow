@@ -8,6 +8,9 @@ export type CurrentUserPermissions = {
   email: string | null;
   organizationId: string;
   organizationName: string;
+  organizationLocale: "hr" | "en" | "it";
+  organizationTheme: "sand" | "rose" | "slate";
+  organizationLogoUrl: string | null;
   organizationRole: OrganizationRole;
   role: AppRole;
   employeeId: string | null;
@@ -31,7 +34,7 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
 
   const { data: membership, error: membershipError } = await supabase
     .from("organization_members")
-    .select("organization_id, role, display_name, is_active, organizations(name, is_active)")
+    .select("organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active)")
     .eq("user_id", user.id)
     .eq("is_active", true)
     .limit(1)
@@ -71,6 +74,11 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     email: user.email ?? null,
     organizationId: membership.organization_id,
     organizationName: organization.name,
+    organizationLocale:
+      organization.locale === "en" || organization.locale === "it" ? organization.locale : "hr",
+    organizationTheme:
+      organization.theme === "rose" || organization.theme === "slate" ? organization.theme : "sand",
+    organizationLogoUrl: organization.logo_url ?? null,
     organizationRole,
     role: appRole,
     employeeId: employee?.id ?? null,
