@@ -93,8 +93,11 @@ export type ServiceRoomMappingRow = {
   room_id: string;
 };
 
+
 export async function getServiceRoomMappingData() {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const [
     { data: services, error: servicesError },
@@ -104,30 +107,22 @@ export async function getServiceRoomMappingData() {
     supabase
       .from("services")
       .select("id, name, is_active")
+      .eq("organization_id", permissions.organizationId)
       .order("name", { ascending: true }),
-
     supabase
       .from("rooms")
       .select("id, name, is_active")
+      .eq("organization_id", permissions.organizationId)
       .order("name", { ascending: true }),
-
-    supabase.from("service_rooms").select("service_id, room_id"),
+    supabase
+      .from("service_rooms")
+      .select("service_id, room_id")
+      .eq("organization_id", permissions.organizationId),
   ]);
 
-  if (servicesError) {
-    console.error(servicesError);
-    throw new Error("Nije moguće dohvatiti usluge.");
-  }
-
-  if (roomsError) {
-    console.error(roomsError);
-    throw new Error("Nije moguće dohvatiti sobe.");
-  }
-
-  if (mappingsError) {
-    console.error(mappingsError);
-    throw new Error("Nije moguće dohvatiti mapiranja usluga i soba.");
-  }
+  if (servicesError) throw new Error("Nije moguće dohvatiti usluge.");
+  if (roomsError) throw new Error("Nije moguće dohvatiti sobe.");
+  if (mappingsError) throw new Error("Nije moguće dohvatiti mapiranja usluga i soba.");
 
   return {
     services: services ?? [],
@@ -136,13 +131,11 @@ export async function getServiceRoomMappingData() {
   };
 }
 
-export type EmployeeServiceMappingRow = {
-  employee_id: string;
-  service_id: string;
-};
 
 export async function getEmployeeServiceMappingData() {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const [
     { data: employees, error: employeesError },
@@ -152,31 +145,22 @@ export async function getEmployeeServiceMappingData() {
     supabase
       .from("employees")
       .select("id, first_name, last_name, is_active")
-      .eq("organization_id", (await getCurrentUserPermissions())?.organizationId ?? "")
+      .eq("organization_id", permissions.organizationId)
       .order("first_name", { ascending: true }),
-
     supabase
       .from("services")
       .select("id, name, is_active")
+      .eq("organization_id", permissions.organizationId)
       .order("name", { ascending: true }),
-
-    supabase.from("employee_services").select("employee_id, service_id"),
+    supabase
+      .from("employee_services")
+      .select("employee_id, service_id")
+      .eq("organization_id", permissions.organizationId),
   ]);
 
-  if (employeesError) {
-    console.error(employeesError);
-    throw new Error("Nije moguće dohvatiti zaposlenike.");
-  }
-
-  if (servicesError) {
-    console.error(servicesError);
-    throw new Error("Nije moguće dohvatiti usluge.");
-  }
-
-  if (mappingsError) {
-    console.error(mappingsError);
-    throw new Error("Nije moguće dohvatiti mapiranja zaposlenika i usluga.");
-  }
+  if (employeesError) throw new Error("Nije moguće dohvatiti zaposlenike.");
+  if (servicesError) throw new Error("Nije moguće dohvatiti usluge.");
+  if (mappingsError) throw new Error("Nije moguće dohvatiti mapiranja zaposlenika i usluga.");
 
   return {
     employees: (employees ?? []).map((row: any) => ({
@@ -188,13 +172,11 @@ export async function getEmployeeServiceMappingData() {
   };
 }
 
-export type ServiceEquipmentMappingRow = {
-  service_id: string;
-  equipment_id: string;
-};
 
 export async function getServiceEquipmentMappingData() {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const [
     { data: services, error: servicesError },
@@ -204,30 +186,22 @@ export async function getServiceEquipmentMappingData() {
     supabase
       .from("services")
       .select("id, name, is_active")
+      .eq("organization_id", permissions.organizationId)
       .order("name", { ascending: true }),
-
     supabase
       .from("equipment")
       .select("id, name, is_active")
+      .eq("organization_id", permissions.organizationId)
       .order("name", { ascending: true }),
-
-    supabase.from("service_equipment").select("service_id, equipment_id"),
+    supabase
+      .from("service_equipment")
+      .select("service_id, equipment_id")
+      .eq("organization_id", permissions.organizationId),
   ]);
 
-  if (servicesError) {
-    console.error(servicesError);
-    throw new Error("Nije moguće dohvatiti usluge.");
-  }
-
-  if (equipmentError) {
-    console.error(equipmentError);
-    throw new Error("Nije moguće dohvatiti opremu.");
-  }
-
-  if (mappingsError) {
-    console.error(mappingsError);
-    throw new Error("Nije moguće dohvatiti mapiranja usluga i opreme.");
-  }
+  if (servicesError) throw new Error("Nije moguće dohvatiti usluge.");
+  if (equipmentError) throw new Error("Nije moguće dohvatiti opremu.");
+  if (mappingsError) throw new Error("Nije moguće dohvatiti mapiranja usluga i opreme.");
 
   return {
     services: services ?? [],
