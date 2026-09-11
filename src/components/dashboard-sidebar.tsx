@@ -28,7 +28,25 @@ type Props = {
   locale: AppLocale;
 };
 
-const navDefinitions = [
+type NavDefinition = {
+  href: string;
+  key:
+    | "dashboard"
+    | "onlineBookings"
+    | "appointments"
+    | "calendar"
+    | "weekCalendar"
+    | "timeGrid"
+    | "clients"
+    | "myAccount"
+    | "schedule"
+    | "reports"
+    | "settings";
+  icon: typeof LayoutDashboard;
+  roles: AppRole[];
+};
+
+const navDefinitions: NavDefinition[] = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, roles: ["admin", "employee"] },
   { href: "/dashboard/online-bookings", key: "onlineBookings", icon: BellRing, roles: ["admin", "employee"] },
   { href: "/dashboard/appointments", key: "appointments", icon: ListChecks, roles: ["admin", "employee"] },
@@ -40,7 +58,7 @@ const navDefinitions = [
   { href: "/dashboard/schedule", key: "schedule", icon: Users, roles: ["admin"] },
   { href: "/dashboard/reports", key: "reports", icon: LayoutDashboard, roles: ["admin"] },
   { href: "/dashboard/settings", key: "settings", icon: Settings, roles: ["admin"] },
-] as const;
+];
 
 function isActive(pathname: string, href: string) {
   if (href === "/dashboard") return pathname === "/dashboard";
