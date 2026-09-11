@@ -74,7 +74,14 @@ export async function getReportsDashboardData() {
   last14Start.setDate(today.getDate() - 13);
   const last14StartStr = formatDate(last14Start);
 
-  const { data: appointmentData, error: appointmentError } = await supabase
+  const monthStartIso = startOfMonth(today).toISOString();
+  const nextMonthStartIso = new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString();
+
+  const [
+    { data: appointmentData, error: appointmentError },
+    { data: onlineBookingData, error: onlineBookingError },
+  ] = await Promise.all([
+    supabase
     .from("appointments")
     .select(`
       id,
@@ -95,7 +102,13 @@ export async function getReportsDashboardData() {
     .eq("organization_id", permissions.organizationId)
     .gte("appointment_date", last14StartStr)
     .lte("appointment_date", monthEndStr)
-    .order("appointment_date", { ascending: true });
+    .order("appointment_date", { ascending: true }),
+    supabase
+      .from("online_booking_requests")
+      .select("id, status, created_at")
+      .gte("created_at", monthStartIso)
+      .lt("created_at", nextMonthStartIso),
+  ]);
 
   if (appointmentError) {
     console.error("Reports appointment query failed:", {
@@ -203,7 +216,24 @@ export async function getReportsDashboardData() {
   });
 
   const busiestDays = [...last14Days].sort((a, b) => b.count - a.count).slice(0, 5);
-  const onlineCounts = { total: 0, pending: 0, accepted: 0, rejected: 0 };
+
+  if (onlineBookingError) {
+    console.error("Reports online booking query failed:", {
+      message: onlineBookingError.message,
+      details: onlineBookingError.details,
+      hint: onlineBookingError.hint,
+      code: onlineBookingError.code,
+    });
+  }
+
+  const onlineRows = onlineBookingError ? [] : (onlineBookingData ?? []);
+  const onlineCounts = {
+    total: onlineRows.length,
+    pending: onlineRows.filter((item: any) => item.status === "pending").length,
+    accepted: onlineRows.filter((item: any) => item.status === "accepted").length,
+    rejected: onlineRows.filter((item: any) => item.status === "rejected").length,
+  };
+  const onlineConversionRate = safeRate(onlineCounts.accepted, onlineCounts.total);
 
   return {
     period: {
@@ -223,7 +253,7 @@ export async function getReportsDashboardData() {
       noShowMonth: statusCounts.no_show,
       completionRate,
       noShowRate,
-      onlineConversionRate: 0,
+      onlineConversionRate,
     },
     statusCounts,
     onlineCounts,
