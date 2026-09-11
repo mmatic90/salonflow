@@ -543,14 +543,13 @@ export async function bulkUpdateEquipmentAction(
   }
 }
 
+
 export async function bulkUpdateServiceRoomsAction(
-  items: Array<{
-    service_id: string;
-    room_ids: string[];
-  }>,
+  items: Array<{ service_id: string; room_ids: string[] }>,
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const serviceIds = items
       .map((item) => item.service_id)
@@ -559,12 +558,14 @@ export async function bulkUpdateServiceRoomsAction(
     const { data: beforeRows } = await supabase
       .from("service_rooms")
       .select("*")
+      .eq("organization_id", permissions.organizationId)
       .in("service_id", serviceIds);
 
     const rows = items.flatMap((item) =>
       item.room_ids
         .filter((roomId) => typeof roomId === "string" && roomId.length > 0)
         .map((roomId) => ({
+          organization_id: permissions.organizationId,
           service_id: item.service_id,
           room_id: roomId,
         })),
@@ -574,67 +575,44 @@ export async function bulkUpdateServiceRoomsAction(
       const { error: deleteError } = await supabase
         .from("service_rooms")
         .delete()
+        .eq("organization_id", permissions.organizationId)
         .in("service_id", serviceIds);
 
-      if (deleteError) {
-        return {
-          ok: false,
-          message: deleteError.message,
-        };
-      }
+      if (deleteError) return { ok: false, message: deleteError.message };
     }
 
     if (rows.length > 0) {
-      const { error: insertError } = await supabase
-        .from("service_rooms")
-        .insert(rows);
-
-      if (insertError) {
-        return {
-          ok: false,
-          message: insertError.message,
-        };
-      }
+      const { error: insertError } = await supabase.from("service_rooms").insert(rows);
+      if (insertError) return { ok: false, message: insertError.message };
     }
 
     await writeAuditLog({
       action: "service_rooms_bulk_updated",
       entityType: "service_room_mapping",
       entityLabel: "bulk update service rooms",
-      details: {
-        before: beforeRows ?? [],
-        after: rows,
-      },
+      details: { before: beforeRows ?? [], after: rows },
     });
 
     revalidatePath("/dashboard/settings/service-rooms");
-    revalidatePath("/dashboard/appointments/new");
     revalidatePath("/dashboard/appointments");
-    revalidatePath("/dashboard/appointments/[id]/edit");
+    revalidatePath("/dashboard/calendar");
 
-    return {
-      ok: true,
-      message: "Mapiranje usluga i soba je spremljeno.",
-    };
+    return { ok: true, message: "Mapiranje usluga i soba je spremljeno." };
   } catch (error) {
     return {
       ok: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
     };
   }
 }
 
+
 export async function bulkUpdateEmployeeServicesAction(
-  items: Array<{
-    employee_id: string;
-    service_ids: string[];
-  }>,
+  items: Array<{ employee_id: string; service_ids: string[] }>,
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const employeeIds = items
       .map((item) => item.employee_id)
@@ -643,14 +621,14 @@ export async function bulkUpdateEmployeeServicesAction(
     const { data: beforeRows } = await supabase
       .from("employee_services")
       .select("*")
+      .eq("organization_id", permissions.organizationId)
       .in("employee_id", employeeIds);
 
     const rows = items.flatMap((item) =>
       item.service_ids
-        .filter(
-          (serviceId) => typeof serviceId === "string" && serviceId.length > 0,
-        )
+        .filter((serviceId) => typeof serviceId === "string" && serviceId.length > 0)
         .map((serviceId) => ({
+          organization_id: permissions.organizationId,
           employee_id: item.employee_id,
           service_id: serviceId,
         })),
@@ -660,69 +638,45 @@ export async function bulkUpdateEmployeeServicesAction(
       const { error: deleteError } = await supabase
         .from("employee_services")
         .delete()
+        .eq("organization_id", permissions.organizationId)
         .in("employee_id", employeeIds);
 
-      if (deleteError) {
-        return {
-          ok: false,
-          message: deleteError.message,
-        };
-      }
+      if (deleteError) return { ok: false, message: deleteError.message };
     }
 
     if (rows.length > 0) {
-      const { error: insertError } = await supabase
-        .from("employee_services")
-        .insert(rows);
-
-      if (insertError) {
-        return {
-          ok: false,
-          message: insertError.message,
-        };
-      }
+      const { error: insertError } = await supabase.from("employee_services").insert(rows);
+      if (insertError) return { ok: false, message: insertError.message };
     }
 
     await writeAuditLog({
       action: "employee_services_bulk_updated",
       entityType: "employee_service_mapping",
       entityLabel: "bulk update employee services",
-      details: {
-        before: beforeRows ?? [],
-        after: rows,
-      },
+      details: { before: beforeRows ?? [], after: rows },
     });
 
     revalidatePath("/dashboard/settings/employee-services");
-    revalidatePath("/dashboard/appointments/new");
     revalidatePath("/dashboard/appointments");
-    revalidatePath("/dashboard/appointments/[id]/edit");
     revalidatePath("/dashboard/calendar");
-    revalidatePath("/dashboard/calendar/time-grid");
+    revalidatePath("/dashboard/schedule");
 
-    return {
-      ok: true,
-      message: "Mapiranje zaposlenika i usluga je spremljeno.",
-    };
+    return { ok: true, message: "Mapiranje zaposlenika i usluga je spremljeno." };
   } catch (error) {
     return {
       ok: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
     };
   }
 }
 
+
 export async function bulkUpdateServiceEquipmentAction(
-  items: Array<{
-    service_id: string;
-    equipment_ids: string[];
-  }>,
+  items: Array<{ service_id: string; equipment_ids: string[] }>,
 ) {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const serviceIds = items
       .map((item) => item.service_id)
@@ -731,15 +685,14 @@ export async function bulkUpdateServiceEquipmentAction(
     const { data: beforeRows } = await supabase
       .from("service_equipment")
       .select("*")
+      .eq("organization_id", permissions.organizationId)
       .in("service_id", serviceIds);
 
     const rows = items.flatMap((item) =>
       item.equipment_ids
-        .filter(
-          (equipmentId) =>
-            typeof equipmentId === "string" && equipmentId.length > 0,
-        )
+        .filter((equipmentId) => typeof equipmentId === "string" && equipmentId.length > 0)
         .map((equipmentId) => ({
+          organization_id: permissions.organizationId,
           service_id: item.service_id,
           equipment_id: equipmentId,
         })),
@@ -749,57 +702,33 @@ export async function bulkUpdateServiceEquipmentAction(
       const { error: deleteError } = await supabase
         .from("service_equipment")
         .delete()
+        .eq("organization_id", permissions.organizationId)
         .in("service_id", serviceIds);
 
-      if (deleteError) {
-        return {
-          ok: false,
-          message: deleteError.message,
-        };
-      }
+      if (deleteError) return { ok: false, message: deleteError.message };
     }
 
     if (rows.length > 0) {
-      const { error: insertError } = await supabase
-        .from("service_equipment")
-        .insert(rows);
-
-      if (insertError) {
-        return {
-          ok: false,
-          message: insertError.message,
-        };
-      }
+      const { error: insertError } = await supabase.from("service_equipment").insert(rows);
+      if (insertError) return { ok: false, message: insertError.message };
     }
 
     await writeAuditLog({
       action: "service_equipment_bulk_updated",
       entityType: "service_equipment_mapping",
       entityLabel: "bulk update service equipment",
-      details: {
-        before: beforeRows ?? [],
-        after: rows,
-      },
+      details: { before: beforeRows ?? [], after: rows },
     });
 
     revalidatePath("/dashboard/settings/service-equipment");
-    revalidatePath("/dashboard/appointments/new");
     revalidatePath("/dashboard/appointments");
-    revalidatePath("/dashboard/appointments/[id]/edit");
     revalidatePath("/dashboard/calendar");
-    revalidatePath("/dashboard/calendar/time-grid");
 
-    return {
-      ok: true,
-      message: "Mapiranje usluga i opreme je spremljeno.",
-    };
+    return { ok: true, message: "Mapiranje usluga i opreme je spremljeno." };
   } catch (error) {
     return {
       ok: false,
-      message:
-        error instanceof Error
-          ? error.message
-          : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
     };
   }
 }
