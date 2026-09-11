@@ -17,7 +17,7 @@ type Props = {
 type EditableEquipment = {
   id: string;
   name: string;
-  quantity: number;
+  quantity_total: number;
   is_active: boolean;
 };
 
@@ -25,7 +25,7 @@ function toEditable(item: EquipmentItem): EditableEquipment {
   return {
     id: item.id,
     name: item.name,
-    quantity: item.quantity,
+    quantity_total: item.quantity_total,
     is_active: item.is_active,
   };
 }
@@ -124,9 +124,9 @@ export default function EquipmentTable({ equipment }: Props) {
                   <input
                     type="number"
                     min={1}
-                    value={item.quantity}
+                    value={item.quantity_total}
                     onChange={(e) =>
-                      updateItem(item.id, "quantity", Number(e.target.value))
+                      updateItem(item.id, "quantity_total", Number(e.target.value))
                     }
                     className="w-28 rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
                   />
