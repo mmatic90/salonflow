@@ -215,6 +215,7 @@ export async function getOnlineBookingAcceptOptions(args: {
   durationMinutes: number;
 }) {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
 
   const startTime = args.startTime.slice(0, 5);
   const endTime = addMinutesToTimeString(startTime, args.durationMinutes);
@@ -234,11 +235,13 @@ export async function getOnlineBookingAcceptOptions(args: {
         employee_id,
         employees (
           id,
-          display_name,
+          first_name,
+          last_name,
           is_active
         )
       `,
       )
+      .eq("organization_id", organizationId)
       .eq("service_id", args.serviceId),
 
     supabase
@@ -253,13 +256,15 @@ export async function getOnlineBookingAcceptOptions(args: {
         )
       `,
       )
+      .eq("organization_id", organizationId)
       .eq("service_id", args.serviceId),
 
     supabase
       .from("appointments")
       .select("id, employee_id, room_id, start_time, end_time, status")
+      .eq("organization_id", organizationId)
       .eq("appointment_date", args.date)
-      .in("status", ["scheduled", "completed"]),
+      .in("status", ["scheduled", "confirmed", "completed"]),
   ]);
 
   if (employeeMappingsError) throw new Error(employeeMappingsError.message);
@@ -268,12 +273,28 @@ export async function getOnlineBookingAcceptOptions(args: {
 
   const mappedEmployees =
     employeeMappings
-      ?.map((row: any) => row.employees)
-      .filter((employee: any) => employee?.is_active) ?? [];
+      ?.map((row: any) => {
+        const employee = Array.isArray(row.employees)
+          ? row.employees[0] ?? null
+          : row.employees ?? null;
+
+        if (!employee?.is_active) return null;
+
+        return {
+          id: employee.id,
+          display_name:
+            [employee.first_name, employee.last_name]
+              .filter(Boolean)
+              .join(" ") || "Zaposlenik",
+        };
+      })
+      .filter(Boolean) ?? [];
 
   const mappedRooms =
     roomMappings
-      ?.map((row: any) => row.rooms)
+      ?.map((row: any) =>
+        Array.isArray(row.rooms) ? row.rooms[0] ?? null : row.rooms ?? null,
+      )
       .filter((room: any) => room?.is_active) ?? [];
 
   const employeesWithAvailability = await Promise.all(
@@ -286,9 +307,7 @@ export async function getOnlineBookingAcceptOptions(args: {
         },
       );
 
-      if (scheduleError) {
-        return null;
-      }
+      if (scheduleError) return null;
 
       const schedule = scheduleRows?.[0];
 
@@ -320,9 +339,7 @@ export async function getOnlineBookingAcceptOptions(args: {
         },
       );
 
-      if (hasConflict) return null;
-
-      return employee;
+      return hasConflict ? null : employee;
     }),
   );
 
