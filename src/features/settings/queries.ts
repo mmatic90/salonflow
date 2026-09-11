@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 import type {
   EmployeeItem,
   EquipmentItem,
@@ -10,25 +11,13 @@ import type {
 
 export async function getServices(): Promise<ServiceItem[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const { data, error } = await supabase
     .from("services")
-    .select(
-      `
-  id,
-  name,
-  name_en,
-  description,
-  description_en,
-  duration_minutes,
-  price_cents,
-  service_group,
-  service_group_en,
-  priority_room,
-  is_active,
-  is_online_bookable
-  `,
-    )
+    .select("id, name, description, duration_minutes, price, currency, category, is_active, is_online_bookable")
+    .eq("organization_id", permissions.organizationId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -41,10 +30,13 @@ export async function getServices(): Promise<ServiceItem[]> {
 
 export async function getRooms(): Promise<RoomItem[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const { data, error } = await supabase
     .from("rooms")
     .select("id, name, is_active")
+    .eq("organization_id", permissions.organizationId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -57,10 +49,13 @@ export async function getRooms(): Promise<RoomItem[]> {
 
 export async function getEquipment(): Promise<EquipmentItem[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const { data, error } = await supabase
     .from("equipment")
-    .select("id, name, quantity, is_active")
+    .select("id, name, quantity_total, is_active")
+    .eq("organization_id", permissions.organizationId)
     .order("name", { ascending: true });
 
   if (error) {
@@ -73,18 +68,24 @@ export async function getEquipment(): Promise<EquipmentItem[]> {
 
 export async function getEmployees(): Promise<EmployeeItem[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const { data, error } = await supabase
     .from("employees")
-    .select("id, profile_id, display_name, email, phone, color_hex, is_active")
-    .order("display_name", { ascending: true });
+    .select("id, user_id, first_name, last_name, email, phone, color, is_active")
+    .eq("organization_id", permissions.organizationId)
+    .order("first_name", { ascending: true });
 
   if (error) {
     console.error(error);
     throw new Error("Nije moguće dohvatiti djelatnike.");
   }
 
-  return (data ?? []) as EmployeeItem[];
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    display_name: [row.first_name, row.last_name].filter(Boolean).join(" "),
+  })) as EmployeeItem[];
 }
 
 export type ServiceRoomMappingRow = {
@@ -150,8 +151,9 @@ export async function getEmployeeServiceMappingData() {
   ] = await Promise.all([
     supabase
       .from("employees")
-      .select("id, display_name, is_active")
-      .order("display_name", { ascending: true }),
+      .select("id, first_name, last_name, is_active")
+      .eq("organization_id", (await getCurrentUserPermissions())?.organizationId ?? "")
+      .order("first_name", { ascending: true }),
 
     supabase
       .from("services")
@@ -177,7 +179,10 @@ export async function getEmployeeServiceMappingData() {
   }
 
   return {
-    employees: employees ?? [],
+    employees: (employees ?? []).map((row: any) => ({
+      ...row,
+      display_name: [row.first_name, row.last_name].filter(Boolean).join(" "),
+    })),
     services: services ?? [],
     mappings: (mappings ?? []) as EmployeeServiceMappingRow[],
   };
