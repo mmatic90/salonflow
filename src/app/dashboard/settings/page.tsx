@@ -37,6 +37,12 @@ export default async function SettingsPage() {
       <PageSection title="Moduli postavki">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SettingsCard
+            href="/dashboard/settings/appearance"
+            title="Izgled i jezik"
+            description="Odaberi temu aplikacije i glavni jezik salona."
+          />
+
+          <SettingsCard
             href="/dashboard/settings/services"
             title="Usluge"
             description="Dodavanje i aktivacija/deaktivacija usluga."
