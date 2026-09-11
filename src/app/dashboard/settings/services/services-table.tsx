@@ -192,14 +192,14 @@ export default function ServicesTable({ services }: Props) {
                     onClick={() =>
                       updateItem(service.id, "is_active", !service.is_active)
                     }
-                    className={\`relative inline-flex h-7 w-12 items-center rounded-full transition \${
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
                       service.is_active ? "bg-app-accent" : "bg-app-soft"
-                    }\`}
+                    }`}
                   >
                     <span
-                      className={\`inline-block h-5 w-5 transform rounded-full bg-white shadow transition \${
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
                         service.is_active ? "translate-x-6" : "translate-x-1"
-                      }\`}
+                      }`}
                     />
                   </button>
                 </td>
@@ -215,18 +215,18 @@ export default function ServicesTable({ services }: Props) {
                         !service.is_online_bookable,
                       )
                     }
-                    className={\`relative inline-flex h-7 w-12 items-center rounded-full transition \${
+                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
                       service.is_online_bookable
                         ? "bg-app-accent"
                         : "bg-app-soft"
-                    }\`}
+                    }`}
                   >
                     <span
-                      className={\`inline-block h-5 w-5 transform rounded-full bg-white shadow transition \${
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
                         service.is_online_bookable
                           ? "translate-x-6"
                           : "translate-x-1"
-                      }\`}
+                      }`}
                     />
                   </button>
                 </td>
