@@ -196,38 +196,53 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
   const accent = colorHex || appointment.employee?.color_hex || "#8a7d6f";
 
   return (
-    <div className={`group relative overflow-hidden rounded-2xl border shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${statusClasses(appointment.status)}`}>
+    <div
+      className={`group relative overflow-hidden rounded-3xl border shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.10)] ${statusClasses(appointment.status)}`}
+    >
       <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: accent }} />
-      <Link href={`/dashboard/appointments/${appointment.id}/edit`} className="block p-4 pl-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm font-bold text-app-text">
-            <Clock3 className="h-4 w-4 text-app-muted" />
-            {formatTime(appointment.start_time)} – {formatTime(appointment.end_time)}
+
+      <Link href={`/dashboard/appointments/${appointment.id}/edit`} className="block p-5 pl-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-2xl font-extrabold leading-none tracking-tight text-app-text">
+              {formatTime(appointment.start_time)}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-app-muted">
+              <Clock3 className="h-3.5 w-3.5" />
+              do {formatTime(appointment.end_time)}
+            </div>
           </div>
-          <span className="rounded-full border border-white/70 bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-app-text shadow-sm">
+
+          <span className="shrink-0 rounded-full border border-white/80 bg-white/90 px-3 py-1 text-[11px] font-bold text-app-text shadow-sm backdrop-blur">
             {statusLabel(appointment.status)}
           </span>
         </div>
 
-        <div className="mt-4 flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/80 text-app-accent shadow-sm">
-            <UserRound className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate font-semibold text-app-text">{appointment.client_name}</p>
-            <p className="mt-1 flex items-center gap-1.5 text-sm text-app-text">
-              <Shapes className="h-3.5 w-3.5 shrink-0 text-app-muted" />
-              <span className="truncate">{serviceLabel}</span>
-            </p>
+        <div className="mt-5">
+          <p className="truncate text-base font-bold text-app-text">{appointment.client_name}</p>
+          <div className="mt-2 flex min-w-0 items-center gap-2 text-sm font-medium text-app-text">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/85 text-app-accent shadow-sm">
+              <Shapes className="h-4 w-4" />
+            </div>
+            <span className="truncate">{serviceLabel}</span>
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-app-muted">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/75 px-2.5 py-1">
-            <Timer className="h-3.5 w-3.5" /> {appointment.duration_minutes} min
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-medium text-app-muted">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+            <Timer className="h-3.5 w-3.5" />
+            {appointment.duration_minutes} min
           </span>
-          {metaLabel ? <span className="rounded-full bg-white/75 px-2.5 py-1">{metaLabel}</span> : null}
-          {appointment.client_phone ? <span className="rounded-full bg-white/75 px-2.5 py-1">{appointment.client_phone}</span> : null}
+          {metaLabel ? (
+            <span className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+              {metaLabel}
+            </span>
+          ) : null}
+          {appointment.client_phone ? (
+            <span className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+              {appointment.client_phone}
+            </span>
+          ) : null}
         </div>
 
         <AppointmentMiniDetails
@@ -240,7 +255,7 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
         />
       </Link>
 
-      <div className="border-t border-black/5 px-4 py-3 pl-5">
+      <div className="border-t border-black/5 bg-white/35 px-5 py-3 pl-6 backdrop-blur-sm">
         <AppointmentStatusActions appointmentId={appointment.id} currentStatus={appointment.status} compact />
       </div>
     </div>
@@ -289,7 +304,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   return (
     <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
           <div className="border-b border-app-soft bg-gradient-to-br from-white to-app-bg p-5 md:p-7">
             <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
@@ -346,7 +361,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileRoomGroups.map((group) => (
-                <section key={group.roomId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                <section key={group.roomId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-0" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina u ovoj sobi" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
@@ -354,7 +369,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             </div>
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {roomGroups.map((group) => (
-                <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
@@ -365,7 +380,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileEmployeeGroups.map((group) => (
-                <section key={group.employeeId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                <section key={group.employeeId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <EmployeeColumnHeader group={group} stickyTop="top-0" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
@@ -373,7 +388,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             </div>
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {employeeGroups.map((group) => (
-                <section key={group.employeeId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-sm">
+                <section key={group.employeeId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <EmployeeColumnHeader group={group} stickyTop="top-4" />
                   <div className="p-5">{group.appointments.length ? <div className="space-y-3">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
