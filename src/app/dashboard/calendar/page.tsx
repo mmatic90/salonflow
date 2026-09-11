@@ -161,7 +161,7 @@ function ViewChip({ href, active, children }: { href: string; active: boolean; c
   return (
     <Link
       href={href}
-      className={`inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
+      className={`inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition sm:flex-none ${
         active
           ? "bg-app-accent text-white shadow-sm"
           : "border border-app-soft bg-white text-app-text hover:border-app-accent/30 hover:bg-app-bg"
@@ -174,14 +174,14 @@ function ViewChip({ href, active, children }: { href: string; active: boolean; c
 
 function StatCard({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-app-soft bg-white p-3.5 shadow-sm sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-app-muted">{label}</p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-app-text">{value}</p>
+          <p className="mt-2 text-xl font-bold tracking-tight text-app-text sm:text-2xl">{value}</p>
           <p className="mt-1 text-xs text-app-muted">{detail}</p>
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent">
+        <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent xs:flex sm:flex">
           {icon}
         </div>
       </div>
@@ -201,10 +201,10 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
     >
       <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: accent }} />
 
-      <Link href={`/dashboard/appointments/${appointment.id}/edit`} className="block p-5 pl-6">
+      <Link href={`/dashboard/appointments/${appointment.id}/edit`} className="block p-4 pl-5 sm:p-5 sm:pl-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-2xl font-extrabold leading-none tracking-tight text-app-text">
+            <div className="text-xl font-extrabold leading-none tracking-tight text-app-text sm:text-2xl">
               {formatTime(appointment.start_time)}
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-app-muted">
@@ -218,7 +218,7 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
           </span>
         </div>
 
-        <div className="mt-5">
+        <div className="mt-4 sm:mt-5">
           <p className="truncate text-base font-bold text-app-text">{appointment.client_name}</p>
           <div className="mt-2 flex min-w-0 items-center gap-2 text-sm font-medium text-app-text">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/85 text-app-accent shadow-sm">
@@ -228,7 +228,7 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
           </div>
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-medium text-app-muted">
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-app-muted sm:mt-5">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
             <Timer className="h-3.5 w-3.5" />
             {appointment.duration_minutes} min
@@ -255,7 +255,7 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
         />
       </Link>
 
-      <div className="border-t border-black/5 bg-white/35 px-5 py-3 pl-6 backdrop-blur-sm">
+      <div className="border-t border-black/5 bg-white/35 px-4 py-3 pl-5 backdrop-blur-sm sm:px-5 sm:pl-6">
         <AppointmentStatusActions appointmentId={appointment.id} currentStatus={appointment.status} compact />
       </div>
     </div>
@@ -302,14 +302,14 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
   const isToday = selectedDate === today;
 
   return (
-    <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
         <section className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-          <div className="border-b border-app-soft bg-gradient-to-br from-white to-app-bg p-5 md:p-7">
-            <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="border-b border-app-soft bg-gradient-to-br from-white to-app-bg p-4 sm:p-5 md:p-7">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-2xl font-bold capitalize tracking-tight text-app-text md:text-3xl">{formatDateTitle(selectedDate)}</h1>
+                  <h1 className="text-xl font-bold capitalize tracking-tight text-app-text sm:text-2xl md:text-3xl">{formatDateTitle(selectedDate)}</h1>
                   <CalendarCurrentTime selectedDate={selectedDate} today={today} />
                 </div>
 
@@ -318,29 +318,29 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-col items-stretch gap-3 self-start sm:items-end xl:self-center">
-                <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-[46px] items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex w-full shrink-0 flex-col items-stretch gap-3 self-start sm:w-auto sm:items-end xl:self-center">
+                <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-auto">
                   <Plus className="h-4 w-4" /> Novi termin
                 </Link>
 
-                <div className="inline-flex self-end rounded-xl border border-app-soft bg-white p-1 shadow-sm">
-                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Prethodni dan">
+                <div className="inline-flex w-full self-end rounded-xl border border-app-soft bg-white p-1 shadow-sm sm:w-auto">
+                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label="Prethodni dan">
                     <ArrowLeft className="h-4 w-4" />
                   </Link>
-                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>Danas</Link>
-                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text" aria-label="Sljedeći dan">
+                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`flex min-h-11 flex-[1.3] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>Danas</Link>
+                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label="Sljedeći dan">
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-5 flex w-full gap-2 sm:mt-6 sm:w-auto sm:flex-wrap sm:gap-3">
               <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=employees`} active={selectedView === "employees"}>Po zaposlenicima</ViewChip>
               <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=rooms`} active={selectedView === "rooms"}>Po sobama</ViewChip>
             </div>
 
-            <div className="mt-4 lg:hidden">
+            <div className="mt-4 rounded-2xl border border-app-soft bg-white/80 p-3 shadow-sm lg:hidden">
               {selectedView === "employees" ? (
                 <AutoSubmitSelect label="Zaposlenik" action="/dashboard/calendar" name="employee" value={selectedEmployeeId || employeeGroups[0]?.employeeId || ""} hiddenFields={{ date: selectedDate, view: "employees" }} options={employeeGroups.map((group) => ({ value: group.employeeId, label: group.employeeName }))} />
               ) : (
@@ -350,7 +350,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Termini" value={String(activeAppointments.length)} detail={`${uniqueAppointments.length - activeAppointments.length} otkazanih`} />
           <StatCard icon={<UserRound className="h-5 w-5" />} label="Klijenti" value={String(uniqueClients)} detail="jedinstvenih klijenata" />
           <StatCard icon={<Timer className="h-5 w-5" />} label="Rezervirano vrijeme" value={`${hours} h ${minutes} min`} detail="ukupno trajanje termina" />
@@ -362,8 +362,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="grid gap-6 lg:hidden">
               {mobileRoomGroups.map((group) => (
                 <section key={group.roomId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-0" />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-5">{group.appointments.length ? <div className="space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina u ovoj sobi" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
+                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-16" />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina u ovoj sobi" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
             </div>
@@ -371,7 +371,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
               {roomGroups.map((group) => (
                 <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-5">{group.appointments.length ? <div className="space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
             </div>
@@ -381,8 +381,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="grid gap-6 lg:hidden">
               {mobileEmployeeGroups.map((group) => (
                 <section key={group.employeeId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <EmployeeColumnHeader group={group} stickyTop="top-0" />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-5">{group.appointments.length ? <div className="space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
+                  <EmployeeColumnHeader group={group} stickyTop="top-16" />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
             </div>
@@ -390,7 +390,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
               {employeeGroups.map((group) => (
                 <section key={group.employeeId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <EmployeeColumnHeader group={group} stickyTop="top-4" />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-5">{group.appointments.length ? <div className="space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
             </div>
