@@ -47,7 +47,7 @@ function timeToMinutes(value: string) {
 function minutesToTime(value: number) {
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
-  return \`\${String(hours).padStart(2, "0")}:\${String(minutes).padStart(2, "0")}\`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
@@ -191,7 +191,7 @@ export async function getSmartAvailability(options: {
   if (roomsError) throw new Error(roomsError.message);
   if (appointmentsError) throw new Error(appointmentsError.message);
 
-  const dayOfWeek = new Date(\`\${date}T00:00:00\`).getDay();
+  const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
   const salonDay = (salonHours ?? []).find((row) => row.day_of_week === dayOfWeek);
 
   if (!salonDay || salonDay.is_closed) {
@@ -372,7 +372,7 @@ export async function getSmartAvailability(options: {
           suggestions: uniqueByKey(
             suggestions,
             (item) =>
-              \`\${item.start_time}-\${item.employee_id}-\${item.room_id}\`,
+              `${item.start_time}-${item.employee_id}-${item.room_id}`,
           ).slice(0, maxSuggestions),
           reason: "",
         };
@@ -383,7 +383,7 @@ export async function getSmartAvailability(options: {
   const uniqueSuggestions = uniqueByKey(
     suggestions,
     (item) =>
-      \`\${item.start_time}-\${item.employee_id}-\${item.room_id}\`,
+      `${item.start_time}-${item.employee_id}-${item.room_id}`,
   ).slice(0, maxSuggestions);
 
   return {
