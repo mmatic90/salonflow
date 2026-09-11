@@ -6,6 +6,7 @@ import PageShell from "@/components/page-shell";
 import {
   Activity,
   BarChart3,
+  BellRing,
   CalendarDays,
   CheckCircle2,
   Crown,
@@ -108,6 +109,50 @@ export default async function ReportsPage() {
         <StatCard label="Zakazani" value={data.summary.scheduledMonth} helper="Ovaj mjesec" />
         <StatCard label="Otkazani" value={data.summary.cancelledMonth} helper="Ovaj mjesec" />
         <StatCard label="No-show" value={data.summary.noShowMonth} helper={`${data.summary.noShowRate}% svih termina`} />
+      </section>
+
+      <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-app-muted">Online rezervacije</p>
+            <h2 className="mt-1 text-xl font-bold text-app-text">Booking funnel ovaj mjesec</h2>
+          </div>
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent">
+            <BellRing className="h-5 w-5" />
+          </span>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-2xl bg-app-bg p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Ukupno</p>
+            <p className="mt-2 text-2xl font-extrabold text-app-text">{data.onlineCounts.total}</p>
+          </div>
+          <div className="rounded-2xl bg-amber-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-amber-700">Na čekanju</p>
+            <p className="mt-2 text-2xl font-extrabold text-amber-900">{data.onlineCounts.pending}</p>
+          </div>
+          <div className="rounded-2xl bg-emerald-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-emerald-700">Prihvaćeno</p>
+            <p className="mt-2 text-2xl font-extrabold text-emerald-900">{data.onlineCounts.accepted}</p>
+          </div>
+          <div className="rounded-2xl bg-rose-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-rose-700">Odbijeno</p>
+            <p className="mt-2 text-2xl font-extrabold text-rose-900">{data.onlineCounts.rejected}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_0.5fr]">
+          <div className="space-y-4">
+            <ProgressRow label="Prihvaćeno" value={data.onlineCounts.accepted} total={data.onlineCounts.total} />
+            <ProgressRow label="Na čekanju" value={data.onlineCounts.pending} total={data.onlineCounts.total} />
+            <ProgressRow label="Odbijeno" value={data.onlineCounts.rejected} total={data.onlineCounts.total} />
+          </div>
+          <div className="rounded-2xl bg-app-accent/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Konverzija</p>
+            <p className="mt-2 text-3xl font-extrabold text-app-text">{data.summary.onlineConversionRate}%</p>
+            <p className="mt-2 text-xs leading-5 text-app-muted">Prihvaćeni zahtjevi / svi online zahtjevi ovog mjeseca.</p>
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
