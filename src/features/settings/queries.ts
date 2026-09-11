@@ -212,10 +212,13 @@ export async function getServiceEquipmentMappingData() {
 
 export async function getSalonWorkingHours(): Promise<SalonWorkingHourItem[]> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
 
   const { data, error } = await supabase
     .from("salon_working_hours")
     .select("day_of_week, opens_at, closes_at, is_closed")
+    .eq("organization_id", permissions.organizationId)
     .order("day_of_week", { ascending: true });
 
   if (error) {
