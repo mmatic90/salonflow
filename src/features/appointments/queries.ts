@@ -218,7 +218,13 @@ export async function getAppointmentFormData() {
     };
   }
 
-  const [{ data: services, error: servicesError }, { data: employees, error: employeesError }, { data: rooms, error: roomsError }] = await Promise.all([
+  const [
+    { data: services, error: servicesError },
+    { data: employees, error: employeesError },
+    { data: rooms, error: roomsError },
+    { data: serviceRooms, error: serviceRoomsError },
+    { data: employeeServices, error: employeeServicesError },
+  ] = await Promise.all([
     supabase
       .from("services")
       .select("id, name, duration_minutes, price, is_active")
@@ -237,11 +243,21 @@ export async function getAppointmentFormData() {
       .eq("organization_id", permissions.organizationId)
       .eq("is_active", true)
       .order("name", { ascending: true }),
+    supabase
+      .from("service_rooms")
+      .select("service_id, room_id")
+      .eq("organization_id", permissions.organizationId),
+    supabase
+      .from("employee_services")
+      .select("service_id, employee_id")
+      .eq("organization_id", permissions.organizationId),
   ]);
 
   if (servicesError) throw new Error("Nije moguće dohvatiti usluge.");
   if (employeesError) throw new Error("Nije moguće dohvatiti zaposlenike.");
   if (roomsError) throw new Error("Nije moguće dohvatiti sobe.");
+  if (serviceRoomsError) throw new Error("Nije moguće dohvatiti mapiranja usluga i soba.");
+  if (employeeServicesError) throw new Error("Nije moguće dohvatiti mapiranja zaposlenika i usluga.");
 
   return {
     services: (services ?? []).map((service: any) => ({
@@ -259,8 +275,14 @@ export async function getAppointmentFormData() {
       color_hex: employee.color ?? null,
     })) as AppointmentFormEmployee[],
     rooms: (rooms ?? []) as AppointmentFormRoom[],
-    serviceRooms: [] as AppointmentFormServiceRoom[],
-    employeeServices: [] as AppointmentFormEmployeeService[],
+    serviceRooms: (serviceRooms ?? []).map((row: any) => ({
+      service_id: String(row.service_id),
+      room_id: String(row.room_id),
+    })) as AppointmentFormServiceRoom[],
+    employeeServices: (employeeServices ?? []).map((row: any) => ({
+      service_id: String(row.service_id),
+      employee_id: String(row.employee_id),
+    })) as AppointmentFormEmployeeService[],
   };
 }
 
