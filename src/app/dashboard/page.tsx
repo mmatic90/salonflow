@@ -20,6 +20,9 @@ import {
   Wrench,
   Plus,
   CalendarDays,
+  BellRing,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import DashboardOverviewWidget from "@/components/dashboard-overview-widget";
 import { getDashboardOverviewStats } from "@/features/dashboard/overview-queries";
@@ -101,37 +104,40 @@ export default async function DashboardPage() {
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   return (
-    <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
         <OverdueAppointmentsPanel items={overdueAppointments} />
 
-        <section className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-app-accent">
-                {formatDateLabel(today)}
-              </p>
-              <h1 className="mt-1 text-3xl font-bold text-app-text">Dashboard</h1>
-              <p className="mt-2 text-app-muted">
-                {permissions.organizationName} — današnji pregled i brze akcije.
-              </p>
-            </div>
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+          <div className="bg-gradient-to-br from-white via-white to-app-bg p-5 sm:p-6 md:p-7">
+            <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
+                <div className="inline-flex items-center gap-2 rounded-full border border-app-soft bg-white/85 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-app-accent shadow-sm">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {formatDateLabel(today)}
+                </div>
+                <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-app-text md:text-4xl">Dashboard</h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-app-muted sm:text-base">
+                  {permissions.organizationName} — pregled dana, aktivnosti i ključnih pokazatelja salona.
+                </p>
+              </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href={`/dashboard/appointments/new?date=${today}`}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 font-semibold text-white transition hover:opacity-90"
-              >
-                <Plus className="h-4 w-4" />
-                Novi termin
-              </Link>
-              <Link
-                href={`/dashboard/calendar/time-grid?date=${today}`}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 font-semibold text-app-text transition hover:bg-app-card-alt"
-              >
-                <CalendarDays className="h-4 w-4" />
-                Otvori kalendar
-              </Link>
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end sm:gap-3">
+                <Link
+                  href={`/dashboard/appointments/new?date=${today}`}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <Plus className="h-4 w-4" />
+                  Novi termin
+                </Link>
+                <Link
+                  href={`/dashboard/calendar?date=${today}`}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 font-semibold text-app-text shadow-sm transition hover:-translate-y-0.5 hover:bg-app-card-alt"
+                >
+                  <CalendarDays className="h-4 w-4" />
+                  Kalendar
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -143,8 +149,66 @@ export default async function DashboardPage() {
           noShowThisMonthCount={overviewStats.noShowThisMonthCount}
         />
 
-        <section className="overflow-hidden rounded-2xl border border-app-soft bg-app-card shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-app-soft p-6 sm:flex-row sm:items-center sm:justify-between">
+        <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+          <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-app-muted">Online rezervacije</p>
+                <h2 className="mt-1 text-xl font-bold tracking-tight text-app-text">Rezervacijski pregled</h2>
+              </div>
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent">
+                <BellRing className="h-5 w-5" />
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="rounded-2xl bg-app-bg p-3.5">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Na čekanju</p>
+                <p className="mt-2 text-2xl font-extrabold text-app-text">{overviewStats.pendingOnlineCount}</p>
+              </div>
+              <div className="rounded-2xl bg-app-bg p-3.5">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Danas</p>
+                <p className="mt-2 text-2xl font-extrabold text-app-text">{overviewStats.todayOnlineCount}</p>
+              </div>
+              <div className="rounded-2xl bg-app-bg p-3.5">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Konverzija</p>
+                <p className="mt-2 text-2xl font-extrabold text-app-text">{overviewStats.onlineConversionRate}%</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-app-soft bg-white px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-app-muted">
+                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <span>{overviewStats.onlineAcceptedThisMonthCount} prihvaćenih od {overviewStats.onlineThisMonthCount} zahtjeva ovaj mjesec</span>
+              </div>
+              <Link href="/dashboard/online-bookings" className="shrink-0 text-sm font-semibold text-app-accent">
+                Otvori
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-app-soft bg-gradient-to-br from-app-accent/10 via-white to-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+            <p className="text-sm font-semibold text-app-muted">Brzi pristup</p>
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-app-text">Najčešće radnje</h2>
+            <div className="mt-5 grid gap-2">
+              <Link href="/dashboard/clients" className="flex items-center justify-between rounded-2xl border border-app-soft bg-white px-4 py-3 font-semibold text-app-text transition hover:-translate-y-0.5 hover:shadow-sm">
+                <span className="flex items-center gap-2"><Users className="h-4 w-4 text-app-accent" /> Klijenti</span>
+                <ArrowRight className="h-4 w-4 text-app-muted" />
+              </Link>
+              <Link href="/dashboard/schedule" className="flex items-center justify-between rounded-2xl border border-app-soft bg-white px-4 py-3 font-semibold text-app-text transition hover:-translate-y-0.5 hover:shadow-sm">
+                <span className="flex items-center gap-2"><UserCog className="h-4 w-4 text-app-accent" /> Rasporedi</span>
+                <ArrowRight className="h-4 w-4 text-app-muted" />
+              </Link>
+              <Link href="/dashboard/reports" className="flex items-center justify-between rounded-2xl border border-app-soft bg-white px-4 py-3 font-semibold text-app-text transition hover:-translate-y-0.5 hover:shadow-sm">
+                <span className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-app-accent" /> Izvještaji</span>
+                <ArrowRight className="h-4 w-4 text-app-muted" />
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-col gap-3 border-b border-app-soft bg-gradient-to-r from-white to-app-bg/70 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div>
               <h2 className="text-lg font-bold text-app-text">Današnji termini</h2>
               <p className="mt-1 text-sm text-app-muted">
@@ -195,7 +259,7 @@ export default async function DashboardPage() {
                   <Link
                     key={appointment.id}
                     href={`/dashboard/appointments/${appointment.id}/edit`}
-                    className="grid gap-3 p-4 transition hover:bg-app-card-alt sm:grid-cols-[110px_1.2fr_1fr_auto] sm:items-center sm:px-6"
+                    className="group grid gap-3 border-l-4 border-transparent p-4 transition hover:border-l-app-accent hover:bg-app-card-alt sm:grid-cols-[110px_1.2fr_1fr_auto] sm:items-center sm:px-6"
                   >
                     <div>
                       <p className="font-bold text-app-text">
