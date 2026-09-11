@@ -18,13 +18,9 @@ type EditableService = {
   id: string;
   name: string;
   description: string;
-  name_en: string;
-  description_en: string;
-  service_group_en: string;
   duration_minutes: number;
-  price_cents: number | null;
-  service_group: string;
-  priority_room: string;
+  price: number | null;
+  category: string;
   is_active: boolean;
   is_online_bookable: boolean;
 };
@@ -34,38 +30,22 @@ function toEditable(service: ServiceItem): EditableService {
     id: service.id,
     name: service.name,
     description: service.description ?? "",
-    name_en: service.name_en ?? "",
-    description_en: service.description_en ?? "",
-    service_group_en: service.service_group_en ?? "",
     duration_minutes: service.duration_minutes,
-    price_cents: service.price_cents,
-    service_group: service.service_group || "",
-    priority_room: service.priority_room || "",
+    price: service.price,
+    category: service.category ?? "",
     is_active: service.is_active,
     is_online_bookable: service.is_online_bookable,
   };
 }
 
-function priceCentsToInputValue(priceCents: number | null) {
-  if (priceCents == null) return "";
-  return String(Math.round(priceCents / 100));
-}
-
-function priceInputToCents(value: string) {
+function parsePrice(value: string) {
   if (!value.trim()) return null;
-
-  const parsed = Number(value);
-
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return null;
-  }
-
-  return Math.round(parsed * 100);
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export default function ServicesTable({ services }: Props) {
   const initialItems = useMemo(() => services.map(toEditable), [services]);
-
   const [items, setItems] = useState<EditableService[]>(initialItems);
   const [pending, startTransition] = useTransition();
 
@@ -81,10 +61,6 @@ export default function ServicesTable({ services }: Props) {
     );
   }
 
-  function resetChanges() {
-    setItems(initialItems);
-  }
-
   function saveChanges() {
     startTransition(async () => {
       const result = await bulkUpdateServicesAction(
@@ -92,23 +68,15 @@ export default function ServicesTable({ services }: Props) {
           id: item.id,
           name: item.name,
           description: item.description,
-          name_en: item.name_en,
-          description_en: item.description_en,
-          service_group_en: item.service_group_en,
           duration_minutes: Number(item.duration_minutes),
-          price_cents: item.price_cents,
-          service_group: item.service_group || null,
-          priority_room: item.priority_room || null,
+          price: item.price,
+          category: item.category || null,
           is_active: item.is_active,
           is_online_bookable: item.is_online_bookable,
         })),
       );
 
-      if (result.ok) {
-        toast.success(result.message);
-      } else {
-        toast.error(result.message);
-      }
+      result.ok ? toast.success(result.message) : toast.error(result.message);
     });
   }
 
@@ -123,7 +91,7 @@ export default function ServicesTable({ services }: Props) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={resetChanges}
+            onClick={() => setItems(initialItems)}
             disabled={pending || !hasChanges}
             className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
           >
@@ -150,10 +118,9 @@ export default function ServicesTable({ services }: Props) {
               <th className="px-4 py-3 font-semibold">Opis</th>
               <th className="px-4 py-3 font-semibold">Trajanje</th>
               <th className="px-4 py-3 font-semibold">Cijena (€)</th>
-              <th className="px-4 py-3 font-semibold">Grupa</th>
-              <th className="px-4 py-3 font-semibold">Prioritetna soba</th>
+              <th className="px-4 py-3 font-semibold">Kategorija</th>
               <th className="px-4 py-3 font-semibold">Aktivno</th>
-              <th className="px-4 py-3 font-semibold">Online rezervacije</th>
+              <th className="px-4 py-3 font-semibold">Online</th>
               <th className="px-4 py-3 font-semibold">Akcije</th>
             </tr>
           </thead>
@@ -167,13 +134,10 @@ export default function ServicesTable({ services }: Props) {
                 <td className="px-4 py-4">
                   <input
                     value={service.name}
-                    onChange={(e) =>
-                      updateItem(service.id, "name", e.target.value)
-                    }
-                    className="w-full min-w-[220px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
+                    onChange={(e) => updateItem(service.id, "name", e.target.value)}
+                    className="w-full min-w-[220px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none"
                   />
                 </td>
-
                 <td className="px-4 py-4">
                   <textarea
                     value={service.description}
@@ -181,10 +145,9 @@ export default function ServicesTable({ services }: Props) {
                       updateItem(service.id, "description", e.target.value)
                     }
                     rows={2}
-                    className="w-full min-w-[280px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none"
+                    className="w-full min-w-[260px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none"
                   />
                 </td>
-
                 <td className="px-4 py-4">
                   <input
                     type="number"
@@ -197,48 +160,30 @@ export default function ServicesTable({ services }: Props) {
                         Number(e.target.value),
                       )
                     }
-                    className="w-28 rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
+                    className="w-28 rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none"
                   />
                 </td>
-
                 <td className="px-4 py-4">
                   <input
                     type="number"
                     min={0}
-                    step="1"
-                    value={priceCentsToInputValue(service.price_cents)}
+                    step="0.01"
+                    value={service.price ?? ""}
                     onChange={(e) =>
-                      updateItem(
-                        service.id,
-                        "price_cents",
-                        priceInputToCents(e.target.value),
-                      )
+                      updateItem(service.id, "price", parsePrice(e.target.value))
                     }
-                    placeholder="npr. 45"
-                    className="w-32 rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
+                    className="w-28 rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none"
                   />
                 </td>
-
                 <td className="px-4 py-4">
                   <input
-                    value={service.service_group}
+                    value={service.category}
                     onChange={(e) =>
-                      updateItem(service.id, "service_group", e.target.value)
+                      updateItem(service.id, "category", e.target.value)
                     }
-                    className="w-full min-w-[180px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
+                    className="w-full min-w-[180px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none"
                   />
                 </td>
-
-                <td className="px-4 py-4">
-                  <input
-                    value={service.priority_room}
-                    onChange={(e) =>
-                      updateItem(service.id, "priority_room", e.target.value)
-                    }
-                    className="w-full min-w-[160px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
-                  />
-                </td>
-
                 <td className="px-4 py-4">
                   <button
                     type="button"
@@ -247,19 +192,17 @@ export default function ServicesTable({ services }: Props) {
                     onClick={() =>
                       updateItem(service.id, "is_active", !service.is_active)
                     }
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
+                    className={\`relative inline-flex h-7 w-12 items-center rounded-full transition \${
                       service.is_active ? "bg-app-accent" : "bg-app-soft"
-                    }`}
-                    title={service.is_active ? "Aktivno" : "Neaktivno"}
+                    }\`}
                   >
                     <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                      className={\`inline-block h-5 w-5 transform rounded-full bg-white shadow transition \${
                         service.is_active ? "translate-x-6" : "translate-x-1"
-                      }`}
+                      }\`}
                     />
                   </button>
                 </td>
-
                 <td className="px-4 py-4">
                   <button
                     type="button"
@@ -272,34 +215,26 @@ export default function ServicesTable({ services }: Props) {
                         !service.is_online_bookable,
                       )
                     }
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
+                    className={\`relative inline-flex h-7 w-12 items-center rounded-full transition \${
                       service.is_online_bookable
                         ? "bg-app-accent"
                         : "bg-app-soft"
-                    }`}
-                    title={
-                      service.is_online_bookable
-                        ? "Dostupno za online rezervacije"
-                        : "Nije dostupno za online rezervacije"
-                    }
+                    }\`}
                   >
                     <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                      className={\`inline-block h-5 w-5 transform rounded-full bg-white shadow transition \${
                         service.is_online_bookable
                           ? "translate-x-6"
                           : "translate-x-1"
-                      }`}
+                      }\`}
                     />
                   </button>
                 </td>
-
                 <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <SettingsDeleteButton
-                      label={service.name}
-                      onDelete={deleteServiceAction.bind(null, service.id)}
-                    />
-                  </div>
+                  <SettingsDeleteButton
+                    label={service.name}
+                    onDelete={deleteServiceAction.bind(null, service.id)}
+                  />
                 </td>
               </tr>
             ))}
