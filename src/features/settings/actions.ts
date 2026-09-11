@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit/write-audit-log";
+import { requireAdminForSettings } from "@/lib/page-guards";
 
 export type SettingsActionState = {
   error: string;
@@ -22,6 +23,14 @@ export type EmployeeActionState = {
   success: string;
   values: EmployeeFormValues;
 };
+
+function splitDisplayName(displayName: string) {
+  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts.shift() || displayName.trim(),
+    lastName: parts.length ? parts.join(" ") : null,
+  };
+}
 
 async function requireUser() {
   const supabase = await createClient();
@@ -43,30 +52,31 @@ export async function createServiceAction(
 ): Promise<SettingsActionState> {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const name = String(formData.get("name") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
     const durationMinutes = Number(formData.get("duration_minutes") ?? 0);
-    const priceCentsRaw = String(formData.get("price_cents") ?? "").trim();
-    const priceCents = priceCentsRaw ? Number(priceCentsRaw) : null;
-    const serviceGroup = String(formData.get("service_group") ?? "").trim();
-    const priorityRoom = String(formData.get("priority_room") ?? "").trim();
+    const priceRaw = String(formData.get("price") ?? "").trim();
+    const price = priceRaw ? Number(priceRaw.replace(",", ".")) : null;
+    const category = String(formData.get("category") ?? "").trim();
 
-    if (!name) {
-      return { error: "Naziv usluge je obavezan.", success: "" };
-    }
-
+    if (!name) return { error: "Naziv usluge je obavezan.", success: "" };
     if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
       return { error: "Trajanje mora biti veće od 0.", success: "" };
     }
+    if (price !== null && (!Number.isFinite(price) || price < 0)) {
+      return { error: "Cijena nije ispravna.", success: "" };
+    }
 
     const payload = {
+      organization_id: permissions.organizationId,
       name,
       description: description || null,
       duration_minutes: durationMinutes,
-      price_cents: priceCents,
-      service_group: serviceGroup || null,
-      priority_room: priorityRoom || null,
+      price,
+      currency: "EUR",
+      category: category || null,
       is_active: true,
       is_online_bookable: false,
     };
@@ -77,9 +87,7 @@ export async function createServiceAction(
       .select("id")
       .single();
 
-    if (error) {
-      return { error: error.message, success: "" };
-    }
+    if (error) return { error: error.message, success: "" };
 
     await writeAuditLog({
       action: "service_created",
@@ -91,7 +99,6 @@ export async function createServiceAction(
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/services");
-
     return { error: "", success: "Usluga je dodana." };
   } catch (error) {
     return {
@@ -107,6 +114,7 @@ export async function createRoomAction(
 ): Promise<SettingsActionState> {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const name = String(formData.get("name") ?? "").trim();
 
@@ -115,6 +123,7 @@ export async function createRoomAction(
     }
 
     const payload = {
+      organization_id: permissions.organizationId,
       name,
       is_active: true,
     };
@@ -155,9 +164,10 @@ export async function createEquipmentAction(
 ): Promise<SettingsActionState> {
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
 
     const name = String(formData.get("name") ?? "").trim();
-    const quantity = Number(formData.get("quantity") ?? 0);
+    const quantity = Number(formData.get("quantity_total") ?? 0);
 
     if (!name) {
       return { error: "Naziv opreme je obavezan.", success: "" };
@@ -169,7 +179,8 @@ export async function createEquipmentAction(
 
     const payload = {
       name,
-      quantity,
+      organization_id: permissions.organizationId,
+      quantity_total: quantity,
       is_active: true,
     };
 
