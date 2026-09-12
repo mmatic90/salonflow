@@ -3,9 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
+
+function detectLocale(): AppLocale {
+  if (typeof navigator === "undefined") return "hr";
+  const language = navigator.language.toLowerCase();
+  if (language.startsWith("it")) return "it";
+  if (language.startsWith("en")) return "en";
+  return "hr";
+}
 
 export default function LoginPage() {
   const supabase = createClient();
+  const locale = detectLocale();
+  const t = getDictionary(locale).auth;
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -24,7 +35,7 @@ export default function LoginPage() {
     });
 
     if (error || !data.user) {
-      setErrorMessage("Neispravan email ili lozinka.");
+      setErrorMessage(t.invalidCredentials);
       setLoading(false);
       return;
     }
@@ -38,7 +49,7 @@ export default function LoginPage() {
       .maybeSingle();
 
     if (membershipError) {
-      setErrorMessage("Došlo je do greške pri provjeri salona.");
+      setErrorMessage(t.salonCheckError);
       setLoading(false);
       return;
     }
@@ -51,9 +62,9 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-app-bg px-4">
       <div className="w-full max-w-md rounded-2xl border border-app-soft bg-app-card p-8 shadow-sm">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-app-text">SalonFlow prijava</h1>
+          <h1 className="text-2xl font-bold text-app-text">{t.loginTitle}</h1>
           <p className="mt-2 text-sm text-app-muted">
-            Prijavite se za pristup svom salonu.
+            {t.loginDescription}
           </p>
         </div>
 
@@ -97,7 +108,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-xl bg-app-accent px-4 py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Prijava..." : "Prijavi se"}
+            {loading ? t.signingIn : t.signIn}
           </button>
         </form>
       </div>
