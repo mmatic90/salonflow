@@ -82,7 +82,7 @@ export async function getEmployees(): Promise<EmployeeItem[]> {
     throw new Error("Nije moguće dohvatiti djelatnike.");
   }
 
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row) => ({
     ...row,
     display_name: [row.first_name, row.last_name].filter(Boolean).join(" "),
   })) as EmployeeItem[];
@@ -168,7 +168,7 @@ export async function getEmployeeServiceMappingData() {
   if (mappingsError) throw new Error("Nije moguće dohvatiti mapiranja zaposlenika i usluga.");
 
   return {
-    employees: (employees ?? []).map((row: any) => ({
+    employees: (employees ?? []).map((row) => ({
       ...row,
       display_name: [row.first_name, row.last_name].filter(Boolean).join(" "),
     })),
