@@ -26,6 +26,17 @@ function splitClientName(fullName: string) {
   return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
 }
 
+function waitlistIdFromRequest(request: Request) {
+  const referrer = request.headers.get("referer");
+  if (!referrer) return null;
+
+  try {
+    return new URL(referrer).searchParams.get("waitlistId")?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const permissions = await getCurrentUserPermissions();
@@ -38,6 +49,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const organizationId = permissions.organizationId;
+    const waitlistId = waitlistIdFromRequest(request);
     const appointmentDate = value(body.appointment_date);
     const startTime = value(body.start_time);
     const clientName = value(body.client_name);
@@ -238,6 +250,24 @@ export async function POST(request: Request) {
     if (appointmentServiceError) {
       await supabase.from("appointments").delete().eq("id", appointment.id);
       return NextResponse.json({ error: appointmentServiceError.message }, { status: 400 });
+    }
+
+    if (waitlistId && clientId) {
+      const { error: waitlistError } = await supabase
+        .from("waitlist_entries")
+        .update({
+          status: "booked",
+          booked_appointment_id: appointment.id,
+        })
+        .eq("id", waitlistId)
+        .eq("organization_id", organizationId)
+        .eq("status", "waiting")
+        .eq("client_id", clientId)
+        .eq("service_id", service.id);
+
+      if (waitlistError) {
+        console.error("Waitlist entry could not be closed after booking:", waitlistError.message);
+      }
     }
 
     return NextResponse.json({
