@@ -1560,6 +1560,8 @@ export async function quickUpdateAppointmentStatusAction(
   }
 
   const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const { data: beforeAppointment } = await supabase
     .from("appointments")
@@ -1663,6 +1665,7 @@ export async function deleteAppointmentAction(
   }
 
   const organizationId = permissions.organizationId;
+  const t = getDictionary(permissions.organizationLocale).appointments.actionMessages;
 
   const { data: beforeAppointment } = await supabase
     .from("appointments")
