@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { quickUpdateAppointmentStatusAction } from "@/features/appointments/actions";
 import type { AppointmentStatus } from "@/features/appointments/types";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   appointmentId: string;
   currentStatus: AppointmentStatus;
   compact?: boolean;
@@ -38,9 +40,12 @@ function ActionChip({
 }
 
 export default function AppointmentStatusActions({
+  locale = "hr",
   appointmentId,
   currentStatus,
 }: Props) {
+  const dictionary = getDictionary(locale);
+  const t = dictionary.appointments;
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -68,19 +73,19 @@ export default function AppointmentStatusActions({
   return (
     <div className="flex flex-wrap gap-1">
       <ActionChip
-        label={pending ? "Spremanje..." : "Odrađeno"}
+        label={pending ? t.saving : t.completed}
         className="bg-[#776B5D]"
         disabled={pending}
         onClick={() => updateStatus("completed")}
       />
       <ActionChip
-        label="No-show"
+        label={t.noShow}
         className="bg-[#4B4844]"
         disabled={pending}
         onClick={() => updateStatus("no_show")}
       />
       <ActionChip
-        label="Otkaži"
+        label={t.cancelAppointment}
         className="bg-[#B0A695]"
         disabled={pending}
         onClick={() => updateStatus("cancelled")}
