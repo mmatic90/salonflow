@@ -165,7 +165,7 @@ export default async function EditAppointmentPage({ params }: { params: Params }
     client_phone: nullableString(rawAppointment.client_phone),
     client_email: nullableString(rawAppointment.client_email),
     client_note: nullableString(rawAppointment.notes),
-    internal_note: null,
+    internal_note: nullableString(rawAppointment.internal_notes),
     service_id: appointmentServices[0]?.service_id || asString(rawAppointment.service_id),
     employee_id: asString(rawAppointment.employee_id),
     room_id: asString(rawAppointment.room_id),
