@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
@@ -13,6 +13,9 @@ function detectLocale(): AppLocale {
   return "hr";
 }
 
+const subscribeToLocale = () => () => {};
+const getServerLocale = (): AppLocale => "hr";
+
 function slugify(value: string) {
   return value
     .normalize("NFD")
@@ -24,12 +27,12 @@ function slugify(value: string) {
 }
 
 export default function OnboardingPage() {
-  const [locale, setLocale] = useState<AppLocale>("hr");
+  const locale = useSyncExternalStore(
+    subscribeToLocale,
+    detectLocale,
+    getServerLocale,
+  );
   const t = getDictionary(locale).onboarding;
-
-  useEffect(() => {
-    setLocale(detectLocale());
-  }, []);
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [salonName, setSalonName] = useState("");
