@@ -14,7 +14,7 @@ import {
   Users,
   UserCircle2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import LogoutButton from "@/components/logout-button";
 import OnlineBookingBadge from "@/components/online-booking-badge";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
@@ -46,6 +46,9 @@ type NavDefinition = {
   roles: AppRole[];
 };
 
+const SIDEBAR_STORAGE_KEY = "dashboard-sidebar-collapsed";
+const SIDEBAR_CHANGE_EVENT = "salonflow-sidebar-change";
+
 const navDefinitions: NavDefinition[] = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, roles: ["admin", "employee"] },
   { href: "/dashboard/online-bookings", key: "onlineBookings", icon: BellRing, roles: ["admin", "employee"] },
@@ -74,11 +77,33 @@ function getInitials(name: string) {
     .join("") || "SF";
 }
 
+function subscribeToSidebarPreference(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener(SIDEBAR_CHANGE_EVENT, listener);
+
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener(SIDEBAR_CHANGE_EVENT, listener);
+  };
+}
+
+function getSidebarPreferenceSnapshot() {
+  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+}
+
+function getSidebarPreferenceServerSnapshot() {
+  return false;
+}
+
 export default function DashboardSidebar({ role, displayName, organizationName, locale }: Props) {
   const pathname = usePathname();
   const dictionary = getDictionary(locale);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const desktopCollapsed = useSyncExternalStore(
+    subscribeToSidebarPreference,
+    getSidebarPreferenceSnapshot,
+    getSidebarPreferenceServerSnapshot,
+  );
 
   const navItems = useMemo(
     () =>
@@ -94,17 +119,10 @@ export default function DashboardSidebar({ role, displayName, organizationName, 
     [dictionary, role],
   );
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem("dashboard-sidebar-collapsed");
-    if (saved === "true") setDesktopCollapsed(true);
-  }, []);
-
   function toggleDesktop() {
-    setDesktopCollapsed((prev) => {
-      const next = !prev;
-      window.localStorage.setItem("dashboard-sidebar-collapsed", String(next));
-      return next;
-    });
+    const next = !desktopCollapsed;
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+    window.dispatchEvent(new Event(SIDEBAR_CHANGE_EVENT));
   }
 
   return (
