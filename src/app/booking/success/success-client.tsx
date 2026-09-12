@@ -5,13 +5,14 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 
-type Lang = "hr" | "en";
+type Lang = "hr" | "en" | "it";
 
 export type BookingSuccessClientProps = {
   lang: string | null;
   date: string | null;
   time: string | null;
   service: string | null;
+  organizationSlug?: string | null;
 };
 
 const content = {
@@ -35,9 +36,21 @@ const content = {
     service: "Service",
     date: "Date",
     time: "Time",
-    redirect: "You will be redirected to the homepage in 10 seconds.",
-    home: "Back to homepage",
+    redirect: "You will be redirected in 10 seconds.",
+    home: "Back",
     newBooking: "New booking",
+  },
+  it: {
+    status: "Richiesta inviata",
+    title: "Grazie per la prenotazione ✨",
+    text: "La tua richiesta è stata inviata. Il salone verificherà la disponibilità e ti invierà una conferma o un aggiornamento.",
+    details: "Dettagli della richiesta",
+    service: "Servizio",
+    date: "Data",
+    time: "Ora",
+    redirect: "Verrai reindirizzato tra 10 secondi.",
+    home: "Indietro",
+    newBooking: "Nuova prenotazione",
   },
 } satisfies Record<
   Lang,
@@ -56,7 +69,7 @@ const content = {
 >;
 
 function getLang(value: string | null): Lang {
-  return value === "en" ? "en" : "hr";
+  return value === "en" || value === "it" ? value : "hr";
 }
 
 function formatDate(date: string | null, lang: Lang): string {
@@ -70,7 +83,9 @@ function formatDate(date: string | null, lang: Lang): string {
     return date;
   }
 
-  return lang === "en" ? `${day}/${month}/${year}` : `${day}.${month}.${year}.`;
+  return lang === "hr"
+    ? `${day}.${month}.${year}.`
+    : `${day}/${month}/${year}`;
 }
 
 export default function BookingSuccessClient({
@@ -78,6 +93,7 @@ export default function BookingSuccessClient({
   date,
   time,
   service,
+  organizationSlug,
 }: BookingSuccessClientProps) {
   const router = useRouter();
 
@@ -86,13 +102,17 @@ export default function BookingSuccessClient({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      router.push(`/?lang=${language}`);
+      router.push(
+        organizationSlug
+          ? `/booking/${organizationSlug}?lang=${language}`
+          : `/?lang=${language}`,
+      );
     }, 10000);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [router, language]);
+  }, [router, language, organizationSlug]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f8f3ef] px-4 py-10 text-[#2f2723]">
@@ -144,14 +164,22 @@ export default function BookingSuccessClient({
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link
-            href={`/?lang=${language}`}
+            href={
+              organizationSlug
+                ? `/booking/${organizationSlug}?lang=${language}`
+                : `/?lang=${language}`
+            }
             className="rounded-xl bg-[#2f2723] px-6 py-3 font-semibold text-white transition hover:bg-[#4a3932]"
           >
             {t.home}
           </Link>
 
           <Link
-            href={`/booking?lang=${language}`}
+            href={
+              organizationSlug
+                ? `/booking/${organizationSlug}?lang=${language}`
+                : `/?lang=${language}`
+            }
             className="rounded-xl border border-[#eadbd2] px-6 py-3 font-semibold text-[#2f2723] transition hover:bg-[#f8f3ef]"
           >
             {t.newBooking}
