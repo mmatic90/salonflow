@@ -19,6 +19,7 @@ import {
 } from "@/lib/twilio/sms";
 import { writeAuditLog } from "@/lib/audit/write-audit-log";
 import { getCurrentUserPermissions } from "@/lib/permissions";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 export type AppointmentFormValues = {
   appointment_date: string;
@@ -578,6 +579,7 @@ async function cancelExistingReminderIfAny(appointmentId: string) {
 }
 
 async function resolveClientId(args: {
+  locale: AppLocale;
   organizationId: string;
   clientId: string;
   clientName: string;
@@ -588,6 +590,7 @@ async function resolveClientId(args: {
   const supabase = await createClient();
 
   const {
+    locale,
     organizationId,
     clientId,
     clientName,
@@ -596,6 +599,7 @@ async function resolveClientId(args: {
     clientNote,
   } = args;
 
+  const t = getDictionary(locale).appointments.actionMessages;
   const { firstName, lastName } = splitClientName(clientName);
   const clientPayload = {
     organization_id: organizationId,
@@ -625,7 +629,7 @@ async function resolveClientId(args: {
     if (!updatedClient) {
       return {
         ok: false as const,
-        error: "Odabrani klijent nije pronađen u ovoj organizaciji.",
+        error: t.clientNotFound,
       };
     }
 
@@ -690,7 +694,7 @@ async function resolveClientId(args: {
   if (insertError || !createdClient) {
     return {
       ok: false as const,
-      error: insertError?.message || "Greška pri kreiranju klijenta.",
+      error: insertError?.message || t.clientCreateError,
     };
   }
 
@@ -701,6 +705,7 @@ async function resolveClientId(args: {
 }
 
 async function validateAppointmentRequest(args: {
+  locale: AppLocale;
   organizationId: string;
   appointmentId?: string;
   appointmentDate: string;
@@ -713,6 +718,7 @@ async function validateAppointmentRequest(args: {
   const supabase = await createClient();
 
   const {
+    locale,
     organizationId,
     appointmentId,
     appointmentDate,
@@ -723,24 +729,26 @@ async function validateAppointmentRequest(args: {
     status,
   } = args;
 
+  const t = getDictionary(locale).appointments.actionMessages;
+
   if (!appointmentDate) {
-    return { ok: false as const, message: "Datum je obavezan." };
+    return { ok: false as const, message: t.dateRequired };
   }
 
   if (!startTime) {
-    return { ok: false as const, message: "Vrijeme početka je obavezno." };
+    return { ok: false as const, message: t.startRequired };
   }
 
   if (!employeeId) {
-    return { ok: false as const, message: "Zaposlenik je obavezan." };
+    return { ok: false as const, message: t.employeeRequired };
   }
 
   if (!roomId) {
-    return { ok: false as const, message: "Soba je obavezna." };
+    return { ok: false as const, message: t.roomRequired };
   }
 
   if (items.length === 0) {
-    return { ok: false as const, message: "Potrebna je barem jedna usluga." };
+    return { ok: false as const, message: t.serviceRequired };
   }
 
   const totalDuration = items.reduce(
@@ -751,7 +759,7 @@ async function validateAppointmentRequest(args: {
   if (totalDuration <= 0) {
     return {
       ok: false as const,
-      message: "Ukupno trajanje mora biti veće od 0.",
+      message: t.durationPositive,
     };
   }
 
@@ -802,7 +810,7 @@ async function validateAppointmentRequest(args: {
   if (!salonDay || salonDay.is_closed) {
     return {
       ok: false as const,
-      message: "Salon je zatvoren na odabrani datum.",
+      message: t.salonClosed,
     };
   }
 
@@ -812,7 +820,7 @@ async function validateAppointmentRequest(args: {
   if (startMinutes < salonOpen || endMinutes > salonClose) {
     return {
       ok: false as const,
-      message: "Termin mora biti unutar radnog vremena salona.",
+      message: t.outsideSalonHours,
     };
   }
 
@@ -825,7 +833,7 @@ async function validateAppointmentRequest(args: {
   ) {
     return {
       ok: false as const,
-      message: "Odabrani zaposlenik ne radi na odabrani datum.",
+      message: t.employeeNotWorking,
     };
   }
 
@@ -857,7 +865,7 @@ async function validateAppointmentRequest(args: {
   if (employeeConflict) {
     return {
       ok: false as const,
-      message: "Zaposlenik već ima termin u odabranom vremenu.",
+      message: t.employeeConflict,
     };
   }
 
@@ -875,7 +883,7 @@ async function validateAppointmentRequest(args: {
   if (roomConflict) {
     return {
       ok: false as const,
-      message: "Soba je već zauzeta u odabranom vremenu.",
+      message: t.roomConflict,
     };
   }
 
@@ -899,8 +907,10 @@ async function validateAppointmentRequest(args: {
 async function getCurrentAppointmentStatus(
   appointmentId: string,
   organizationId: string,
+  locale: AppLocale,
 ) {
   const supabase = await createClient();
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const { data, error } = await supabase
     .from("appointments")
@@ -919,7 +929,7 @@ async function getCurrentAppointmentStatus(
   if (!data || !isValidAppointmentStatus(data.status)) {
     return {
       ok: false as const,
-      message: "Termin nije pronađen.",
+      message: t.appointmentNotFound,
     };
   }
 
@@ -942,16 +952,18 @@ export async function createAppointmentAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "Niste prijavljeni.", values };
+    return { error: getDictionary("hr").appointments.actionMessages.notSignedIn, values };
   }
 
   const permissions = await getCurrentUserPermissions();
 
   if (!permissions) {
-    return { error: "Nemate pristup organizaciji.", values };
+    return { error: getDictionary("hr").appointments.actionMessages.noOrganization, values };
   }
 
   const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const clientPhone = normalizeNullableText(formData.get("client_phone"));
   const clientEmail = normalizeNullableText(formData.get("client_email"));
@@ -959,30 +971,31 @@ export async function createAppointmentAction(
   const internalNote = normalizeNullableText(formData.get("internal_note"));
 
   if (!values.appointment_date) {
-    return { error: "Datum je obavezan.", values };
+    return { error: t.dateRequired, values };
   }
 
   if (!values.start_time) {
-    return { error: "Vrijeme početka je obavezno.", values };
+    return { error: t.startRequired, values };
   }
 
   if (!values.client_name) {
-    return { error: "Ime klijenta je obavezno.", values };
+    return { error: t.clientRequired, values };
   }
 
   if (!values.employee_id) {
-    return { error: "Zaposlenik je obavezan.", values };
+    return { error: t.employeeRequired, values };
   }
 
   if (!values.room_id) {
-    return { error: "Soba je obavezna.", values };
+    return { error: t.roomRequired, values };
   }
 
   if (!isValidAppointmentStatus(values.status)) {
-    return { error: "Status termina nije valjan.", values };
+    return { error: t.invalidStatus, values };
   }
 
   const resolvedClient = await resolveClientId({
+    locale,
     organizationId,
     clientId: values.client_id,
     clientName: values.client_name,
@@ -1013,12 +1026,13 @@ export async function createAppointmentAction(
 
   if (!serviceValidation.ok) {
     return {
-      error: serviceValidation.message ?? "Greška validacije usluga.",
+      error: serviceValidation.message ?? t.serviceValidationError,
       values,
     };
   }
 
   const appointmentValidation = await validateAppointmentRequest({
+    locale,
     organizationId,
     appointmentDate: values.appointment_date,
     startTime: values.start_time,
@@ -1079,7 +1093,7 @@ export async function createAppointmentAction(
 
   if (appointmentError || !appointment) {
     return {
-      error: appointmentError?.message || "Greška pri spremanju termina.",
+      error: appointmentError?.message || t.saveError,
       values,
     };
   }
@@ -1171,13 +1185,13 @@ export async function updateAppointmentAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "Niste prijavljeni.", values };
+    return { error: getDictionary("hr").appointments.actionMessages.notSignedIn, values };
   }
 
   const permissions = await getCurrentUserPermissions();
 
   if (!permissions) {
-    return { error: "Nemate pristup organizaciji.", values };
+    return { error: getDictionary("hr").appointments.actionMessages.noOrganization, values };
   }
 
   const organizationId = permissions.organizationId;
@@ -1188,27 +1202,27 @@ export async function updateAppointmentAction(
   const internalNote = normalizeNullableText(formData.get("internal_note"));
 
   if (!values.appointment_date) {
-    return { error: "Datum je obavezan.", values };
+    return { error: t.dateRequired, values };
   }
 
   if (!values.start_time) {
-    return { error: "Vrijeme početka je obavezno.", values };
+    return { error: t.startRequired, values };
   }
 
   if (!values.client_name) {
-    return { error: "Ime klijenta je obavezno.", values };
+    return { error: t.clientRequired, values };
   }
 
   if (!values.employee_id) {
-    return { error: "Zaposlenik je obavezan.", values };
+    return { error: t.employeeRequired, values };
   }
 
   if (!values.room_id) {
-    return { error: "Soba je obavezna.", values };
+    return { error: t.roomRequired, values };
   }
 
   if (!isValidAppointmentStatus(values.status)) {
-    return { error: "Status termina nije valjan.", values };
+    return { error: t.invalidStatus, values };
   }
 
   const { data: beforeAppointment } = await supabase
@@ -1221,6 +1235,7 @@ export async function updateAppointmentAction(
   const currentStatusResult = await getCurrentAppointmentStatus(
     appointmentId,
     organizationId,
+    locale,
   );
 
   if (!currentStatusResult.ok) {
@@ -1231,12 +1246,13 @@ export async function updateAppointmentAction(
     !canTransitionAppointmentStatus(currentStatusResult.status, values.status)
   ) {
     return {
-      error: "Promjena statusa termina nije dozvoljena.",
+      error: t.transitionNotAllowed,
       values,
     };
   }
 
   const resolvedClient = await resolveClientId({
+    locale,
     organizationId,
     clientId: values.client_id,
     clientName: values.client_name,
@@ -1267,12 +1283,13 @@ export async function updateAppointmentAction(
 
   if (!serviceValidation.ok) {
     return {
-      error: serviceValidation.message ?? "Greška validacije usluga.",
+      error: serviceValidation.message ?? t.serviceValidationError,
       values,
     };
   }
 
   const appointmentValidation = await validateAppointmentRequest({
+    locale,
     organizationId,
     appointmentId,
     appointmentDate: values.appointment_date,
@@ -1449,16 +1466,18 @@ export async function cancelAppointmentAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    throw new Error("Niste prijavljeni.");
+    throw new Error(getDictionary("hr").appointments.actionMessages.notSignedIn);
   }
 
   const permissions = await getCurrentUserPermissions();
 
   if (!permissions) {
-    throw new Error("Nemate pristup organizaciji.");
+    throw new Error(getDictionary("hr").appointments.actionMessages.noOrganization);
   }
 
   const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const { data: beforeAppointment } = await supabase
     .from("appointments")
@@ -1470,6 +1489,7 @@ export async function cancelAppointmentAction(
   const currentStatusResult = await getCurrentAppointmentStatus(
     appointmentId,
     organizationId,
+    locale,
   );
 
   if (!currentStatusResult.ok) {
@@ -1479,7 +1499,7 @@ export async function cancelAppointmentAction(
   if (
     !canTransitionAppointmentStatus(currentStatusResult.status, "cancelled")
   ) {
-    throw new Error("Otkazivanje ovog termina nije dozvoljeno.");
+    throw new Error(t.cancellationNotAllowed);
   }
 
   await cancelExistingReminderIfAny(appointmentId);
@@ -1526,7 +1546,7 @@ export async function quickUpdateAppointmentStatusAction(
   if (userError || !user) {
     return {
       ok: false,
-      message: "Niste prijavljeni.",
+      message: getDictionary("hr").appointments.actionMessages.notSignedIn,
     };
   }
 
@@ -1535,7 +1555,7 @@ export async function quickUpdateAppointmentStatusAction(
   if (!permissions) {
     return {
       ok: false,
-      message: "Nemate pristup organizaciji.",
+      message: getDictionary("hr").appointments.actionMessages.noOrganization,
     };
   }
 
@@ -1551,6 +1571,7 @@ export async function quickUpdateAppointmentStatusAction(
   const currentStatusResult = await getCurrentAppointmentStatus(
     appointmentId,
     organizationId,
+    locale,
   );
 
   if (!currentStatusResult.ok) {
@@ -1563,7 +1584,7 @@ export async function quickUpdateAppointmentStatusAction(
   if (!canTransitionAppointmentStatus(currentStatusResult.status, status)) {
     return {
       ok: false,
-      message: "Promjena statusa nije dozvoljena.",
+      message: t.statusChangeNotAllowed,
     };
   }
 
@@ -1607,10 +1628,10 @@ export async function quickUpdateAppointmentStatusAction(
     ok: true,
     message:
       status === "completed"
-        ? "Termin je označen kao odrađen."
+        ? t.markedCompleted
         : status === "no_show"
-          ? "Termin je označen kao no-show."
-          : "Termin je označen kao otkazan.",
+          ? t.markedNoShow
+          : t.markedCancelled,
   };
 }
 
@@ -1628,7 +1649,7 @@ export async function deleteAppointmentAction(
   if (userError || !user) {
     return {
       ok: false,
-      message: "Niste prijavljeni.",
+      message: getDictionary("hr").appointments.actionMessages.notSignedIn,
     };
   }
 
@@ -1637,7 +1658,7 @@ export async function deleteAppointmentAction(
   if (!permissions) {
     return {
       ok: false,
-      message: "Nemate pristup organizaciji.",
+      message: getDictionary("hr").appointments.actionMessages.noOrganization,
     };
   }
 
@@ -1684,6 +1705,6 @@ export async function deleteAppointmentAction(
 
   return {
     ok: true,
-    message: "Termin je obrisan.",
+    message: t.deleted,
   };
 }
