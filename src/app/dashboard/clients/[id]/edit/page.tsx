@@ -38,7 +38,6 @@ export default async function EditClientPage({ params }: { params: Params }) {
             phone: client.phone ?? "",
             email: client.email ?? "",
             note: client.note ?? "",
-            internal_note: client.internal_note ?? "",
           }}
         />
       </div>
