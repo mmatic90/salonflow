@@ -3,7 +3,7 @@ import { requireAdminForSettings } from "@/lib/page-guards";
 import PageShell from "@/components/page-shell";
 import PageHeader from "@/components/page-header";
 import PageSection from "@/components/page-section";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 function SettingsCard({
   href,
@@ -25,18 +25,39 @@ function SettingsCard({
   );
 }
 
+const groupLabels: Record<
+  AppLocale,
+  { essentials: string; resources: string; advanced: string }
+> = {
+  hr: {
+    essentials: "Osnovne postavke salona",
+    resources: "Resursi i pravila rezervacije",
+    advanced: "Napredno",
+  },
+  en: {
+    essentials: "Salon essentials",
+    resources: "Resources and booking rules",
+    advanced: "Advanced",
+  },
+  it: {
+    essentials: "Impostazioni principali del salone",
+    resources: "Risorse e regole di prenotazione",
+    advanced: "Avanzate",
+  },
+};
+
 export default async function SettingsPage() {
   const permissions = await requireAdminForSettings();
-  const t = getDictionary(permissions.organizationLocale).settings;
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.settings;
+  const scheduleT = dictionary.schedule;
+  const groups = groupLabels[permissions.organizationLocale];
 
   return (
     <PageShell maxWidth="max-w-7xl">
-      <PageHeader
-        title={t.title}
-        description={t.description}
-      />
+      <PageHeader title={t.title} description={t.description} />
 
-      <PageSection title={t.modules}>
+      <PageSection title={groups.essentials}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SettingsCard
             href="/dashboard/settings/appearance"
@@ -50,6 +71,28 @@ export default async function SettingsPage() {
             description={t.services.moduleDescription}
           />
 
+          <SettingsCard
+            href="/dashboard/settings/employees"
+            title={t.employees.title}
+            description={t.employees.moduleDescription}
+          />
+
+          <SettingsCard
+            href="/dashboard/settings/salon-hours"
+            title={t.salonHours.title}
+            description={t.salonHours.moduleDescription}
+          />
+
+          <SettingsCard
+            href="/dashboard/schedule"
+            title={scheduleT.title}
+            description={scheduleT.description}
+          />
+        </div>
+      </PageSection>
+
+      <PageSection title={groups.resources}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SettingsCard
             href="/dashboard/settings/rooms"
             title={t.rooms.title}
@@ -79,19 +122,11 @@ export default async function SettingsPage() {
             title={t.serviceEquipmentTitle}
             description={t.serviceEquipmentDescription}
           />
+        </div>
+      </PageSection>
 
-          <SettingsCard
-            href="/dashboard/settings/salon-hours"
-            title={t.salonHours.title}
-            description={t.salonHours.moduleDescription}
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/employees"
-            title={t.employees.title}
-            description={t.employees.moduleDescription}
-          />
-
+      <PageSection title={groups.advanced}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SettingsCard
             href="/dashboard/settings/audit-log"
             title={t.auditLogTitle}
