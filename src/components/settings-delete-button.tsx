@@ -2,6 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import ConfirmActionButton from "@/components/confirm-action-button";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type DeleteResult = {
   ok: boolean;
@@ -9,17 +10,19 @@ type DeleteResult = {
 };
 
 type Props = {
+  locale?: AppLocale;
   label: string;
   onDelete: () => Promise<DeleteResult>;
 };
 
-export default function SettingsDeleteButton({ label, onDelete }: Props) {
+export default function SettingsDeleteButton({ locale = "hr", label, onDelete }: Props) {
+  const t = getDictionary(locale).deleteConfirm;
   return (
     <ConfirmActionButton
-      title="Obrisati zapis?"
-      description={`Jesi li siguran da želiš obrisati: ${label}? Ova radnja se ne može lako vratiti.`}
-      confirmLabel="Obriši"
-      cancelLabel="Odustani"
+      title={t.title}
+      description={`${t.descriptionPrefix} ${label}? ${t.descriptionSuffix}`}
+      confirmLabel={t.confirm}
+      cancelLabel={t.cancel}
       action={onDelete}
       destructive
       trigger={
