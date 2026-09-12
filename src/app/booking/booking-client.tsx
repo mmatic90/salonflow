@@ -390,7 +390,7 @@ export default function BookingClient({
         id: data.requestId,
         date: selectedDate,
         time: selectedSlot.start_time,
-        service: getServiceName(selectedService, lang),
+        service: getServiceName(selectedService),
       });
 
       router.push(`/booking/${organizationSlug}/success?${params.toString()}`);
@@ -517,7 +517,7 @@ export default function BookingClient({
 
           <div className="mb-8 rounded-2xl border border-[#eadbd2] bg-[#f8f3ef] p-5">
             <h2 className="text-2xl font-semibold">
-              {getServiceName(selectedService, lang)}
+              {getServiceName(selectedService)}
             </h2>
 
             {selectedService.description ? (
