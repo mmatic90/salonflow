@@ -59,7 +59,7 @@ export async function getOverdueScheduledAppointments(organizationId: string) {
 
   const now = Date.now();
 
-  const normalized: OverdueAppointmentItem[] = (data ?? []).map((item: any) => {
+  const normalized: OverdueAppointmentItem[] = (data ?? []).map((item) => {
     const services = Array.isArray(item.appointment_services)
       ? [...item.appointment_services].sort(
           (a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
