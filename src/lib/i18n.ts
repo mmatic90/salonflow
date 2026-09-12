@@ -274,7 +274,29 @@ const dictionaries = {
       cancel: "Odustani"
     },
     settings: {
-      title: "Postavke",
+      actionMessages: {
+        notSignedIn: "Niste prijavljeni.",
+        serviceNameRequired: "Naziv usluge je obavezan.",
+        durationPositive: "Trajanje mora biti veće od 0.",
+        invalidPrice: "Cijena nije ispravna.",
+        serviceAdded: "Usluga je dodana.",
+        roomNameRequired: "Naziv sobe je obavezan.",
+        roomAdded: "Soba je dodana.",
+        equipmentNameRequired: "Naziv opreme je obavezan.",
+        quantityPositive: "Količina mora biti veća od 0.",
+        equipmentAdded: "Oprema je dodana.",
+        genericError: "Došlo je do greške.",
+        serviceDeleteBlocked: "Uslugu nije moguće obrisati jer je već povezana s drugim podacima ili se koristi u sustavu.",
+        serviceDeleted: "Usluga je obrisana.",
+        serviceDeleteError: "Došlo je do greške prilikom brisanja usluge.",
+        roomDeleteBlocked: "Sobu nije moguće obrisati jer je već povezana s drugim podacima ili se koristi u sustavu.",
+        roomDeleted: "Soba je obrisana.",
+        roomDeleteError: "Došlo je do greške prilikom brisanja sobe.",
+        equipmentDeleteBlocked: "Opremu nije moguće obrisati jer je već povezana s drugim podacima ili se koristi u sustavu.",
+        equipmentDeleted: "Oprema je obrisana.",
+        equipmentDeleteError: "Došlo je do greške prilikom brisanja opreme.",
+        saveError: "Došlo je do greške pri spremanju."
+      },      title: "Postavke",
       description: "Upravljanje osnovnim podacima salona.",
       modules: "Moduli postavki",
       back: "Natrag",
@@ -551,7 +573,11 @@ const dictionaries = {
       appointmentsSuffix: "termina"
     },
     clients: {
-      badge: "Mini CRM",
+      actionMessages: {
+        nameRequired: "Ime klijenta je obavezno.",
+        saveError: "Nije moguće spremiti klijenta.",
+        removed: "Klijent je uklonjen s liste."
+      },      badge: "Mini CRM",
       title: "Klijenti",
       intro: "Pregled kontakata, aktivnosti i povijesti klijenata na jednom mjestu.",
       newClient: "Novi klijent",
@@ -1098,7 +1124,29 @@ const dictionaries = {
       cancel: "Cancel"
     },
     settings: {
-      title: "Settings",
+      actionMessages: {
+        notSignedIn: "You are not signed in.",
+        serviceNameRequired: "Service name is required.",
+        durationPositive: "Duration must be greater than 0.",
+        invalidPrice: "Invalid price.",
+        serviceAdded: "Service added.",
+        roomNameRequired: "Room name is required.",
+        roomAdded: "Room added.",
+        equipmentNameRequired: "Equipment name is required.",
+        quantityPositive: "Quantity must be greater than 0.",
+        equipmentAdded: "Equipment added.",
+        genericError: "An error occurred.",
+        serviceDeleteBlocked: "The service cannot be deleted because it is linked to other data or is currently in use.",
+        serviceDeleted: "Service deleted.",
+        serviceDeleteError: "An error occurred while deleting the service.",
+        roomDeleteBlocked: "The room cannot be deleted because it is linked to other data or is currently in use.",
+        roomDeleted: "Room deleted.",
+        roomDeleteError: "An error occurred while deleting the room.",
+        equipmentDeleteBlocked: "The equipment cannot be deleted because it is linked to other data or is currently in use.",
+        equipmentDeleted: "Equipment deleted.",
+        equipmentDeleteError: "An error occurred while deleting the equipment.",
+        saveError: "An error occurred while saving."
+      },      title: "Settings",
       description: "Manage the salon's core data.",
       modules: "Settings modules",
       back: "Back",
@@ -1375,7 +1423,11 @@ const dictionaries = {
       appointmentsSuffix: "appointments"
     },
     clients: {
-      badge: "Mini CRM",
+      actionMessages: {
+        nameRequired: "Client name is required.",
+        saveError: "Unable to save client.",
+        removed: "Client removed from the list."
+      },      badge: "Mini CRM",
       title: "Clients",
       intro: "Contacts, activity and client history in one place.",
       newClient: "New client",
@@ -1922,7 +1974,29 @@ const dictionaries = {
       cancel: "Annulla"
     },
     settings: {
-      title: "Impostazioni",
+      actionMessages: {
+        notSignedIn: "Non hai effettuato l'accesso.",
+        serviceNameRequired: "Il nome del servizio è obbligatorio.",
+        durationPositive: "La durata deve essere maggiore di 0.",
+        invalidPrice: "Prezzo non valido.",
+        serviceAdded: "Servizio aggiunto.",
+        roomNameRequired: "Il nome della stanza è obbligatorio.",
+        roomAdded: "Stanza aggiunta.",
+        equipmentNameRequired: "Il nome dell'attrezzatura è obbligatorio.",
+        quantityPositive: "La quantità deve essere maggiore di 0.",
+        equipmentAdded: "Attrezzatura aggiunta.",
+        genericError: "Si è verificato un errore.",
+        serviceDeleteBlocked: "Il servizio non può essere eliminato perché è collegato ad altri dati o è attualmente in uso.",
+        serviceDeleted: "Servizio eliminato.",
+        serviceDeleteError: "Si è verificato un errore durante l'eliminazione del servizio.",
+        roomDeleteBlocked: "La stanza non può essere eliminata perché è collegata ad altri dati o è attualmente in uso.",
+        roomDeleted: "Stanza eliminata.",
+        roomDeleteError: "Si è verificato un errore durante l'eliminazione della stanza.",
+        equipmentDeleteBlocked: "L'attrezzatura non può essere eliminata perché è collegata ad altri dati o è attualmente in uso.",
+        equipmentDeleted: "Attrezzatura eliminata.",
+        equipmentDeleteError: "Si è verificato un errore durante l'eliminazione dell'attrezzatura.",
+        saveError: "Si è verificato un errore durante il salvataggio."
+      },      title: "Impostazioni",
       description: "Gestisci i dati principali del salone.",
       modules: "Moduli impostazioni",
       back: "Indietro",
@@ -2199,7 +2273,11 @@ const dictionaries = {
       appointmentsSuffix: "appuntamenti"
     },
     clients: {
-      badge: "Mini CRM",
+      actionMessages: {
+        nameRequired: "Il nome del cliente è obbligatorio.",
+        saveError: "Impossibile salvare il cliente.",
+        removed: "Cliente rimosso dall'elenco."
+      },      badge: "Mini CRM",
       title: "Clienti",
       intro: "Contatti, attività e storico clienti in un unico posto.",
       newClient: "Nuovo cliente",
