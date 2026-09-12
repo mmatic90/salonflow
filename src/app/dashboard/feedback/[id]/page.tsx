@@ -7,13 +7,7 @@ import {
   getFeedbackById,
 } from "@/features/feedback/queries";
 import FeedbackAdminForm from "@/features/feedback/components/feedback-admin-form";
-
-const typeLabels: Record<string, string> = {
-  bug: "Greška",
-  improvement: "Poboljšanje",
-  idea: "Ideja",
-  question: "Pitanje",
-};
+import { getDictionary } from "@/lib/i18n";
 
 export default async function FeedbackDetailPage({
   params,
@@ -22,6 +16,7 @@ export default async function FeedbackDetailPage({
 }) {
   const permissions = await getCurrentUserPermissions();
   if (!permissions?.isSystemDeveloper) notFound();
+  const t = getDictionary(permissions.organizationLocale).developerFeedback;
 
   const { id } = await params;
   const feedback = await getFeedbackById(id);
@@ -49,16 +44,16 @@ export default async function FeedbackDetailPage({
         href="/dashboard/feedback"
         className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-app-muted transition hover:text-app-text"
       >
-        <ArrowLeft className="h-4 w-4" /> Povratak na feedback
+        <ArrowLeft className="h-4 w-4" /> {t.backToFeedback}
       </Link>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-6">
           <section className="rounded-3xl border border-app-soft bg-app-card p-6 shadow-sm">
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide text-app-muted">
-              <span>{typeLabels[feedback.type] ?? feedback.type}</span>
+              <span>{t.types[feedback.type as keyof typeof t.types] ?? feedback.type}</span>
               <span>•</span><span>{feedback.priority}</span><span>•</span>
-              <span>{new Intl.DateTimeFormat("hr-HR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(feedback.created_at))}</span>
+              <span>{new Intl.DateTimeFormat(permissions.organizationLocale === "en" ? "en-GB" : permissions.organizationLocale === "it" ? "it-IT" : "hr-HR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(feedback.created_at))}</span>
             </div>
             <h1 className="mt-4 text-3xl font-bold text-app-text">{feedback.title}</h1>
             <p className="mt-5 whitespace-pre-wrap text-sm leading-7 text-app-text">{feedback.description}</p>
@@ -66,39 +61,39 @@ export default async function FeedbackDetailPage({
               href={nearbyAuditHref}
               className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-app-text px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
             >
-              <Search className="h-4 w-4" /> Prikaži aktivnosti ±10 minuta
+              <Search className="h-4 w-4" /> {t.showNearbyActivity}
             </Link>
-            <p className="mt-2 text-xs text-app-muted">Audit log će se otvoriti za korisnika koji je poslao prijavu i vremenski raspon oko trenutka prijave.</p>
+            <p className="mt-2 text-xs text-app-muted">{t.nearbyActivityHelp}</p>
           </section>
 
           {screenshotUrl && (
             <section className="rounded-3xl border border-app-soft bg-app-card p-6 shadow-sm">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-bold text-app-text">Screenshot</h2>
-                {screenshotDownloadUrl && <a href={screenshotDownloadUrl} className="inline-flex items-center gap-2 rounded-xl border border-app-soft px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-card-alt"><Download className="h-4 w-4" /> Preuzmi screenshot</a>}
+                {screenshotDownloadUrl && <a href={screenshotDownloadUrl} className="inline-flex items-center gap-2 rounded-xl border border-app-soft px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-card-alt"><Download className="h-4 w-4" /> {t.downloadScreenshot}</a>}
               </div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={screenshotUrl} alt="Screenshot priložen uz feedback" className="max-h-[720px] w-full rounded-2xl border border-app-soft object-contain" />
+              <img src={screenshotUrl} alt={t.screenshotAlt} className="max-h-[720px] w-full rounded-2xl border border-app-soft object-contain" />
             </section>
           )}
 
           <section className="rounded-3xl border border-app-soft bg-app-card p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-app-text">Tehnički podaci</h2>
+            <h2 className="text-lg font-bold text-app-text">{t.technicalData}</h2>
             <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-              <div><dt className="text-app-muted">Korisnik</dt><dd className="mt-1 font-medium text-app-text">{feedback.created_by_name ?? "Nije dostupno"}</dd></div>
-              <div><dt className="text-app-muted">Email</dt><dd className="mt-1 font-medium text-app-text">{feedback.created_by_email ?? "Nije dostupno"}</dd></div>
-              <div><dt className="text-app-muted">Preglednik</dt><dd className="mt-1 font-medium text-app-text">{feedback.browser ?? "Nije dostupno"}</dd></div>
-              <div><dt className="text-app-muted">Operativni sustav</dt><dd className="mt-1 font-medium text-app-text">{feedback.operating_system ?? "Nije dostupno"}</dd></div>
-              <div><dt className="text-app-muted">Veličina prozora</dt><dd className="mt-1 font-medium text-app-text">{feedback.viewport ?? "Nije dostupno"}</dd></div>
-              <div><dt className="text-app-muted">Jezik</dt><dd className="mt-1 font-medium text-app-text">{feedback.language ?? "Nije dostupno"}</dd></div>
-              <div><dt className="text-app-muted">Verzija aplikacije</dt><dd className="mt-1 font-medium text-app-text">{feedback.app_version ?? "Nije dostupno"}</dd></div>
-              <div><dt className="text-app-muted">Stranica</dt><dd className="mt-1 break-all font-medium text-app-text">{feedback.page_url ? <a href={feedback.page_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline-offset-4 hover:underline">{feedback.page_url}<ExternalLink className="h-3.5 w-3.5 shrink-0" /></a> : "Nije dostupno"}</dd></div>
+              <div><dt className="text-app-muted">{t.user}</dt><dd className="mt-1 font-medium text-app-text">{feedback.created_by_name ?? t.unavailable}</dd></div>
+              <div><dt className="text-app-muted">Email</dt><dd className="mt-1 font-medium text-app-text">{feedback.created_by_email ?? t.unavailable}</dd></div>
+              <div><dt className="text-app-muted">{t.browser}</dt><dd className="mt-1 font-medium text-app-text">{feedback.browser ?? t.unavailable}</dd></div>
+              <div><dt className="text-app-muted">{t.operatingSystem}</dt><dd className="mt-1 font-medium text-app-text">{feedback.operating_system ?? t.unavailable}</dd></div>
+              <div><dt className="text-app-muted">{t.viewport}</dt><dd className="mt-1 font-medium text-app-text">{feedback.viewport ?? t.unavailable}</dd></div>
+              <div><dt className="text-app-muted">{t.language}</dt><dd className="mt-1 font-medium text-app-text">{feedback.language ?? t.unavailable}</dd></div>
+              <div><dt className="text-app-muted">{t.appVersion}</dt><dd className="mt-1 font-medium text-app-text">{feedback.app_version ?? t.unavailable}</dd></div>
+              <div><dt className="text-app-muted">{t.page}</dt><dd className="mt-1 break-all font-medium text-app-text">{feedback.page_url ? <a href={feedback.page_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline-offset-4 hover:underline">{feedback.page_url}<ExternalLink className="h-3.5 w-3.5 shrink-0" /></a> : t.unavailable}</dd></div>
             </dl>
           </section>
         </div>
 
         <div className="xl:sticky xl:top-6 xl:self-start">
-          <FeedbackAdminForm feedback={feedback} />
+          <FeedbackAdminForm locale={permissions.organizationLocale} feedback={feedback} />
         </div>
       </div>
     </div>
