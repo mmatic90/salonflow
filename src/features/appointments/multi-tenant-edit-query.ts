@@ -70,10 +70,10 @@ export async function getMultiTenantAppointmentById(
   const appointmentServices = (data.appointment_services ?? [])
     .slice()
     .sort(
-      (a: any, b: any) =>
+      (a, b) =>
         Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0),
     )
-    .map((entry: any) => ({
+    .map((entry) => ({
       id: String(entry.id),
       appointment_id: String(entry.appointment_id),
       service_id: String(entry.service_id ?? ""),
