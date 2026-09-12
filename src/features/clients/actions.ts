@@ -12,6 +12,9 @@ export type ClientFormValues = {
   phone: string;
   email: string;
   note: string;
+  allergies_sensitivities: string;
+  contraindications: string;
+  treatment_preferences: string;
 };
 
 export type ClientActionState = {
@@ -42,6 +45,11 @@ function getFormValues(formData: FormData): ClientFormValues {
     phone: normalizeText(formData.get("phone")),
     email: normalizeText(formData.get("email")),
     note: normalizeText(formData.get("note")),
+    allergies_sensitivities: normalizeText(
+      formData.get("allergies_sensitivities"),
+    ),
+    contraindications: normalizeText(formData.get("contraindications")),
+    treatment_preferences: normalizeText(formData.get("treatment_preferences")),
   };
 }
 
@@ -78,6 +86,13 @@ export async function createClientAction(
     phone: normalizeNullableText(formData.get("phone")),
     email: normalizeNullableText(formData.get("email")),
     notes: normalizeNullableText(formData.get("note")),
+    allergies_sensitivities: normalizeNullableText(
+      formData.get("allergies_sensitivities"),
+    ),
+    contraindications: normalizeNullableText(formData.get("contraindications")),
+    treatment_preferences: normalizeNullableText(
+      formData.get("treatment_preferences"),
+    ),
     marketing_consent: false,
     is_active: true,
   };
@@ -120,7 +135,9 @@ export async function updateClientAction(
 
   const { data: beforeClient, error: beforeError } = await supabase
     .from("clients")
-    .select("id, first_name, last_name, phone, email, notes, is_active")
+    .select(
+      "id, first_name, last_name, phone, email, notes, allergies_sensitivities, contraindications, treatment_preferences, is_active",
+    )
     .eq("organization_id", permissions.organizationId)
     .eq("id", clientId)
     .maybeSingle();
@@ -136,6 +153,13 @@ export async function updateClientAction(
     phone: normalizeNullableText(formData.get("phone")),
     email: normalizeNullableText(formData.get("email")),
     notes: normalizeNullableText(formData.get("note")),
+    allergies_sensitivities: normalizeNullableText(
+      formData.get("allergies_sensitivities"),
+    ),
+    contraindications: normalizeNullableText(formData.get("contraindications")),
+    treatment_preferences: normalizeNullableText(
+      formData.get("treatment_preferences"),
+    ),
   };
 
   const { error } = await supabase
@@ -167,7 +191,9 @@ export async function deleteClientAction(clientId: string) {
 
   const { data: clientBefore, error: beforeError } = await supabase
     .from("clients")
-    .select("id, first_name, last_name, phone, email, notes, is_active")
+    .select(
+      "id, first_name, last_name, phone, email, notes, allergies_sensitivities, contraindications, treatment_preferences, is_active",
+    )
     .eq("organization_id", permissions.organizationId)
     .eq("id", clientId)
     .maybeSingle();
