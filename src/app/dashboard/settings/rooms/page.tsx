@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getRooms } from "@/features/settings/queries";
-import { createRoomAction } from "@/features/settings/actions";
 import RoomsTable from "./rooms-table";
 import RoomCreateForm from "./room-create-form";
 import { requireAdminForSettings } from "@/lib/page-guards";
@@ -23,7 +20,7 @@ export default async function SettingsRoomsPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold">{t.title}</h1>
-              <p className="mt-2 text-neutral-600">Dodaj i upravljaj sobama.</p>
+              <p className="mt-2 text-neutral-600">{t.intro}</p>
             </div>
 
             <Link
