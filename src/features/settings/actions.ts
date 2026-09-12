@@ -393,15 +393,15 @@ export async function bulkUpdateServicesAction(
 
     for (const item of items) {
       if (!item.name.trim()) {
-        return { ok: false, message: "Svaka usluga mora imati naziv." };
+        return { ok: false, message: t.everyServiceName };
       }
 
       if (!Number.isFinite(item.duration_minutes) || item.duration_minutes <= 0) {
-        return { ok: false, message: "Trajanje svake usluge mora biti veće od 0." };
+        return { ok: false, message: t.everyServiceDuration };
       }
 
       if (item.price !== null && (!Number.isFinite(item.price) || item.price < 0)) {
-        return { ok: false, message: "Cijena usluge nije ispravna." };
+        return { ok: false, message: t.invalidPrice };
       }
     }
 
@@ -439,11 +439,11 @@ export async function bulkUpdateServicesAction(
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/services");
-    return { ok: true, message: "Izmjene usluga su spremljene." };
+    return { ok: true, message: t.servicesSaved };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : t.saveError,
     };
   }
 }
@@ -460,7 +460,7 @@ export async function bulkUpdateRoomsAction(
 
     for (const item of items) {
       if (!item.name.trim()) {
-        return { ok: false, message: "Svaka soba mora imati naziv." };
+        return { ok: false, message: t.everyRoomName };
       }
     }
 
@@ -493,11 +493,11 @@ export async function bulkUpdateRoomsAction(
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/rooms");
-    return { ok: true, message: "Izmjene soba su spremljene." };
+    return { ok: true, message: t.roomsSaved };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : t.saveError,
     };
   }
 }
@@ -519,11 +519,11 @@ export async function bulkUpdateEquipmentAction(
 
     for (const item of items) {
       if (!item.name.trim()) {
-        return { ok: false, message: "Svaka oprema mora imati naziv." };
+        return { ok: false, message: t.everyEquipmentName };
       }
 
       if (!Number.isFinite(item.quantity_total) || item.quantity_total <= 0) {
-        return { ok: false, message: "Količina svake opreme mora biti veća od 0." };
+        return { ok: false, message: t.everyEquipmentQuantity };
       }
     }
 
@@ -557,11 +557,11 @@ export async function bulkUpdateEquipmentAction(
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/equipment");
-    return { ok: true, message: "Izmjene opreme su spremljene." };
+    return { ok: true, message: t.equipmentSaved };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : t.saveError,
     };
   }
 }
@@ -622,11 +622,11 @@ export async function bulkUpdateServiceRoomsAction(
     revalidatePath("/dashboard/appointments");
     revalidatePath("/dashboard/calendar");
 
-    return { ok: true, message: "Mapiranje usluga i soba je spremljeno." };
+    return { ok: true, message: t.serviceRoomsSaved };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : t.saveError,
     };
   }
 }
@@ -688,11 +688,11 @@ export async function bulkUpdateEmployeeServicesAction(
     revalidatePath("/dashboard/calendar");
     revalidatePath("/dashboard/schedule");
 
-    return { ok: true, message: "Mapiranje zaposlenika i usluga je spremljeno." };
+    return { ok: true, message: t.employeeServicesSaved };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : t.saveError,
     };
   }
 }
@@ -753,11 +753,11 @@ export async function bulkUpdateServiceEquipmentAction(
     revalidatePath("/dashboard/appointments");
     revalidatePath("/dashboard/calendar");
 
-    return { ok: true, message: "Mapiranje usluga i opreme je spremljeno." };
+    return { ok: true, message: t.serviceEquipmentSaved };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Došlo je do greške pri spremanju.",
+      message: error instanceof Error ? error.message : t.saveError,
     };
   }
 }
@@ -781,7 +781,7 @@ export async function bulkUpdateSalonWorkingHoursAction(
       if (!item.is_closed && (!item.opens_at || !item.closes_at)) {
         return {
           ok: false,
-          message: "Za radne dane moraš unijeti vrijeme otvaranja i zatvaranja.",
+          message: t.workingHoursRequired,
         };
       }
     }
@@ -887,14 +887,14 @@ export async function bulkUpdateSalonWorkingHoursAction(
     revalidatePath("/dashboard/calendar");
     revalidatePath("/dashboard/calendar/time-grid");
 
-    return { ok: true, message: "Radno vrijeme salona je spremljeno." };
+    return { ok: true, message: t.salonHoursSaved };
   } catch (error) {
     return {
       ok: false,
       message:
         error instanceof Error
           ? error.message
-          : "Došlo je do greške pri spremanju.",
+          : t.saveError,
     };
   }
 }
@@ -905,21 +905,24 @@ export async function bulkUpdateServiceGroupLimitsAction(
     max_parallel: number;
   }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.group_name.trim()) {
         return {
           ok: false,
-          message: "Svaka grupa mora imati naziv.",
+          message: t.everyGroupName,
         };
       }
 
       if (!Number.isFinite(item.max_parallel) || item.max_parallel <= 0) {
         return {
           ok: false,
-          message: "Limit mora biti veći od 0.",
+          message: t.limitPositive,
         };
       }
     }
@@ -980,12 +983,12 @@ export async function bulkUpdateServiceGroupLimitsAction(
 
     return {
       ok: true,
-      message: "Group limits su spremljeni.",
+      message: t.groupLimitsSaved,
     };
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Greška pri spremanju.",
+      message: error instanceof Error ? error.message : t.saveError,
     };
   }
 }
@@ -1009,7 +1012,7 @@ export async function bulkUpdateEmployeesAction(
 
     for (const item of items) {
       if (!item.display_name.trim()) {
-        return { ok: false, message: "Svaki djelatnik mora imati ime." };
+        return { ok: false, message: t.employeeNameRequired };
       }
     }
 
@@ -1041,7 +1044,7 @@ export async function bulkUpdateEmployeesAction(
       if (employeeError) {
         return {
           ok: false,
-          message: `Greška za djelatnika "${item.display_name}": ${employeeError.message}`,
+          message: `${t.employeeUpdateErrorPrefix} "${item.display_name}": ${employeeError.message}`,
         };
       }
 
@@ -1060,7 +1063,7 @@ export async function bulkUpdateEmployeesAction(
         if (membershipError) {
           return {
             ok: false,
-            message: `Greška pri spremanju članstva za "${item.display_name}": ${membershipError.message}`,
+            message: `${t.membershipSaveErrorPrefix} "${item.display_name}": ${membershipError.message}`,
           };
         }
       }
@@ -1081,14 +1084,14 @@ export async function bulkUpdateEmployeesAction(
     revalidatePath("/dashboard/calendar");
     revalidatePath("/dashboard/schedule");
 
-    return { ok: true, message: "Izmjene djelatnika su spremljene." };
+    return { ok: true, message: t.employeesSaved };
   } catch (error) {
     return {
       ok: false,
       message:
         error instanceof Error
           ? error.message
-          : "Došlo je do greške pri spremanju djelatnika.",
+          : t.employeeSaveError,
     };
   }
 }
@@ -1109,7 +1112,7 @@ export async function deactivateEmployeeAction(employeeId: string) {
       .maybeSingle();
 
     if (fetchError) return { ok: false, message: fetchError.message };
-    if (!beforeEmployee) return { ok: false, message: "Djelatnik nije pronađen." };
+    if (!beforeEmployee) return { ok: false, message: t.employeeNotFound };
 
     const { error: employeeError } = await supabase
       .from("employees")
@@ -1170,7 +1173,7 @@ export async function deactivateEmployeeAction(employeeId: string) {
       message:
         error instanceof Error
           ? error.message
-          : "Došlo je do greške pri deaktivaciji djelatnika.",
+          : t.employeeDeactivateError,
     };
   }
 }
@@ -1192,7 +1195,7 @@ export async function resetEmployeePasswordAction(employeeId: string) {
 
     if (employeeError) return { ok: false, message: employeeError.message };
     if (!employee?.user_id) {
-      return { ok: false, message: "Djelatnik nema povezan korisnički račun." };
+      return { ok: false, message: t.employeeNoAccount };
     }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1236,7 +1239,7 @@ export async function resetEmployeePasswordAction(employeeId: string) {
       message:
         error instanceof Error
           ? error.message
-          : "Došlo je do greške pri resetiranju lozinke.",
+          : t.passwordResetError,
     };
   }
 }
@@ -1261,10 +1264,10 @@ export async function createEmployeeAction(
     t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     if (!values.display_name) {
-      return { error: "Ime djelatnika je obavezno.", success: "", values };
+      return { error: t.displayNameRequired, success: "", values };
     }
     if (!values.email) {
-      return { error: "Email je obavezan.", success: "", values };
+      return { error: t.emailRequired, success: "", values };
     }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1293,7 +1296,7 @@ export async function createEmployeeAction(
 
     if (createUserError || !createdUser.user) {
       return {
-        error: createUserError?.message || "Nije moguće kreirati korisnika.",
+        error: createUserError?.message || t.createUserError,
         success: "",
         values,
       };
@@ -1341,7 +1344,7 @@ export async function createEmployeeAction(
       await adminClient.auth.admin.deleteUser(userId);
 
       return {
-        error: employeeError?.message || "Nije moguće kreirati djelatnika.",
+        error: employeeError?.message || t.createEmployeeError,
         success: "",
         values,
       };
@@ -1368,7 +1371,7 @@ export async function createEmployeeAction(
 
     return {
       error: "",
-      success: "Djelatnik je uspješno dodan.",
+      success: t.employeeAdded,
       values: {
         display_name: "",
         email: "",
@@ -1382,7 +1385,7 @@ export async function createEmployeeAction(
       error:
         error instanceof Error
           ? error.message
-          : "Došlo je do greške pri dodavanju djelatnika.",
+          : t.employeeAddError,
       success: "",
       values,
     };
