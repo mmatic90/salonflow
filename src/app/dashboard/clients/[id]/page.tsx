@@ -90,7 +90,8 @@ export default async function ClientDetailsPage({
   params: Params;
 }) {
   const permissions = await requireDashboardUser();
-  const t = getDictionary(permissions.organizationLocale).clients;
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.clients;
 
   const { id } = await params;
   const client = await getClientById(id);
@@ -98,6 +99,23 @@ export default async function ClientDetailsPage({
   if (!client) {
     notFound();
   }
+
+  const rebookSource =
+    client.pastAppointments.find((appointment) => appointment.status === "completed") ??
+    client.pastAppointments[0] ??
+    null;
+  const rebookServiceId = rebookSource?.appointment_services
+    ?.slice()
+    .sort((a, b) => a.sort_order - b.sort_order)[0]?.service_id;
+  const rebookHref = rebookServiceId
+    ? `/dashboard/appointments/new?clientId=${client.id}&serviceId=${rebookServiceId}`
+    : `/dashboard/appointments/new?clientId=${client.id}`;
+  const rebookLabel =
+    permissions.organizationLocale === "en"
+      ? "Rebook"
+      : permissions.organizationLocale === "it"
+        ? "Ripeti appuntamento"
+        : "Ponovi termin";
 
   return (
     <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
@@ -123,10 +141,15 @@ export default async function ClientDetailsPage({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:flex">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <Link href={`/dashboard/appointments/new?clientId=${client.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-                  <CalendarPlus className="h-4 w-4" /> {getDictionary(permissions.organizationLocale).appointments.newAppointment}
+                  <CalendarPlus className="h-4 w-4" /> {dictionary.appointments.newAppointment}
                 </Link>
+                {rebookSource ? (
+                  <Link href={rebookHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-app-accent/25 bg-app-accent/5 px-4 py-2 font-semibold text-app-accent shadow-sm transition hover:-translate-y-0.5 hover:bg-app-accent/10">
+                    <CalendarDays className="h-4 w-4" /> {rebookLabel}
+                  </Link>
+                ) : null}
                 <Link href={`/dashboard/clients/${client.id}/edit`} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-semibold text-app-text shadow-sm transition hover:bg-app-bg">{t.edit}</Link>
               </div>
             </div>
