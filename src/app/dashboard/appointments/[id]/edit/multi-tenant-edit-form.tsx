@@ -9,8 +9,10 @@ import type {
   AppointmentFormService,
 } from "@/features/appointments/queries";
 import type { ClientComboboxItem } from "@/components/client-combobox";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   appointment: AppointmentEditItem;
   services: AppointmentFormService[];
   employees: AppointmentFormEmployee[];
@@ -27,12 +29,15 @@ const fieldClass =
   "w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/15";
 
 export default function MultiTenantEditAppointmentForm({
+  locale = "hr",
   appointment,
   services,
   employees,
   rooms,
   clients,
 }: Props) {
+  const dictionary = getDictionary(locale);
+  const t = dictionary.appointments;
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [availabilityPending, setAvailabilityPending] = useState(false);
@@ -79,7 +84,7 @@ export default function MultiTenantEditAppointmentForm({
         };
 
         if (!response.ok) {
-          throw new Error(result.error || "Dostupnost nije moguće provjeriti.");
+          throw new Error(result.error || t.availabilityError);
         }
 
         const nextEmployees = result.employees ?? [];
@@ -101,7 +106,7 @@ export default function MultiTenantEditAppointmentForm({
         setError(
           requestError instanceof Error
             ? requestError.message
-            : "Dostupnost nije moguće provjeriti.",
+            : t.availabilityError,
         );
       } finally {
         if (!controller.signal.aborted) setAvailabilityPending(false);
@@ -129,14 +134,14 @@ export default function MultiTenantEditAppointmentForm({
         body: JSON.stringify(payload),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Termin nije moguće urediti.");
+      if (!response.ok) throw new Error(result.error || t.editError);
       router.push(result.redirectTo || "/dashboard/appointments");
       router.refresh();
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Termin nije moguće urediti.",
+          : t.editError,
       );
     } finally {
       setPending(false);
@@ -163,85 +168,85 @@ export default function MultiTenantEditAppointmentForm({
 
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Datum</span>
+          <span>{t.date}</span>
           <input className={fieldClass} type="date" name="appointment_date" value={date} onChange={(event) => setDate(event.target.value)} required />
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Vrijeme početka</span>
+          <span>{t.startTime}</span>
           <input className={fieldClass} type="time" name="start_time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
         </label>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Postojeći klijent</span>
+          <span>{t.existingClient}</span>
           <select className={fieldClass} name="client_id" value={clientId} onChange={(event) => handleClientChange(event.target.value)}>
-            <option value="">Novi klijent</option>
+            <option value="">{t.newClient}</option>
             {clients.map((client) => <option key={client.id} value={client.id}>{client.full_name}</option>)}
           </select>
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Ime klijenta</span>
+          <span>{t.clientName}</span>
           <input className={fieldClass} name="client_name" value={clientName} onChange={(event) => { setClientId(""); setClientName(event.target.value); }} required />
         </label>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Telefon</span>
+          <span>{t.phone}</span>
           <input className={fieldClass} name="client_phone" type="tel" value={clientPhone} onChange={(event) => setClientPhone(event.target.value)} />
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>E-mail</span>
+          <span>{t.email}</span>
           <input className={fieldClass} name="client_email" type="email" value={clientEmail} onChange={(event) => setClientEmail(event.target.value)} />
         </label>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Usluga</span>
+          <span>{t.service}</span>
           <select className={fieldClass} name="service_id" value={serviceId} onChange={(event) => setServiceId(event.target.value)} required>
-            <option value="" disabled>Odaberite uslugu</option>
+            <option value="" disabled>{t.selectService}</option>
             {services.map((service) => <option key={service.id} value={service.id}>{service.name} · {service.duration_minutes} min</option>)}
           </select>
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Zaposlenik</span>
+          <span>{t.employee}</span>
           <select className={fieldClass} name="employee_id" value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} required disabled={availabilityPending || !availabilityReady}>
-            <option value="">{availabilityPending ? "Provjera dostupnosti..." : "Odaberite slobodnog zaposlenika"}</option>
+            <option value="">{availabilityPending ? t.checkingAvailability : t.selectFreeEmployee}</option>
             {availableEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.label}</option>)}
           </select>
-          {availabilityReady && !availabilityPending && availableEmployees.length === 0 ? <span className="block text-xs text-amber-700">Nema slobodnih zaposlenika za odabrani termin.</span> : null}
+          {availabilityReady && !availabilityPending && availableEmployees.length === 0 ? <span className="block text-xs text-amber-700">{t.noEmployees}</span> : null}
         </label>
       </div>
 
       <div className="grid gap-5 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Soba</span>
+          <span>{t.room}</span>
           <select className={fieldClass} name="room_id" value={roomId} onChange={(event) => setRoomId(event.target.value)} disabled={availabilityPending || !availabilityReady}>
-            <option value="">{availabilityPending ? "Provjera dostupnosti..." : "Bez sobe"}</option>
+            <option value="">{availabilityPending ? t.checkingAvailability : t.noRoom}</option>
             {availableRooms.map((room) => <option key={room.id} value={room.id}>{room.label}</option>)}
           </select>
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>Status</span>
+          <span>{t.status}</span>
           <select className={fieldClass} name="status" defaultValue={appointment.status}>
-            <option value="scheduled">Zakazan</option>
-            <option value="confirmed">Potvrđen</option>
-            <option value="completed">Odrađen</option>
-            <option value="cancelled">Otkazan</option>
-            <option value="no_show">Nije došao</option>
+            <option value="scheduled">{locale === "en" ? "Scheduled" : locale === "it" ? "Programmato" : "Zakazan"}</option>
+            <option value="confirmed">{locale === "en" ? "Confirmed" : locale === "it" ? "Confermato" : "Potvrđen"}</option>
+            <option value="completed">{locale === "en" ? "Completed" : locale === "it" ? "Completato" : "Odrađen"}</option>
+            <option value="cancelled">{locale === "en" ? "Cancelled" : locale === "it" ? "Annullato" : "Otkazan"}</option>
+            <option value="no_show">{locale === "en" ? "No-show" : locale === "it" ? "No-show" : "Nije došao"}</option>
           </select>
         </label>
       </div>
 
       <label className="block space-y-2 text-sm font-medium text-app-text">
-        <span>Napomena</span>
+        <span>{t.note}</span>
         <textarea className={fieldClass} name="notes" rows={4} defaultValue={appointment.client_note ?? appointment.internal_note ?? ""} />
       </label>
 
       <button type="submit" disabled={pending || availabilityPending || !employeeId} className="inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-        {pending ? "Spremanje..." : "Spremi izmjene"}
+        {pending ? t.saving : t.saveChanges}
       </button>
     </form>
   );
