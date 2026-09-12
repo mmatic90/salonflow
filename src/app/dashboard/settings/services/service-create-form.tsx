@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import {
   createServiceAction,
   type SettingsActionState,
@@ -13,7 +14,8 @@ const initialState: SettingsActionState = {
   success: "",
 };
 
-export default function ServiceCreateForm() {
+export default function ServiceCreateForm({ locale = "hr" }: { locale?: AppLocale }) {
+  const t = getDictionary(locale).settings;
   const [state, formAction, pending] = useActionState(
     createServiceAction,
     initialState,
@@ -32,7 +34,7 @@ export default function ServiceCreateForm() {
     <form action={formAction} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <input
         name="name"
-        placeholder="Naziv usluge"
+        placeholder={t.services.serviceName}
         className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
         required
       />
@@ -40,7 +42,7 @@ export default function ServiceCreateForm() {
         name="duration_minutes"
         type="number"
         min={1}
-        placeholder="Trajanje (min)"
+        placeholder={t.services.durationPlaceholder}
         className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
         required
       />
@@ -49,17 +51,17 @@ export default function ServiceCreateForm() {
         type="number"
         min={0}
         step="0.01"
-        placeholder="Cijena (€)"
+        placeholder={t.services.pricePlaceholder}
         className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
       />
       <input
         name="category"
-        placeholder="Kategorija"
+        placeholder={t.services.categoryPlaceholder}
         className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
       />
       <textarea
         name="description"
-        placeholder="Opis usluge"
+        placeholder={t.services.descriptionPlaceholder}
         rows={3}
         className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none md:col-span-2"
       />
@@ -70,7 +72,7 @@ export default function ServiceCreateForm() {
           name="is_online_bookable"
           className="h-4 w-4 rounded border-app-soft accent-app-accent"
         />
-        Dostupno za online rezervaciju
+        {t.services.onlineBookable}
       </label>
 
       <div className="md:col-span-2 xl:col-span-3 flex justify-end">
@@ -79,7 +81,7 @@ export default function ServiceCreateForm() {
           disabled={pending}
           className="rounded-xl bg-app-accent px-5 py-3 font-medium text-white disabled:opacity-50"
         >
-          {pending ? "Dodavanje..." : "Dodaj uslugu"}
+          {pending ? t.services.adding : t.services.add}
         </button>
       </div>
     </form>
