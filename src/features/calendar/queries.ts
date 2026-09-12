@@ -54,6 +54,45 @@ export type CalendarEmployeeGroup = {
   appointments: CalendarAppointmentItem[];
 };
 
+type CalendarServiceRelation = {
+  id: string | null;
+  name: string | null;
+};
+
+type CalendarAppointmentServiceRelation = {
+  id: string | null;
+  service_id: string | null;
+  service_name: string | null;
+  duration_minutes: number | null;
+  sort_order: number | null;
+  service: CalendarServiceRelation | CalendarServiceRelation[] | null;
+};
+
+type CalendarRoomRelation = {
+  id: string | null;
+  name: string | null;
+};
+
+type CalendarEmployeeRelation = {
+  id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  color: string | null;
+};
+
+type RawCalendarAppointment = {
+  id: string | null;
+  appointment_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  status: CalendarAppointmentItem["status"];
+  client_name: string | null;
+  client_phone: string | null;
+  appointment_services: CalendarAppointmentServiceRelation[] | null;
+  room: CalendarRoomRelation | CalendarRoomRelation[] | null;
+  employee: CalendarEmployeeRelation | CalendarEmployeeRelation[] | null;
+};
+
 function getSingleRelation<T>(value: T | T[] | null | undefined): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
@@ -69,12 +108,12 @@ function calculateDurationMinutes(startTime: string, endTime: string) {
   );
 }
 
-function mapAppointment(item: any): CalendarAppointmentItem {
+function mapAppointment(item: RawCalendarAppointment): CalendarAppointmentItem {
   const room = getSingleRelation(item.room);
   const employee = getSingleRelation(item.employee);
 
   const appointmentServices = (item.appointment_services ?? [])
-    .map((entry: any) => {
+    .map((entry) => {
       const service = getSingleRelation(entry.service);
 
       return {
@@ -88,7 +127,7 @@ function mapAppointment(item: any): CalendarAppointmentItem {
         },
       };
     })
-    .sort((a: any, b: any) => a.sort_order - b.sort_order);
+    .sort((a, b) => a.sort_order - b.sort_order);
 
   const firstService = appointmentServices[0]?.service ?? null;
 
@@ -108,20 +147,18 @@ function mapAppointment(item: any): CalendarAppointmentItem {
     appointment_services: appointmentServices,
     room: room
       ? {
-          id: String((room as any).id ?? ""),
-          name: String((room as any).name ?? ""),
+          id: String(room.id ?? ""),
+          name: String(room.name ?? ""),
         }
       : null,
     employee: employee
       ? {
-          id: String((employee as any).id ?? ""),
+          id: String(employee.id ?? ""),
           display_name:
-            [(employee as any).first_name, (employee as any).last_name]
+            [employee.first_name, employee.last_name]
               .filter(Boolean)
               .join(" ") || "Zaposlenik",
-          color_hex: (employee as any).color
-            ? String((employee as any).color)
-            : null,
+          color_hex: employee.color ? String(employee.color) : null,
         }
       : null,
   };
@@ -181,7 +218,7 @@ async function getCalendarAppointments(
     throw new Error("Nije moguće dohvatiti termine za kalendar.");
   }
 
-  return (data ?? []).map(mapAppointment);
+  return (data ?? []).map((item) => mapAppointment(item as RawCalendarAppointment));
 }
 
 export async function getCalendarDayDataByRooms(
