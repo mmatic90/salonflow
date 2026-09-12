@@ -60,6 +60,7 @@ export async function createServiceAction(
     const priceRaw = String(formData.get("price") ?? "").trim();
     const price = priceRaw ? Number(priceRaw.replace(",", ".")) : null;
     const category = String(formData.get("category") ?? "").trim();
+    const isOnlineBookable = formData.get("is_online_bookable") === "on";
 
     if (!name) return { error: "Naziv usluge je obavezan.", success: "" };
     if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
@@ -78,7 +79,7 @@ export async function createServiceAction(
       currency: "EUR",
       category: category || null,
       is_active: true,
-      is_online_bookable: false,
+      is_online_bookable: isOnlineBookable,
     };
 
     const { data, error } = await supabase
