@@ -19,7 +19,9 @@ import {
   type CalendarAppointmentItem,
   type CalendarEmployeeGroup,
 } from "@/features/calendar/queries";
-import { formatTime, getTodayLocalDate } from "@/lib/utils";
+import { formatTime, getTodayLocalDate, statusLabel } from "@/lib/utils";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import DateQueryPicker from "@/components/date-query-picker";
 import AppointmentMiniDetails from "@/components/appointment-mini-details";
 import { getWorkStatusClasses } from "@/features/schedule/status-helpers";
@@ -36,8 +38,8 @@ type SearchParams = Promise<{
   room?: string;
 }>;
 
-function formatDateTitle(value: string) {
-  return new Intl.DateTimeFormat("hr-HR", {
+function formatDateTitle(value: string, locale: AppLocale) {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -66,17 +68,6 @@ function statusClasses(status: string) {
   }
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case "scheduled": return "Zakazan";
-    case "confirmed": return "Potvrđen";
-    case "completed": return "Odrađen";
-    case "cancelled": return "Otkazan";
-    case "no_show": return "Nije došao";
-    default: return status;
-  }
-}
-
 function getInitials(name: string) {
   return name
     .trim()
@@ -86,16 +77,28 @@ function getInitials(name: string) {
     .join("") || "SF";
 }
 
-function appointmentCountLabel(count: number) {
-  return `${count} ${count === 1 ? "termin" : "termina"}`;
+function appointmentCountLabel(
+  count: number,
+  singular: string,
+  plural: string,
+) {
+  return count + " " + (count === 1 ? singular : plural);
 }
 
-function EmployeeColumnHeader({ group, stickyTop }: { group: CalendarEmployeeGroup; stickyTop: string }) {
+function EmployeeColumnHeader({
+  group,
+  stickyTop,
+  t,
+}: {
+  group: CalendarEmployeeGroup;
+  stickyTop: string;
+  t: ReturnType<typeof getDictionary>["calendar"];
+}) {
   const accent = group.colorHex || "#8a7d6f";
   const workingHours = group.workStatus.isWorking && group.workStatus.label.includes("-")
     ? group.workStatus.label.replace(" - ", " – ")
     : null;
-  const statusText = group.workStatus.isWorking ? "Radi danas" : group.workStatus.label;
+  const statusText = group.workStatus.isWorking ? t.worksToday : group.workStatus.label;
 
   return (
     <div className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}>
@@ -114,12 +117,12 @@ function EmployeeColumnHeader({ group, stickyTop }: { group: CalendarEmployeeGro
               <h2 className="truncate text-lg font-bold tracking-tight text-app-text">{group.employeeName}</h2>
               <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-app-muted">
                 <Clock3 className="h-3.5 w-3.5 shrink-0" />
-                {workingHours || "Nema radnog vremena"}
+                {workingHours || t.noWorkingHours}
               </p>
             </div>
           </div>
           <span className="shrink-0 rounded-full border border-app-soft bg-white/90 px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
-            {appointmentCountLabel(group.appointments.length)}
+            {appointmentCountLabel(group.appointments.length, t.appointmentSingular, t.appointmentPlural)}
           </span>
         </div>
 
@@ -128,14 +131,24 @@ function EmployeeColumnHeader({ group, stickyTop }: { group: CalendarEmployeeGro
             <span className={`h-1.5 w-1.5 rounded-full ${group.workStatus.isWorking ? "bg-emerald-500" : "bg-current"}`} />
             {statusText}
           </span>
-          {group.workStatus.isOverride ? <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-app-muted">Poseban raspored</span> : null}
+          {group.workStatus.isOverride ? <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-app-muted">{t.specialSchedule}</span> : null}
         </div>
       </div>
     </div>
   );
 }
 
-function RoomColumnHeader({ roomName, appointmentCount, stickyTop }: { roomName: string; appointmentCount: number; stickyTop: string }) {
+function RoomColumnHeader({
+  roomName,
+  appointmentCount,
+  stickyTop,
+  t,
+}: {
+  roomName: string;
+  appointmentCount: number;
+  stickyTop: string;
+  t: ReturnType<typeof getDictionary>["calendar"];
+}) {
   return (
     <div className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}>
       <div className="h-1.5 w-full bg-app-accent" />
@@ -145,12 +158,12 @@ function RoomColumnHeader({ roomName, appointmentCount, stickyTop }: { roomName:
             <DoorOpen className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-app-muted">Prostorija</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-app-muted">{t.roomLabel}</p>
             <h2 className="mt-1 truncate text-lg font-bold tracking-tight text-app-text">{roomName}</h2>
           </div>
         </div>
         <span className="shrink-0 rounded-full border border-app-soft bg-white/90 px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
-          {appointmentCountLabel(appointmentCount)}
+          {appointmentCountLabel(appointmentCount, t.appointmentSingular, t.appointmentPlural)}
         </span>
       </div>
     </div>
@@ -189,7 +202,19 @@ function StatCard({ icon, label, value, detail }: { icon: React.ReactNode; label
   );
 }
 
-function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: CalendarAppointmentItem; colorHex?: string | null; metaLabel?: string }) {
+function CalendarCard({
+  appointment,
+  colorHex,
+  metaLabel,
+  locale,
+  untilLabel,
+}: {
+  appointment: CalendarAppointmentItem;
+  colorHex?: string | null;
+  metaLabel?: string;
+  locale: AppLocale;
+  untilLabel: string;
+}) {
   const serviceLabel = formatAppointmentServicesLabel(
     appointment.appointment_services?.slice().sort((a, b) => a.sort_order - b.sort_order),
   );
@@ -209,12 +234,12 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
             </div>
             <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-app-muted">
               <Clock3 className="h-3.5 w-3.5" />
-              do {formatTime(appointment.end_time)}
+              {untilLabel} {formatTime(appointment.end_time)}
             </div>
           </div>
 
           <span className="shrink-0 rounded-full border border-white/80 bg-white/90 px-3 py-1 text-[11px] font-bold text-app-text shadow-sm backdrop-blur">
-            {statusLabel(appointment.status)}
+            {statusLabel(appointment.status, locale)}
           </span>
         </div>
 
@@ -256,13 +281,16 @@ function CalendarCard({ appointment, colorHex, metaLabel }: { appointment: Calen
       </Link>
 
       <div className="border-t border-black/5 bg-white/35 px-4 py-3 pl-5 backdrop-blur-sm sm:px-5 sm:pl-6">
-        <AppointmentStatusActions appointmentId={appointment.id} currentStatus={appointment.status} compact />
+        <AppointmentStatusActions locale={locale} appointmentId={appointment.id} currentStatus={appointment.status} compact />
       </div>
     </div>
   );
 }
 
 export default async function CalendarPage({ searchParams }: { searchParams: SearchParams }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.calendar;
   const supabase = await createClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) redirect("/login");
@@ -309,26 +337,26 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-xl font-bold capitalize tracking-tight text-app-text sm:text-2xl md:text-3xl">{formatDateTitle(selectedDate)}</h1>
+                  <h1 className="text-xl font-bold capitalize tracking-tight text-app-text sm:text-2xl md:text-3xl">{formatDateTitle(selectedDate, permissions.organizationLocale)}</h1>
                   <CalendarCurrentTime selectedDate={selectedDate} today={today} />
                 </div>
 
                 <div className="mt-4 w-full max-w-xs">
-                  <DateQueryPicker value={selectedDate} basePath="/dashboard/calendar" extraParams={{ view: selectedView }} />
+                  <DateQueryPicker locale={permissions.organizationLocale} value={selectedDate} basePath="/dashboard/calendar" extraParams={{ view: selectedView }} />
                 </div>
               </div>
 
               <div className="flex w-full shrink-0 flex-col items-stretch gap-3 self-start sm:w-auto sm:items-end xl:self-center">
                 <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-auto">
-                  <Plus className="h-4 w-4" /> Novi termin
+                  <Plus className="h-4 w-4" /> {t.newAppointment}
                 </Link>
 
                 <div className="inline-flex w-full self-end rounded-xl border border-app-soft bg-white p-1 shadow-sm sm:w-auto">
-                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label="Prethodni dan">
+                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label={t.previousDay}>
                     <ArrowLeft className="h-4 w-4" />
                   </Link>
-                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`flex min-h-11 flex-[1.3] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>Danas</Link>
-                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label="Sljedeći dan">
+                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`flex min-h-11 flex-[1.3] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>{t.today}</Link>
+                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label={t.nextDay}>
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -336,25 +364,25 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             </div>
 
             <div className="mt-5 flex w-full gap-2 sm:mt-6 sm:w-auto sm:flex-wrap sm:gap-3">
-              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=employees`} active={selectedView === "employees"}>Po zaposlenicima</ViewChip>
-              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=rooms`} active={selectedView === "rooms"}>Po sobama</ViewChip>
+              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=employees`} active={selectedView === "employees"}>{t.byEmployees}</ViewChip>
+              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=rooms`} active={selectedView === "rooms"}>{t.byRooms}</ViewChip>
             </div>
 
             <div className="mt-4 rounded-2xl border border-app-soft bg-white/80 p-3 shadow-sm lg:hidden">
               {selectedView === "employees" ? (
-                <AutoSubmitSelect label="Zaposlenik" action="/dashboard/calendar" name="employee" value={selectedEmployeeId || employeeGroups[0]?.employeeId || ""} hiddenFields={{ date: selectedDate, view: "employees" }} options={employeeGroups.map((group) => ({ value: group.employeeId, label: group.employeeName }))} />
+                <AutoSubmitSelect label={t.employee} action="/dashboard/calendar" name="employee" value={selectedEmployeeId || employeeGroups[0]?.employeeId || ""} hiddenFields={{ date: selectedDate, view: "employees" }} options={employeeGroups.map((group) => ({ value: group.employeeId, label: group.employeeName }))} />
               ) : (
-                <AutoSubmitSelect label="Soba" action="/dashboard/calendar" name="room" value={selectedRoomId || roomGroups[0]?.roomId || ""} hiddenFields={{ date: selectedDate, view: "rooms" }} options={roomGroups.map((group) => ({ value: group.roomId, label: group.roomName }))} />
+                <AutoSubmitSelect label={t.room} action="/dashboard/calendar" name="room" value={selectedRoomId || roomGroups[0]?.roomId || ""} hiddenFields={{ date: selectedDate, view: "rooms" }} options={roomGroups.map((group) => ({ value: group.roomId, label: group.roomName }))} />
               )}
             </div>
           </div>
         </section>
 
         <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Termini" value={String(activeAppointments.length)} detail={`${uniqueAppointments.length - activeAppointments.length} otkazanih`} />
-          <StatCard icon={<UserRound className="h-5 w-5" />} label="Klijenti" value={String(uniqueClients)} detail="jedinstvenih klijenata" />
-          <StatCard icon={<Timer className="h-5 w-5" />} label="Rezervirano vrijeme" value={`${hours} h ${minutes} min`} detail="ukupno trajanje termina" />
-          <StatCard icon={<UsersRound className="h-5 w-5" />} label="Aktivni kapacitet" value={selectedView === "employees" ? `${workingEmployees}/${employeeGroups.length}` : String(roomGroups.length)} detail={selectedView === "employees" ? "zaposlenika radi" : "aktivnih soba"} />
+          <StatCard icon={<CalendarDays className="h-5 w-5" />} label={t.appointments} value={String(activeAppointments.length)} detail={`${uniqueAppointments.length - activeAppointments.length} {t.cancelled}`} />
+          <StatCard icon={<UserRound className="h-5 w-5" />} label={t.clients} value={String(uniqueClients)} detail={t.uniqueClients} />
+          <StatCard icon={<Timer className="h-5 w-5" />} label={t.bookedTime} value={`${hours} h ${minutes} min`} detail={t.totalDuration} />
+          <StatCard icon={<UsersRound className="h-5 w-5" />} label={t.activeCapacity} value={selectedView === "employees" ? `${workingEmployees}/${employeeGroups.length}` : String(roomGroups.length)} detail={selectedView === "employees" ? t.employeesWorking : t.activeRooms} />
         </section>
 
         {selectedView === "rooms" ? (
@@ -362,8 +390,8 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="grid gap-6 lg:hidden">
               {mobileRoomGroups.map((group) => (
                 <section key={group.roomId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-16" />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina u ovoj sobi" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
+                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-16" t={t} />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} metaLabel={appointment.employee ? t.employee + ": " + appointment.employee.display_name : t.noEmployee} />)}</div> : <EmptyStateCard title={t.noAppointmentsInRoom} description={t.noAppointmentsInRoomDescription} />}</div>
                 </section>
               ))}
             </div>
@@ -371,7 +399,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
               {roomGroups.map((group) => (
                 <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
                   <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} metaLabel={appointment.employee ? `Zaposlenik: ${appointment.employee.display_name}` : "Bez zaposlenika"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} metaLabel={appointment.employee ? t.employee + ": " + appointment.employee.display_name : t.noEmployee} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
             </div>
@@ -381,7 +409,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="grid gap-6 lg:hidden">
               {mobileEmployeeGroups.map((group) => (
                 <section key={group.employeeId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <EmployeeColumnHeader group={group} stickyTop="top-16" />
+                  <EmployeeColumnHeader group={group} stickyTop="top-16" t={t} />
                   <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
