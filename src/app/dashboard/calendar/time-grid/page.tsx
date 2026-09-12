@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getTodayLocalDate, formatTime } from "@/lib/utils";
+import { getTodayLocalDate, formatTime, statusLabel } from "@/lib/utils";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import DateQueryPicker from "@/components/date-query-picker";
 import TimeGridMobileSelect from "@/components/time-grid-mobile-select";
 import {
@@ -28,10 +30,10 @@ const START_HOUR = 8;
 const END_HOUR = 20;
 const HOUR_HEIGHT = 96;
 
-function formatDateTitle(value: string) {
+function formatDateTitle(value: string, locale: AppLocale) {
   const date = new Date(`${value}T00:00:00`);
 
-  return new Intl.DateTimeFormat("hr-HR", {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR", {
     weekday: "long",
     day: "2-digit",
     month: "2-digit",
@@ -75,21 +77,6 @@ function statusAccent(status: string) {
       return "bg-[#4B4844]";
     default:
       return "bg-app-muted";
-  }
-}
-
-function statusLabel(status: string) {
-  switch (status) {
-    case "scheduled":
-      return "Zakazan";
-    case "completed":
-      return "Odrađen";
-    case "cancelled":
-      return "Otkazan";
-    case "no_show":
-      return "No-show";
-    default:
-      return status;
   }
 }
 
@@ -171,10 +158,12 @@ function AppointmentBlock({
   appointment,
   top,
   height,
+  locale,
 }: {
   appointment: TimeGridAppointment;
   top: number;
   height: number;
+  locale: AppLocale;
 }) {
   return (
     <Link
@@ -194,7 +183,7 @@ function AppointmentBlock({
               {formatTime(appointment.end_time)}
             </div>
             <div className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium text-app-text">
-              {statusLabel(appointment.status)}
+              {statusLabel(appointment.status, locale)}
             </div>
           </div>
 
@@ -250,11 +239,17 @@ function EmployeeShiftBackground({
   );
 }
 
-function ShiftBadge({ shift }: { shift: TimeGridShift | undefined }) {
+function ShiftBadge({
+  shift,
+  notWorkingLabel,
+}: {
+  shift: TimeGridShift | undefined;
+  notWorkingLabel: string;
+}) {
   if (!shift || !shift.is_working || !shift.start_time || !shift.end_time) {
     return (
       <span className="rounded-full bg-[#efe5db] px-2.5 py-1 text-[11px] font-medium text-app-text">
-        Ne radi
+        {notWorkingLabel}
       </span>
     );
   }
@@ -271,6 +266,9 @@ export default async function TimeGridCalendarPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.calendar;
   const supabase = await createClient();
 
   const {
@@ -366,15 +364,16 @@ export default async function TimeGridCalendarPage({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-app-text md:text-3xl">
-                Time-grid kalendar
+                {t.timeGridTitle}
               </h1>
               <p className="mt-2 text-sm text-app-muted md:text-base">
-                Vizualni dnevni raspored za {formatDateTitle(selectedDate)}
+                {t.visualDailyScheduleFor} {formatDateTitle(selectedDate, permissions.organizationLocale)}
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <DateQueryPicker
+                locale={permissions.organizationLocale}
                 value={selectedDate}
                 basePath="/dashboard/calendar/time-grid"
                 extraParams={{
@@ -390,7 +389,7 @@ export default async function TimeGridCalendarPage({
                 href={`/dashboard/appointments/new?date=${selectedDate}`}
                 className="inline-flex h-[42px] items-center justify-center rounded-xl bg-app-accent px-4 py-2 font-medium text-white transition hover:opacity-90"
               >
-                Novi termin
+                {t.newAppointment}
               </Link>
             </div>
           </div>
@@ -405,7 +404,7 @@ export default async function TimeGridCalendarPage({
                   showCancelled ? "1" : "0"
                 }&no_show=${showNoShow ? "1" : "0"}`}
               >
-                Time-grid po zaposlenicima
+                {t.timeGridByEmployees}
               </HeaderChip>
 
               <HeaderChip
@@ -416,14 +415,14 @@ export default async function TimeGridCalendarPage({
                   showCancelled ? "1" : "0"
                 }&no_show=${showNoShow ? "1" : "0"}`}
               >
-                Time-grid po sobama
+                {t.timeGridByRooms}
               </HeaderChip>
 
               <HeaderChip
                 active={false}
                 href={`/dashboard/calendar?date=${selectedDate}&view=employees`}
               >
-                Card prikaz
+                {t.cardView}
               </HeaderChip>
             </div>
 
@@ -438,7 +437,7 @@ export default async function TimeGridCalendarPage({
           {selectedView === "employees" && filteredEmployeesView ? (
             <div className="mt-4 lg:hidden">
               <TimeGridMobileSelect
-                label="Zaposlenik"
+                label={t.employee}
                 action="/dashboard/calendar/time-grid"
                 name="employee"
                 value={
@@ -465,7 +464,7 @@ export default async function TimeGridCalendarPage({
           {selectedView === "rooms" && filteredRoomsView ? (
             <div className="mt-4 lg:hidden">
               <TimeGridMobileSelect
-                label="Soba"
+                label={t.room}
                 action="/dashboard/calendar/time-grid"
                 name="room"
                 value={selectedRoomId || filteredRoomsView.rooms[0]?.id || ""}
@@ -501,7 +500,7 @@ export default async function TimeGridCalendarPage({
                 }}
               >
                 <div className="sticky left-0 top-0 z-30 border-b border-r border-app-soft bg-app-card px-4 py-4 font-semibold text-app-text">
-                  Vrijeme
+                  {t.time}
                 </div>
 
                 {selectedView === "employees" &&
@@ -528,7 +527,7 @@ export default async function TimeGridCalendarPage({
                               {employee.display_name}
                             </span>
                           </div>
-                          <ShiftBadge shift={shift} />
+                          <ShiftBadge shift={shift} notWorkingLabel={t.notWorking} />
                         </div>
                       </div>
                     );
@@ -585,7 +584,7 @@ export default async function TimeGridCalendarPage({
                     >
                       <span className="absolute -left-1 -top-1.5 h-3 w-3 rounded-full border-2 border-white bg-red-500 shadow" />
                       <span className="absolute -top-3 left-3 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                        Sada
+                        {t.now}
                       </span>
                     </div>
                   ) : null}
@@ -658,6 +657,7 @@ export default async function TimeGridCalendarPage({
                               appointment={appointment}
                               top={top}
                               height={height}
+                              locale={permissions.organizationLocale}
                             />
                           );
                         })}
@@ -722,6 +722,7 @@ export default async function TimeGridCalendarPage({
                               appointment={appointment}
                               top={top}
                               height={height}
+                              locale={permissions.organizationLocale}
                             />
                           );
                         })}
@@ -746,10 +747,10 @@ export default async function TimeGridCalendarPage({
                   {selectedView === "employees"
                     ? (mobileEmployeeColumns[0]?.display_name ??
                       filteredEmployeesView?.employees[0]?.display_name ??
-                      "Zaposlenik")
+                      t.employee)
                     : (mobileRoomColumns[0]?.name ??
                       filteredRoomsView?.rooms[0]?.name ??
-                      "Soba")}
+                      t.room)}
                 </div>
 
                 <div
@@ -923,14 +924,14 @@ export default async function TimeGridCalendarPage({
           </div>
         ) : (
           <EmptyStateCard
-            title="Nema termina za odabrani datum"
-            description="Time-grid je prazan jer nema rezervacija za ovaj datum. Možeš dodati novi termin ili promijeniti datum."
+            title={t.noAppointmentsSelectedDate}
+            description={t.timeGridEmptyDescription}
             action={
               <Link
                 href={`/dashboard/appointments/new?date=${selectedDate}`}
                 className="inline-flex rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
               >
-                Dodaj novi termin
+                {t.addNewAppointment}
               </Link>
             }
           />
