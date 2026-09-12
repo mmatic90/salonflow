@@ -148,7 +148,7 @@ export default function ClientCombobox({
               className="mt-2 block w-full rounded-xl border border-dashed border-app-soft px-3 py-3 text-left transition hover:bg-app-bg"
             >
               <div className="font-medium text-app-text">
-                Dodaj novog klijenta: "{query}"
+                Dodaj novog klijenta: &quot;{query}&quot;
               </div>
               <div className="mt-1 text-xs text-app-muted">
                 Novi klijent će biti kreiran prilikom spremanja termina.
