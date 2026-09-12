@@ -162,7 +162,6 @@ export default async function NewAppointmentPage({
             defaultDate={defaultDate}
             defaultClientId={resolvedSearchParams.clientId}
             defaultServiceId={resolvedSearchParams.serviceId}
-            defaultWaitlistId={resolvedSearchParams.waitlistId}
           />
         </div>
       </div>
