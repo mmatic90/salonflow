@@ -7,6 +7,7 @@ import {
 } from "@/features/settings/actions";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 
 const initialState: SettingsActionState = {
@@ -14,7 +15,8 @@ const initialState: SettingsActionState = {
   success: "",
 };
 
-export default function RoomCreateForm() {
+export default function RoomCreateForm({ locale = "hr" }: { locale?: AppLocale }) {
+  const t = getDictionary(locale).settings.rooms;
   const [state, formAction, pending] = useActionState(
     createRoomAction,
     initialState,
@@ -37,7 +39,7 @@ export default function RoomCreateForm() {
     <form action={formAction} className="space-y-4">
       <input
         name="name"
-        placeholder="Naziv sobe"
+        placeholder={t.namePlaceholder}
         className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
         required
       />
@@ -48,7 +50,7 @@ export default function RoomCreateForm() {
           disabled={pending}
           className="rounded-xl bg-black px-5 py-3 font-medium text-white disabled:opacity-50"
         >
-          {pending ? "Dodavanje..." : "Dodaj sobu"}
+          {pending ? t.adding : t.add}
         </button>
       </div>
     </form>
