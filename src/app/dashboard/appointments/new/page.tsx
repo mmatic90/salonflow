@@ -10,6 +10,7 @@ type SearchParams = Promise<{
   date?: string;
   clientId?: string;
   serviceId?: string;
+  waitlistId?: string;
 }>;
 
 type ClientRow = Record<string, unknown> & {
@@ -161,6 +162,7 @@ export default async function NewAppointmentPage({
             defaultDate={defaultDate}
             defaultClientId={resolvedSearchParams.clientId}
             defaultServiceId={resolvedSearchParams.serviceId}
+            defaultWaitlistId={resolvedSearchParams.waitlistId}
           />
         </div>
       </div>
