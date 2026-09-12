@@ -50,7 +50,10 @@ export default async function DashboardPage() {
   return (
     <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
-        <OverdueAppointmentsPanel items={overdueAppointments} />
+        <OverdueAppointmentsPanel
+          items={overdueAppointments}
+          locale={permissions.organizationLocale}
+        />
 
         <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
           <div className="bg-gradient-to-br from-white via-white to-app-bg p-5 sm:p-6 md:p-7">
