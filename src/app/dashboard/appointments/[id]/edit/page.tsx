@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
 import MultiTenantEditAppointmentForm from "./multi-tenant-edit-form";
 import type { AppointmentEditItem } from "@/features/appointments/queries";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Params = Promise<{ id: string }>;
 type GenericRow = Record<string, unknown> & { id: string };
@@ -36,18 +37,27 @@ function durationBetween(startTime: string, endTime: string) {
   return Math.max(0, endHour * 60 + endMinute - (startHour * 60 + startMinute));
 }
 
-function ErrorCard({ message, id }: { message: string; id: string }) {
+function ErrorCard({
+  message,
+  id,
+  locale,
+}: {
+  message: string;
+  id: string;
+  locale: AppLocale;
+}) {
+  const t = getDictionary(locale).appointments;
   return (
     <main className="min-h-screen bg-app-bg p-6 md:p-8">
       <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
-        <h1 className="text-2xl font-bold">Termin se ne može otvoriti</h1>
+        <h1 className="text-2xl font-bold">{t.cannotOpenTitle}</h1>
         <p className="mt-3 whitespace-pre-wrap text-sm">{message}</p>
-        <p className="mt-3 text-xs text-red-700">ID termina: {id}</p>
+        <p className="mt-3 text-xs text-red-700">{t.appointmentId}: {id}</p>
         <Link
           href="/dashboard/appointments"
           className="mt-5 inline-flex rounded-xl border border-red-300 bg-white px-4 py-2 font-medium"
         >
-          Natrag na termine
+          {t.backToAppointments}
         </Link>
       </div>
     </main>
@@ -58,6 +68,8 @@ export default async function EditAppointmentPage({ params }: { params: Params }
   const permissions = await getCurrentUserPermissions();
   if (!permissions) redirect("/login");
 
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.appointments;
   const { id } = await params;
   const supabase = await createClient();
   const organizationId = permissions.organizationId;
@@ -70,11 +82,11 @@ export default async function EditAppointmentPage({ params }: { params: Params }
     .maybeSingle();
 
   if (appointmentResult.error) {
-    return <ErrorCard id={id} message={`Dohvat termina: ${appointmentResult.error.message}`} />;
+    return <ErrorCard id={id} locale={permissions.organizationLocale} message={t.fetchAppointment + ": " + appointmentResult.error.message} />;
   }
 
   if (!appointmentResult.data) {
-    return <ErrorCard id={id} message="Termin nije pronađen u aktivnom salonu." />;
+    return <ErrorCard id={id} locale={permissions.organizationLocale} message={t.notFoundInSalon} />;
   }
 
   const [appointmentServicesResult, servicesResult, employeesResult, roomsResult, clientsResult] =
@@ -117,7 +129,7 @@ export default async function EditAppointmentPage({ params }: { params: Params }
     clientsResult.error;
 
   if (firstError) {
-    return <ErrorCard id={id} message={`Priprema forme: ${firstError.message}`} />;
+    return <ErrorCard id={id} locale={permissions.organizationLocale} message={t.prepareForm + ": " + firstError.message} />;
   }
 
   const rawAppointment = appointmentResult.data as GenericRow;
@@ -131,7 +143,7 @@ export default async function EditAppointmentPage({ params }: { params: Params }
     sort_order: Number(entry.sort_order ?? index),
     service: {
       id: asString(entry.service_id),
-      name: asString(entry.service_name) || "Usluga",
+      name: asString(entry.service_name) || t.service,
       description: null,
       service_group: null,
     },
@@ -175,7 +187,7 @@ export default async function EditAppointmentPage({ params }: { params: Params }
       [asString(employee.first_name), asString(employee.last_name)]
         .map((part) => part.trim())
         .filter(Boolean)
-        .join(" ") || asString(employee.display_name) || "Zaposlenik",
+        .join(" ") || asString(employee.display_name) || t.genericEmployee,
     color_hex: nullableString(employee.color) ?? nullableString(employee.color_hex),
   }));
 
@@ -201,20 +213,21 @@ export default async function EditAppointmentPage({ params }: { params: Params }
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-app-text">Uredi termin</h1>
-              <p className="mt-2 text-app-muted">Uredi postojeći termin i njegove podatke.</p>
+              <h1 className="text-3xl font-bold text-app-text">{t.editTitle}</h1>
+              <p className="mt-2 text-app-muted">{t.editSubtitle}</p>
             </div>
             <Link
               href={`/dashboard/appointments?date=${appointment.appointment_date}`}
               className="inline-flex items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
             >
-              Natrag na termine
+              {t.backToAppointments}
             </Link>
           </div>
         </div>
 
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <MultiTenantEditAppointmentForm
+            locale={permissions.organizationLocale}
             appointment={appointment}
             services={services}
             employees={employees}
