@@ -23,6 +23,9 @@ export default async function NewClientPage() {
             phone: "",
             email: "",
             note: "",
+            allergies_sensitivities: "",
+            contraindications: "",
+            treatment_preferences: "",
           }}
         />
       </div>
