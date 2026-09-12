@@ -23,6 +23,7 @@ import {
   createWaitlistEntryAction,
   updateWaitlistEntryAction,
 } from "@/features/waitlist/actions";
+import WaitlistMatchFinder from "@/features/waitlist/waitlist-match-finder";
 import type { AppLocale } from "@/lib/i18n";
 
 const fieldClass =
@@ -464,6 +465,13 @@ export default async function WaitlistPage() {
                         </p>
                       </div>
                     </div>
+
+                    <WaitlistMatchFinder
+                      entryId={entry.id}
+                      clientId={entry.client_id}
+                      serviceId={entry.service_id}
+                      locale={locale}
+                    />
 
                     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       <Link
