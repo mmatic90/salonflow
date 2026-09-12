@@ -1,10 +1,12 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type StatusKey = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
 
 type Props = {
+  locale?: AppLocale;
   showScheduled: boolean;
   showCompleted: boolean;
   showCancelled: boolean;
@@ -62,11 +64,15 @@ function Separator() {
 }
 
 export default function TimeGridLegendFilters({
+  locale = "hr",
   showScheduled,
   showCompleted,
   showCancelled,
   showNoShow,
 }: Props) {
+  const dictionary = getDictionary(locale);
+  const t = dictionary.calendar;
+  const appointmentT = dictionary.appointments;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -98,34 +104,34 @@ export default function TimeGridLegendFilters({
 
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-app-soft bg-app-card px-4 py-3 shadow-sm">
-      <LegendChip label="Radno vrijeme" dotClassName="bg-[#B0A695]" />
+      <LegendChip label={locale === "en" ? "Working hours" : locale === "it" ? "Orario di lavoro" : "Radno vrijeme"} dotClassName="bg-[#B0A695]" />
       <Separator />
-      <LegendChip label="Neradno vrijeme" dotClassName="bg-[#E5DDD2]" />
+      <LegendChip label={locale === "en" ? "Non-working hours" : locale === "it" ? "Fuori orario" : "Neradno vrijeme"} dotClassName="bg-[#E5DDD2]" />
       <Separator />
 
       <FilterChip
-        label="Zakazan"
+        label={locale === "en" ? "Scheduled" : locale === "it" ? "Programmato" : "Zakazan"}
         active={showScheduled}
         onClick={() => toggle("scheduled")}
         dotClassName="bg-[#B0A695]"
       />
       <Separator />
       <FilterChip
-        label="Odrađen"
+        label={appointmentT.completed}
         active={showCompleted}
         onClick={() => toggle("completed")}
         dotClassName="bg-[#776B5D]"
       />
       <Separator />
       <FilterChip
-        label="Otkazan"
+        label={locale === "en" ? "Cancelled" : locale === "it" ? "Annullato" : "Otkazan"}
         active={showCancelled}
         onClick={() => toggle("cancelled")}
         dotClassName="bg-[#CDBFAF]"
       />
       <Separator />
       <FilterChip
-        label="No-show"
+        label={appointmentT.noShow}
         active={showNoShow}
         onClick={() => toggle("no_show")}
         dotClassName="bg-[#4B4844]"
