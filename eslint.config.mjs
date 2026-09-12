@@ -8,7 +8,7 @@ const eslintConfig = defineConfig([
   // Tenant logos may be hosted on arbitrary external domains selected by each salon.
   // Keep the native img element until logo uploads are moved to a controlled image host.
   {
-    files: ["src/app/s/[slug]/page.tsx"],
+    files: ["src/app/s/**/page.tsx"],
     rules: {
       "@next/next/no-img-element": "off",
     },
