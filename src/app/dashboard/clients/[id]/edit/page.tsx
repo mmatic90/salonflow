@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import ClientForm from "@/components/client-form";
 import { getClientById } from "@/features/clients/queries";
+import { getClientCareProfile } from "@/features/clients/care-profile-queries";
 import { updateClientAction } from "@/features/clients/actions";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { getDictionary } from "@/lib/i18n";
@@ -14,7 +15,10 @@ export default async function EditClientPage({ params }: { params: Params }) {
   const t = getDictionary(permissions.organizationLocale).clients;
 
   const { id } = await params;
-  const client = await getClientById(id);
+  const [client, careProfile] = await Promise.all([
+    getClientById(id),
+    getClientCareProfile(id),
+  ]);
 
   if (!client) {
     notFound();
@@ -38,6 +42,10 @@ export default async function EditClientPage({ params }: { params: Params }) {
             phone: client.phone ?? "",
             email: client.email ?? "",
             note: client.note ?? "",
+            allergies_sensitivities:
+              careProfile?.allergies_sensitivities ?? "",
+            contraindications: careProfile?.contraindications ?? "",
+            treatment_preferences: careProfile?.treatment_preferences ?? "",
           }}
         />
       </div>
