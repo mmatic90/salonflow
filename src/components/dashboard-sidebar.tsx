@@ -5,9 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BellRing,
   CalendarDays,
-  Clock3,
   LayoutDashboard,
-  ListChecks,
   PanelLeft,
   PanelLeftClose,
   Settings,
@@ -33,13 +31,8 @@ type NavDefinition = {
   key:
     | "dashboard"
     | "onlineBookings"
-    | "appointments"
     | "calendar"
-    | "weekCalendar"
-    | "timeGrid"
     | "clients"
-    | "myAccount"
-    | "schedule"
     | "reports"
     | "settings";
   icon: typeof LayoutDashboard;
@@ -51,14 +44,9 @@ const SIDEBAR_CHANGE_EVENT = "salonflow-sidebar-change";
 
 const navDefinitions: NavDefinition[] = [
   { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, roles: ["admin", "employee"] },
-  { href: "/dashboard/online-bookings", key: "onlineBookings", icon: BellRing, roles: ["admin", "employee"] },
-  { href: "/dashboard/appointments", key: "appointments", icon: ListChecks, roles: ["admin", "employee"] },
   { href: "/dashboard/calendar", key: "calendar", icon: CalendarDays, roles: ["admin", "employee"] },
-  { href: "/dashboard/calendar/week", key: "weekCalendar", icon: CalendarDays, roles: ["admin", "employee"] },
-  { href: "/dashboard/calendar/time-grid", key: "timeGrid", icon: Clock3, roles: ["admin", "employee"] },
+  { href: "/dashboard/online-bookings", key: "onlineBookings", icon: BellRing, roles: ["admin", "employee"] },
   { href: "/dashboard/clients", key: "clients", icon: Users, roles: ["admin", "employee"] },
-  { href: "/dashboard/account", key: "myAccount", icon: UserCircle2, roles: ["admin", "employee"] },
-  { href: "/dashboard/schedule", key: "schedule", icon: Users, roles: ["admin"] },
   { href: "/dashboard/reports", key: "reports", icon: LayoutDashboard, roles: ["admin"] },
   { href: "/dashboard/settings", key: "settings", icon: Settings, roles: ["admin"] },
 ];
@@ -111,10 +99,7 @@ export default function DashboardSidebar({ role, displayName, organizationName, 
         .filter((item) => item.roles.includes(role))
         .map((item) => ({
           ...item,
-          label:
-            item.key === "myAccount"
-              ? dictionary.myAccount
-              : dictionary.nav[item.key],
+          label: dictionary.nav[item.key],
         })),
     [dictionary, role],
   );
