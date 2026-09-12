@@ -17,16 +17,18 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
  type SearchParams = Promise<{
   q?: string;
 }>;
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale: "hr" | "en" | "it") {
   if (!value) return "-";
 
   const date = new Date(`${value}T00:00:00`);
-  return new Intl.DateTimeFormat("hr-HR", {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -38,6 +40,9 @@ export default async function ClientsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.clients;
   const supabase = await createClient();
 
   const {
@@ -64,11 +69,11 @@ export default async function ClientsPage({
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-app-soft bg-white/85 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-app-accent shadow-sm">
                 <Users className="h-3.5 w-3.5" />
-                Mini CRM
+                {t.badge}
               </div>
-              <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-app-text md:text-4xl">Klijenti</h1>
+              <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-app-text md:text-4xl">{t.title}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-app-muted sm:text-base">
-                Pregled kontakata, aktivnosti i povijesti klijenata na jednom mjestu.
+                {t.intro}
               </p>
             </div>
 
@@ -77,7 +82,7 @@ export default async function ClientsPage({
               className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2.5 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <Plus className="h-4 w-4" />
-              Novi klijent
+              {t.newClient}
             </Link>
           </div>
         </div>
@@ -85,19 +90,19 @@ export default async function ClientsPage({
 
       <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Aktivni klijenti</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.activeClients}</p>
           <p className="mt-2 text-2xl font-extrabold text-app-text">{clients.length}</p>
         </div>
         <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">S budućim terminom</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.withUpcoming}</p>
           <p className="mt-2 text-2xl font-extrabold text-app-text">{clientsWithUpcoming}</p>
         </div>
         <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Ukupno termina</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.totalAppointments}</p>
           <p className="mt-2 text-2xl font-extrabold text-app-text">{totalAppointments}</p>
         </div>
         <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">Prosjek po klijentu</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.averagePerClient}</p>
           <p className="mt-2 text-2xl font-extrabold text-app-text">{averageAppointments}</p>
         </div>
       </section>
@@ -110,7 +115,7 @@ export default async function ClientsPage({
               type="search"
               name="q"
               defaultValue={query}
-              placeholder="Pretraži ime, telefon ili email..."
+              placeholder={t.searchPlaceholder}
               className="w-full rounded-xl border border-app-soft bg-white py-3 pl-11 pr-4 text-app-text outline-none transition placeholder:text-app-muted focus:border-app-accent focus:ring-2 focus:ring-app-accent/10"
             />
           </div>
@@ -119,7 +124,7 @@ export default async function ClientsPage({
           </button>
           {query ? (
             <Link href="/dashboard/clients" className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-app-muted transition hover:bg-app-bg hover:text-app-text">
-              Očisti
+              {t.clear}
             </Link>
           ) : null}
         </form>
@@ -127,9 +132,9 @@ export default async function ClientsPage({
 
       {clients.length === 0 ? (
         <EmptyStateCard
-          title="Nema pronađenih klijenata"
-          description="Pokušaj s drugim pojmom pretrage ili dodaj novog klijenta."
-          action={<Link href="/dashboard/clients/new" className="inline-flex rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white">Dodaj klijenta</Link>}
+          title={t.noClientsTitle}
+          description={t.noClientsDescription}
+          action={<Link href="/dashboard/clients/new" className="inline-flex rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white">{t.addClient}</Link>}
         />
       ) : (
         <>
@@ -144,11 +149,11 @@ export default async function ClientsPage({
                       </div>
                       <div className="min-w-0">
                         <h2 className="truncate text-lg font-bold text-app-text">{client.full_name}</h2>
-                        <p className="mt-1 text-xs font-semibold text-app-muted">{client.appointments_count} termina</p>
+                        <p className="mt-1 text-xs font-semibold text-app-muted">{client.appointments_count} {t.appointments}</p>
                       </div>
                     </div>
                     <span className="rounded-full bg-app-bg px-2.5 py-1 text-xs font-semibold text-app-text">
-                      {client.next_appointment ? "Aktivan" : "Bez budućeg termina"}
+                      {client.next_appointment ? t.active : "Bez budućeg {t.appointments}"}
                     </span>
                   </div>
 
@@ -159,19 +164,19 @@ export default async function ClientsPage({
 
                   <div className="mt-5 grid grid-cols-2 gap-3">
                     <div className="rounded-2xl bg-app-bg p-3">
-                      <p className="text-xs text-app-muted">Zadnji termin</p>
-                      <p className="mt-1 font-bold text-app-text">{formatDate(client.last_appointment)}</p>
+                      <p className="text-xs text-app-muted">{t.lastAppointment}</p>
+                      <p className="mt-1 font-bold text-app-text">{formatDate(client.last_appointment, permissions.organizationLocale)}</p>
                     </div>
                     <div className="rounded-2xl bg-app-bg p-3">
-                      <p className="text-xs text-app-muted">Sljedeći termin</p>
-                      <p className="mt-1 font-bold text-app-text">{formatDate(client.next_appointment)}</p>
+                      <p className="text-xs text-app-muted">{t.nextAppointment}</p>
+                      <p className="mt-1 font-bold text-app-text">{formatDate(client.next_appointment, permissions.organizationLocale)}</p>
                     </div>
                   </div>
                 </Link>
 
                 <div className="flex gap-2 border-t border-app-soft bg-app-bg/40 p-4">
-                  <Link href={`/dashboard/clients/${client.id}`} className="flex-1 rounded-xl bg-app-accent px-3 py-2 text-center text-sm font-semibold text-white">Otvori</Link>
-                  <Link href={`/dashboard/clients/${client.id}/edit`} className="flex-1 rounded-xl border border-app-soft bg-white px-3 py-2 text-center text-sm font-semibold text-app-text">Uredi</Link>
+                  <Link href={`/dashboard/clients/${client.id}`} className="flex-1 rounded-xl bg-app-accent px-3 py-2 text-center text-sm font-semibold text-white">{t.open}</Link>
+                  <Link href={`/dashboard/clients/${client.id}/edit`} className="flex-1 rounded-xl border border-app-soft bg-white px-3 py-2 text-center text-sm font-semibold text-app-text">{t.edit}</Link>
                   <SettingsDeleteButton label={client.full_name} onDelete={deleteClientAction.bind(null, client.id)} />
                 </div>
               </article>
@@ -183,12 +188,12 @@ export default async function ClientsPage({
               <table className="min-w-full border-collapse">
                 <thead className="bg-app-table-head">
                   <tr className="text-left text-sm text-app-muted">
-                    <th className="px-5 py-3 font-semibold">Klijent</th>
-                    <th className="px-5 py-3 font-semibold">Kontakt</th>
-                    <th className="px-5 py-3 font-semibold">Termini</th>
-                    <th className="px-5 py-3 font-semibold">Zadnji termin</th>
-                    <th className="px-5 py-3 font-semibold">Sljedeći termin</th>
-                    <th className="px-5 py-3 font-semibold">Akcije</th>
+                    <th className="px-5 py-3 font-semibold">{t.client}</th>
+                    <th className="px-5 py-3 font-semibold">{t.contact}</th>
+                    <th className="px-5 py-3 font-semibold">{t.totalAppointments}</th>
+                    <th className="px-5 py-3 font-semibold">{t.lastAppointment}</th>
+                    <th className="px-5 py-3 font-semibold">{t.nextAppointment}</th>
+                    <th className="px-5 py-3 font-semibold">{t.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -199,7 +204,7 @@ export default async function ClientsPage({
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-app-accent/10 font-extrabold text-app-accent">
                             {client.full_name.split(" ").map((part) => part[0]).slice(0,2).join("").toUpperCase()}
                           </div>
-                          <div><p className="font-bold text-app-text">{client.full_name}</p><p className="mt-1 text-xs text-app-muted">{client.next_appointment ? "Ima budući termin" : "Bez budućeg termina"}</p></div>
+                          <div><p className="font-bold text-app-text">{client.full_name}</p><p className="mt-1 text-xs text-app-muted">{client.next_appointment ? t.hasUpcoming : "Bez budućeg {t.appointments}"}</p></div>
                         </Link>
                       </td>
                       <td className="px-5 py-4">
@@ -209,16 +214,16 @@ export default async function ClientsPage({
                         </div>
                       </td>
                       <td className="px-5 py-4"><span className="rounded-full bg-app-bg px-3 py-1 font-semibold text-app-text">{client.appointments_count}</span></td>
-                      <td className="px-5 py-4 font-medium text-app-muted">{formatDate(client.last_appointment)}</td>
+                      <td className="px-5 py-4 font-medium text-app-muted">{formatDate(client.last_appointment, permissions.organizationLocale)}</td>
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold ${client.next_appointment ? "bg-emerald-50 text-emerald-700" : "bg-app-bg text-app-muted"}`}>
-                          <CalendarClock className="h-3.5 w-3.5" />{formatDate(client.next_appointment)}
+                          <CalendarClock className="h-3.5 w-3.5" />{formatDate(client.next_appointment, permissions.organizationLocale)}
                         </span>
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex gap-2">
-                          <Link href={`/dashboard/clients/${client.id}`} className="rounded-xl border border-app-soft bg-white px-3 py-2 font-semibold text-app-text hover:bg-app-bg">Otvori</Link>
-                          <Link href={`/dashboard/clients/${client.id}/edit`} className="rounded-xl border border-app-soft bg-white px-3 py-2 font-semibold text-app-text hover:bg-app-bg">Uredi</Link>
+                          <Link href={`/dashboard/clients/${client.id}`} className="rounded-xl border border-app-soft bg-white px-3 py-2 font-semibold text-app-text hover:bg-app-bg">{t.open}</Link>
+                          <Link href={`/dashboard/clients/${client.id}/edit`} className="rounded-xl border border-app-soft bg-white px-3 py-2 font-semibold text-app-text hover:bg-app-bg">{t.edit}</Link>
                           <SettingsDeleteButton label={client.full_name} onDelete={deleteClientAction.bind(null, client.id)} />
                         </div>
                       </td>
