@@ -156,7 +156,14 @@ function buildAppointmentCreatedSms(args: {
   serviceName: string;
   date: string;
   startTime: string;
+  lang: AppLocale;
 }) {
+  if (args.lang === "en") {
+    return `Hi ${args.clientName}, your appointment for "${args.serviceName}" is booked for ${formatSmsDate(args.date)} at ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
+  if (args.lang === "it") {
+    return `Ciao ${args.clientName}, il tuo appuntamento per "${args.serviceName}" è prenotato per il ${formatSmsDate(args.date)} alle ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
   return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" uspješno je rezerviran za ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. ${args.salonName}`;
 }
 
@@ -166,7 +173,14 @@ function buildAppointmentReminderSms(args: {
   serviceName: string;
   date: string;
   startTime: string;
+  lang: AppLocale;
 }) {
+  if (args.lang === "en") {
+    return `Reminder: tomorrow you have an appointment for "${args.serviceName}" at ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). ${args.salonName}`;
+  }
+  if (args.lang === "it") {
+    return `Promemoria: domani hai un appuntamento per "${args.serviceName}" alle ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). ${args.salonName}`;
+  }
   return `Podsjetnik: sutra imate termin za "${args.serviceName}" u ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). ${args.salonName}`;
 }
 
@@ -176,7 +190,14 @@ function buildAppointmentUpdatedSms(args: {
   serviceName: string;
   date: string;
   startTime: string;
+  lang: AppLocale;
 }) {
+  if (args.lang === "en") {
+    return `Hi ${args.clientName}, your appointment for "${args.serviceName}" has been updated. The new appointment is ${formatSmsDate(args.date)} at ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
+  if (args.lang === "it") {
+    return `Ciao ${args.clientName}, il tuo appuntamento per "${args.serviceName}" è stato modificato. Il nuovo appuntamento è il ${formatSmsDate(args.date)} alle ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
   return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" je izmijenjen. Novi termin je ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. ${args.salonName}`;
 }
 
@@ -261,6 +282,7 @@ function isWithinAllowedSendHours(date: Date) {
 
 async function sendOrScheduleCreatedSms(args: {
   salonName: string;
+  lang: AppLocale;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -273,6 +295,7 @@ async function sendOrScheduleCreatedSms(args: {
 
   const {
     salonName,
+    lang,
     appointmentId,
     clientPhone,
     clientName,
@@ -315,6 +338,7 @@ async function sendOrScheduleCreatedSms(args: {
           serviceName,
           date: appointmentDate,
           startTime,
+          lang,
         }),
       });
 
@@ -349,6 +373,7 @@ async function sendOrScheduleCreatedSms(args: {
         serviceName,
         date: appointmentDate,
         startTime,
+        lang,
       }),
       sendAt,
     });
@@ -373,6 +398,7 @@ async function sendOrScheduleCreatedSms(args: {
 
 async function sendUpdatedSmsIfPossible(args: {
   salonName: string;
+  lang: AppLocale;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -385,6 +411,7 @@ async function sendUpdatedSmsIfPossible(args: {
 
   const {
     salonName,
+    lang,
     appointmentId,
     clientPhone,
     clientName,
@@ -417,6 +444,7 @@ async function sendUpdatedSmsIfPossible(args: {
         serviceName,
         date: appointmentDate,
         startTime,
+        lang,
       }),
     });
 
@@ -440,6 +468,7 @@ async function sendUpdatedSmsIfPossible(args: {
 
 async function scheduleReminderIfPossible(args: {
   salonName: string;
+  lang: AppLocale;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -452,6 +481,7 @@ async function scheduleReminderIfPossible(args: {
 
   const {
     salonName,
+    lang,
     appointmentId,
     clientPhone,
     clientName,
@@ -512,6 +542,7 @@ async function scheduleReminderIfPossible(args: {
         serviceName,
         date: appointmentDate,
         startTime,
+        lang,
       }),
       sendAt,
     });
@@ -1127,6 +1158,7 @@ export async function createAppointmentAction(
 
   await sendOrScheduleCreatedSms({
     salonName: permissions.organizationName,
+    lang: permissions.organizationLocale,
     appointmentId: appointment.id,
     clientPhone,
     clientName: values.client_name,
@@ -1138,6 +1170,7 @@ export async function createAppointmentAction(
 
   await scheduleReminderIfPossible({
     salonName: permissions.organizationName,
+    lang: permissions.organizationLocale,
     appointmentId: appointment.id,
     clientPhone,
     clientName: values.client_name,
@@ -1392,6 +1425,7 @@ export async function updateAppointmentAction(
 
   await scheduleReminderIfPossible({
     salonName: permissions.organizationName,
+    lang: permissions.organizationLocale,
     appointmentId,
     clientPhone,
     clientName: values.client_name,
@@ -1412,6 +1446,7 @@ export async function updateAppointmentAction(
   if (shouldSendUpdatedSms) {
     await sendUpdatedSmsIfPossible({
       salonName: permissions.organizationName,
+      lang: permissions.organizationLocale,
       appointmentId,
       clientPhone,
       clientName: values.client_name,
