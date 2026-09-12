@@ -88,7 +88,6 @@ function getClientSegment(args: {
 }
 
 export async function getClientsList(search?: string): Promise<ClientListItem[]> {
-  const startedAt = performance.now();
   const supabase = await createClient();
 
   let clientsQuery = supabase
@@ -103,11 +102,9 @@ export async function getClientsList(search?: string): Promise<ClientListItem[]>
     );
   }
 
-  const clientsStartedAt = performance.now();
   const { data: clients, error: clientsError } = await clientsQuery
     .order("first_name", { ascending: true })
     .order("last_name", { ascending: true });
-  console.log("[clients] clients query ms:", Math.round(performance.now() - clientsStartedAt));
 
   if (clientsError) {
     console.error("getClientsList clients query failed:", clientsError.message);
@@ -118,15 +115,10 @@ export async function getClientsList(search?: string): Promise<ClientListItem[]>
 
   if (clientIds.length === 0) return [];
 
-  const appointmentsStartedAt = performance.now();
   const { data: appointments, error: appointmentsError } = await supabase
     .from("appointments")
     .select("client_id, appointment_date")
     .in("client_id", clientIds);
-  console.log(
-    "[clients] appointments summary query ms:",
-    Math.round(performance.now() - appointmentsStartedAt),
-  );
 
   if (appointmentsError) {
     console.error(
@@ -171,8 +163,6 @@ export async function getClientsList(search?: string): Promise<ClientListItem[]>
       next_appointment: future[0] ?? null,
     };
   });
-
-  console.log("[clients] getClientsList total ms:", Math.round(performance.now() - startedAt));
 
   return result;
 }
