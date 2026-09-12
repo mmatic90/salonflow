@@ -3,6 +3,7 @@ import { requireAdminForSettings } from "@/lib/page-guards";
 import PageShell from "@/components/page-shell";
 import PageHeader from "@/components/page-header";
 import PageSection from "@/components/page-section";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 function SettingsCard({
   href,
@@ -24,76 +25,112 @@ function SettingsCard({
   );
 }
 
+const groupLabels: Record<
+  AppLocale,
+  { essentials: string; resources: string; advanced: string }
+> = {
+  hr: {
+    essentials: "Osnovne postavke salona",
+    resources: "Resursi i pravila rezervacije",
+    advanced: "Napredno",
+  },
+  en: {
+    essentials: "Salon essentials",
+    resources: "Resources and booking rules",
+    advanced: "Advanced",
+  },
+  it: {
+    essentials: "Impostazioni principali del salone",
+    resources: "Risorse e regole di prenotazione",
+    advanced: "Avanzate",
+  },
+};
+
 export default async function SettingsPage() {
-  await requireAdminForSettings();
+  const permissions = await requireAdminForSettings();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.settings;
+  const scheduleT = dictionary.schedule;
+  const groups = groupLabels[permissions.organizationLocale];
 
   return (
     <PageShell maxWidth="max-w-7xl">
-      <PageHeader
-        title="Postavke"
-        description="Upravljanje osnovnim podacima salona."
-      />
+      <PageHeader title={t.title} description={t.description} />
 
-      <PageSection title="Moduli postavki">
+      <PageSection title={groups.essentials}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SettingsCard
+            href="/dashboard/settings/appearance"
+            title={t.appearance.title}
+            description={t.appearance.description}
+          />
+
+          <SettingsCard
             href="/dashboard/settings/services"
-            title="Usluge"
-            description="Dodavanje i aktivacija/deaktivacija usluga."
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/rooms"
-            title="Sobe"
-            description="Upravljanje sobama u salonu."
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/equipment"
-            title="Oprema"
-            description="Upravljanje opremom i količinama."
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/service-rooms"
-            title="Usluge i sobe"
-            description="Odredi u kojim sobama se pojedina usluga može izvoditi."
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/employee-services"
-            title="Zaposlenici i usluge"
-            description="Odredi koje usluge pojedini zaposlenik može raditi."
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/service-equipment"
-            title="Usluge i oprema"
-            description="Odredi koja je oprema potrebna za pojedinu uslugu."
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/salon-hours"
-            title="Radno vrijeme salona"
-            description="Uredi radno vrijeme salona po danima u tjednu."
-          />
-
-          <SettingsCard
-            href="/dashboard/settings/group-limits"
-            title="Group limits"
-            description="Odredi koliko termina iz iste grupe može ići paralelno."
+            title={t.services.title}
+            description={t.services.moduleDescription}
           />
 
           <SettingsCard
             href="/dashboard/settings/employees"
-            title="Djelatnici"
-            description="Dodavanje, uređivanje, deaktivacija i reset lozinke djelatnika."
+            title={t.employees.title}
+            description={t.employees.moduleDescription}
           />
 
           <SettingsCard
+            href="/dashboard/settings/salon-hours"
+            title={t.salonHours.title}
+            description={t.salonHours.moduleDescription}
+          />
+
+          <SettingsCard
+            href="/dashboard/schedule"
+            title={scheduleT.title}
+            description={scheduleT.description}
+          />
+        </div>
+      </PageSection>
+
+      <PageSection title={groups.resources}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <SettingsCard
+            href="/dashboard/settings/rooms"
+            title={t.rooms.title}
+            description={t.rooms.moduleDescription}
+          />
+
+          <SettingsCard
+            href="/dashboard/settings/equipment"
+            title={t.equipment.title}
+            description={t.equipment.moduleDescription}
+          />
+
+          <SettingsCard
+            href="/dashboard/settings/service-rooms"
+            title={t.serviceRoomsTitle}
+            description={t.serviceRoomsDescription}
+          />
+
+          <SettingsCard
+            href="/dashboard/settings/employee-services"
+            title={t.employeeServices.title}
+            description={t.employeeServices.moduleDescription}
+          />
+
+          <SettingsCard
+            href="/dashboard/settings/service-equipment"
+            title={t.serviceEquipmentTitle}
+            description={t.serviceEquipmentDescription}
+          />
+        </div>
+      </PageSection>
+
+      <PageSection title={groups.advanced}>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <SettingsCard
             href="/dashboard/settings/audit-log"
-            title="Audit log"
-            description="Pregled svih akcija i promjena u sustavu."
+            title={t.auditLogTitle}
+            description={t.auditLogDescription}
           />
         </div>
       </PageSection>

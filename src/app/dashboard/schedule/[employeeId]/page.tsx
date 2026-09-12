@@ -6,13 +6,15 @@ import DefaultScheduleRangeForm from "./default-schedule-range-form";
 import OverrideForm from "./override-form";
 import OverrideList from "./override-list";
 import { requireAdminForScheduleManagement } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function EmployeeSchedulePage({
   params,
 }: {
   params: Promise<{ employeeId: string }>;
 }) {
-  await requireAdminForScheduleManagement();
+  const permissions = await requireAdminForScheduleManagement();
+  const t = getDictionary(permissions.organizationLocale).schedule;
 
   const { employeeId } = await params;
   const data = await getEmployeeSchedulePageData(employeeId);
@@ -39,7 +41,7 @@ export default async function EmployeeSchedulePage({
                 </h1>
               </div>
               <p className="mt-2 text-app-muted">
-                Upravljanje default rasporedom i overrideovima.
+                {t.description}
               </p>
             </div>
 
@@ -47,17 +49,17 @@ export default async function EmployeeSchedulePage({
               href="/dashboard/schedule"
               className="inline-flex items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
             >
-              Natrag na zaposlenike
+              {t.backToEmployees}
             </Link>
           </div>
         </div>
 
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <h2 className="text-2xl font-semibold text-app-text">
-            Radno vrijeme za sljedećih 5 dana
+            {t.next5Days}
           </h2>
           <p className="mt-2 text-sm text-app-muted">
-            Prikaz uključuje default raspored i sve overrideove.
+            {t.next5DaysDescription}
           </p>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -114,32 +116,36 @@ export default async function EmployeeSchedulePage({
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
             <h2 className="text-2xl font-semibold text-app-text">
-              Default raspored po danima
+              {t.defaultSchedule}
             </h2>
             <p className="mt-2 text-sm text-app-muted">
-              Ovaj raspored vrijedi dok ne postoji override za određeni datum.
+              {t.defaultScheduleDescription}
             </p>
 
             <div className="mt-6">
               <DefaultScheduleForm
+                locale={permissions.organizationLocale}
                 employeeId={data.employee.id}
                 defaultSchedule={data.defaultSchedule}
+                salonHours={data.salonHours}
               />
             </div>
           </div>
 
           <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
             <h2 className="text-2xl font-semibold text-app-text">
-              Brza primjena na raspon dana
+              {t.quickRange}
             </h2>
             <p className="mt-2 text-sm text-app-muted">
-              Primijeni isto radno vrijeme na više dana u tjednu odjednom.
+              {t.quickRangeDescription}
             </p>
 
             <div className="mt-6">
               <DefaultScheduleRangeForm
+                locale={permissions.organizationLocale}
                 employeeId={data.employee.id}
                 defaultSchedule={data.defaultSchedule}
+                salonHours={data.salonHours}
               />
             </div>
           </div>
@@ -148,27 +154,32 @@ export default async function EmployeeSchedulePage({
         <div className="grid gap-6 xl:grid-cols-2">
           <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
             <h2 className="text-2xl font-semibold text-app-text">
-              Dodaj override
+              {t.addOverride}
             </h2>
             <p className="mt-2 text-sm text-app-muted">
-              Koristi za promjenu smjene, slobodan dan, godišnji ili bolovanje.
+              {t.addOverrideDescription}
             </p>
 
             <div className="mt-6">
-              <OverrideForm employeeId={data.employee.id} />
+              <OverrideForm
+                locale={permissions.organizationLocale}
+                employeeId={data.employee.id}
+                salonHours={data.salonHours}
+              />
             </div>
           </div>
 
           <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
             <h2 className="text-2xl font-semibold text-app-text">
-              Postojeći overrideovi
+              {t.existingOverrides}
             </h2>
             <p className="mt-2 text-sm text-app-muted">
-              Pregled i brisanje overrideova za ovog zaposlenika.
+              {t.existingOverridesDescription}
             </p>
 
             <div className="mt-6">
               <OverrideList
+                locale={permissions.organizationLocale}
                 employeeId={data.employee.id}
                 overrides={data.overrides}
               />

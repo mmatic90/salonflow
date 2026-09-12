@@ -5,6 +5,7 @@ import { RotateCcw } from "lucide-react";
 import { bulkUpdateEmployeeServicesAction } from "@/features/settings/actions";
 import type { EmployeeServiceMappingRow } from "@/features/settings/queries";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type EmployeeItem = {
   id: string;
@@ -19,6 +20,7 @@ type ServiceItem = {
 };
 
 type Props = {
+  locale?: AppLocale;
   employees: EmployeeItem[];
   services: ServiceItem[];
   mappings: EmployeeServiceMappingRow[];
@@ -30,10 +32,12 @@ type EditableMapping = {
 };
 
 export default function EmployeeServiceTable({
+  locale = "hr",
   employees,
   services,
   mappings,
 }: Props) {
+  const t = getDictionary(locale).settings;
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.is_active),
     [employees],
@@ -123,8 +127,8 @@ export default function EmployeeServiceTable({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-app-muted">
-          Označi usluge koje zaposlenik može raditi pa klikni{" "}
-          <span className="font-medium text-app-text">Spremi izmjene</span>.
+          {t.employeeServices.editHint}{" "}
+          <span className="font-medium text-app-text">{t.saveChanges}</span>.
         </div>
 
         <div className="flex gap-2">
@@ -135,7 +139,7 @@ export default function EmployeeServiceTable({
             className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
           >
             <RotateCcw className="h-4 w-4" />
-            Poništi
+            {t.reset}
           </button>
 
           <button
@@ -144,7 +148,7 @@ export default function EmployeeServiceTable({
             disabled={pending || !hasChanges}
             className="rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {pending ? "Spremanje..." : "Spremi izmjene"}
+            {pending ? t.saving : t.saveChanges}
           </button>
         </div>
       </div>
@@ -153,7 +157,7 @@ export default function EmployeeServiceTable({
         <table className="min-w-full border-collapse overflow-hidden rounded-2xl">
           <thead className="bg-app-table-head">
             <tr className="text-left text-sm text-app-muted">
-              <th className="px-4 py-3 font-semibold">Zaposlenik</th>
+              <th className="px-4 py-3 font-semibold">{t.employee}</th>
               {activeServices.map((service) => (
                 <th
                   key={service.id}
@@ -242,7 +246,7 @@ export default function EmployeeServiceTable({
                     onClick={() => selectAllServices(employee.id)}
                     className="rounded-lg border border-app-soft bg-white px-2 py-1 text-app-text transition hover:bg-app-bg"
                   >
-                    Sve usluge
+                    {t.allServices}
                   </button>
 
                   <button
@@ -250,7 +254,7 @@ export default function EmployeeServiceTable({
                     onClick={() => clearAllServices(employee.id)}
                     className="rounded-lg border border-app-soft bg-white px-2 py-1 text-app-text transition hover:bg-app-bg"
                   >
-                    Ukloni sve
+                    {t.removeAll}
                   </button>
                 </div>
               </div>

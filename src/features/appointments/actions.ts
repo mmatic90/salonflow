@@ -18,6 +18,8 @@ import {
   sendInstantSms,
 } from "@/lib/twilio/sms";
 import { writeAuditLog } from "@/lib/audit/write-audit-log";
+import { getCurrentUserPermissions } from "@/lib/permissions";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 export type AppointmentFormValues = {
   appointment_date: string;
@@ -56,6 +58,22 @@ function normalizeNullableText(value: FormDataEntryValue | null) {
 
 function normalizeLower(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
+}
+
+function splitClientName(clientName: string) {
+  const parts = clientName.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length <= 1) {
+    return {
+      firstName: parts[0] ?? "",
+      lastName: "",
+    };
+  }
+
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" "),
+  };
 }
 
 function getFormValues(formData: FormData): AppointmentFormValues {
@@ -97,7 +115,13 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
 }
 
 function isValidAppointmentStatus(value: string): value is AppointmentStatus {
-  return ["scheduled", "completed", "cancelled", "no_show"].includes(value);
+  return [
+    "scheduled",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "no_show",
+  ].includes(value);
 }
 
 function canTransitionAppointmentStatus(
@@ -107,7 +131,11 @@ function canTransitionAppointmentStatus(
   if (from === to) return true;
 
   if (from === "scheduled") {
-    return ["completed", "cancelled", "no_show"].includes(to);
+    return ["confirmed", "completed", "cancelled", "no_show"].includes(to);
+  }
+
+  if (from === "confirmed") {
+    return ["scheduled", "completed", "cancelled", "no_show"].includes(to);
   }
 
   return false;
@@ -123,30 +151,54 @@ function formatSmsTime(time: string) {
 }
 
 function buildAppointmentCreatedSms(args: {
+  salonName: string;
   clientName: string;
   serviceName: string;
   date: string;
   startTime: string;
+  lang: AppLocale;
 }) {
-  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" uspješno je rezerviran za ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. Body & Soul`;
+  if (args.lang === "en") {
+    return `Hi ${args.clientName}, your appointment for "${args.serviceName}" is booked for ${formatSmsDate(args.date)} at ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
+  if (args.lang === "it") {
+    return `Ciao ${args.clientName}, il tuo appuntamento per "${args.serviceName}" è prenotato per il ${formatSmsDate(args.date)} alle ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
+  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" uspješno je rezerviran za ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. ${args.salonName}`;
 }
 
 function buildAppointmentReminderSms(args: {
+  salonName: string;
   clientName: string;
   serviceName: string;
   date: string;
   startTime: string;
+  lang: AppLocale;
 }) {
-  return `Podsjetnik: sutra imate termin za "${args.serviceName}" u ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). Body & Soul`;
+  if (args.lang === "en") {
+    return `Reminder: tomorrow you have an appointment for "${args.serviceName}" at ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). ${args.salonName}`;
+  }
+  if (args.lang === "it") {
+    return `Promemoria: domani hai un appuntamento per "${args.serviceName}" alle ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). ${args.salonName}`;
+  }
+  return `Podsjetnik: sutra imate termin za "${args.serviceName}" u ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). ${args.salonName}`;
 }
 
 function buildAppointmentUpdatedSms(args: {
+  salonName: string;
   clientName: string;
   serviceName: string;
   date: string;
   startTime: string;
+  lang: AppLocale;
 }) {
-  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" je izmijenjen. Novi termin je ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. Body & Soul`;
+  if (args.lang === "en") {
+    return `Hi ${args.clientName}, your appointment for "${args.serviceName}" has been updated. The new appointment is ${formatSmsDate(args.date)} at ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
+  if (args.lang === "it") {
+    return `Ciao ${args.clientName}, il tuo appuntamento per "${args.serviceName}" è stato modificato. Il nuovo appuntamento è il ${formatSmsDate(args.date)} alle ${formatSmsTime(args.startTime)}. ${args.salonName}`;
+  }
+  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" je izmijenjen. Novi termin je ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. ${args.salonName}`;
 }
 
 function didAppointmentDateOrTimeChange(
@@ -229,6 +281,8 @@ function isWithinAllowedSendHours(date: Date) {
 }
 
 async function sendOrScheduleCreatedSms(args: {
+  salonName: string;
+  lang: AppLocale;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -240,6 +294,8 @@ async function sendOrScheduleCreatedSms(args: {
   const supabase = await createClient();
 
   const {
+    salonName,
+    lang,
     appointmentId,
     clientPhone,
     clientName,
@@ -250,6 +306,7 @@ async function sendOrScheduleCreatedSms(args: {
   } = args;
 
   console.log("[SMS] sendOrScheduleCreatedSms args:", {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -276,10 +333,12 @@ async function sendOrScheduleCreatedSms(args: {
       const createdSms = await sendInstantSms({
         to: clientPhone,
         message: buildAppointmentCreatedSms({
+          salonName,
           clientName,
           serviceName,
           date: appointmentDate,
           startTime,
+          lang,
         }),
       });
 
@@ -309,10 +368,12 @@ async function sendOrScheduleCreatedSms(args: {
     const createdSms = await scheduleSms({
       to: clientPhone,
       message: buildAppointmentCreatedSms({
+        salonName,
         clientName,
         serviceName,
         date: appointmentDate,
         startTime,
+        lang,
       }),
       sendAt,
     });
@@ -336,6 +397,8 @@ async function sendOrScheduleCreatedSms(args: {
 }
 
 async function sendUpdatedSmsIfPossible(args: {
+  salonName: string;
+  lang: AppLocale;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -347,6 +410,8 @@ async function sendUpdatedSmsIfPossible(args: {
   const supabase = await createClient();
 
   const {
+    salonName,
+    lang,
     appointmentId,
     clientPhone,
     clientName,
@@ -357,6 +422,7 @@ async function sendUpdatedSmsIfPossible(args: {
   } = args;
 
   console.log("[SMS] sendUpdatedSmsIfPossible args:", {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -373,10 +439,12 @@ async function sendUpdatedSmsIfPossible(args: {
     const sms = await sendInstantSms({
       to: clientPhone,
       message: buildAppointmentUpdatedSms({
+        salonName,
         clientName,
         serviceName,
         date: appointmentDate,
         startTime,
+        lang,
       }),
     });
 
@@ -399,6 +467,8 @@ async function sendUpdatedSmsIfPossible(args: {
 }
 
 async function scheduleReminderIfPossible(args: {
+  salonName: string;
+  lang: AppLocale;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -410,6 +480,8 @@ async function scheduleReminderIfPossible(args: {
   const supabase = await createClient();
 
   const {
+    salonName,
+    lang,
     appointmentId,
     clientPhone,
     clientName,
@@ -420,6 +492,7 @@ async function scheduleReminderIfPossible(args: {
   } = args;
 
   console.log("[SMS] scheduleReminderIfPossible args:", {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -464,10 +537,12 @@ async function scheduleReminderIfPossible(args: {
     const reminderSms = await scheduleSms({
       to: clientPhone,
       message: buildAppointmentReminderSms({
+        salonName,
         clientName,
         serviceName,
         date: appointmentDate,
         startTime,
+        lang,
       }),
       sendAt,
     });
@@ -535,35 +610,45 @@ async function cancelExistingReminderIfAny(appointmentId: string) {
 }
 
 async function resolveClientId(args: {
+  locale: AppLocale;
+  organizationId: string;
   clientId: string;
   clientName: string;
   clientPhone: string | null;
   clientEmail: string | null;
   clientNote: string | null;
-  internalNote: string | null;
 }) {
   const supabase = await createClient();
 
   const {
+    locale,
+    organizationId,
     clientId,
     clientName,
     clientPhone,
     clientEmail,
     clientNote,
-    internalNote,
   } = args;
 
+  const t = getDictionary(locale).appointments.actionMessages;
+  const { firstName, lastName } = splitClientName(clientName);
+  const clientPayload = {
+    organization_id: organizationId,
+    first_name: firstName,
+    last_name: lastName,
+    phone: clientPhone,
+    email: clientEmail,
+    notes: clientNote,
+  };
+
   if (clientId) {
-    const { error } = await supabase
+    const { data: updatedClient, error } = await supabase
       .from("clients")
-      .update({
-        full_name: clientName,
-        phone: clientPhone,
-        email: clientEmail,
-        note: clientNote,
-        internal_note: internalNote,
-      })
-      .eq("id", clientId);
+      .update(clientPayload)
+      .eq("organization_id", organizationId)
+      .eq("id", clientId)
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return {
@@ -572,16 +657,25 @@ async function resolveClientId(args: {
       };
     }
 
+    if (!updatedClient) {
+      return {
+        ok: false as const,
+        error: t.clientNotFound,
+      };
+    }
+
     return {
       ok: true as const,
-      clientId,
+      clientId: updatedClient.id,
     };
   }
 
   const { data: possibleMatches, error: searchError } = await supabase
     .from("clients")
-    .select("id, full_name, phone, email")
-    .ilike("full_name", clientName);
+    .select("id, first_name, last_name, phone, email")
+    .eq("organization_id", organizationId)
+    .ilike("first_name", firstName)
+    .ilike("last_name", lastName);
 
   if (searchError) {
     return {
@@ -591,8 +685,12 @@ async function resolveClientId(args: {
   }
 
   const existing = (possibleMatches ?? []).find((item) => {
+    const existingName = [item.first_name, item.last_name]
+      .filter(Boolean)
+      .join(" ");
+
     return (
-      normalizeLower(item.full_name) === normalizeLower(clientName) &&
+      normalizeLower(existingName) === normalizeLower(clientName) &&
       normalizeLower(item.phone) === normalizeLower(clientPhone) &&
       normalizeLower(item.email) === normalizeLower(clientEmail)
     );
@@ -601,13 +699,8 @@ async function resolveClientId(args: {
   if (existing) {
     const { error } = await supabase
       .from("clients")
-      .update({
-        full_name: clientName,
-        phone: clientPhone,
-        email: clientEmail,
-        note: clientNote,
-        internal_note: internalNote,
-      })
+      .update(clientPayload)
+      .eq("organization_id", organizationId)
       .eq("id", existing.id);
 
     if (error) {
@@ -625,20 +718,14 @@ async function resolveClientId(args: {
 
   const { data: createdClient, error: insertError } = await supabase
     .from("clients")
-    .insert({
-      full_name: clientName,
-      phone: clientPhone,
-      email: clientEmail,
-      note: clientNote,
-      internal_note: internalNote,
-    })
+    .insert(clientPayload)
     .select("id")
     .single();
 
   if (insertError || !createdClient) {
     return {
       ok: false as const,
-      error: insertError?.message || "Greška pri kreiranju klijenta.",
+      error: insertError?.message || t.clientCreateError,
     };
   }
 
@@ -649,6 +736,8 @@ async function resolveClientId(args: {
 }
 
 async function validateAppointmentRequest(args: {
+  locale: AppLocale;
+  organizationId: string;
   appointmentId?: string;
   appointmentDate: string;
   startTime: string;
@@ -660,6 +749,8 @@ async function validateAppointmentRequest(args: {
   const supabase = await createClient();
 
   const {
+    locale,
+    organizationId,
     appointmentId,
     appointmentDate,
     startTime,
@@ -669,24 +760,26 @@ async function validateAppointmentRequest(args: {
     status,
   } = args;
 
+  const t = getDictionary(locale).appointments.actionMessages;
+
   if (!appointmentDate) {
-    return { ok: false as const, message: "Datum je obavezan." };
+    return { ok: false as const, message: t.dateRequired };
   }
 
   if (!startTime) {
-    return { ok: false as const, message: "Vrijeme početka je obavezno." };
+    return { ok: false as const, message: t.startRequired };
   }
 
   if (!employeeId) {
-    return { ok: false as const, message: "Zaposlenik je obavezan." };
+    return { ok: false as const, message: t.employeeRequired };
   }
 
   if (!roomId) {
-    return { ok: false as const, message: "Soba je obavezna." };
+    return { ok: false as const, message: t.roomRequired };
   }
 
   if (items.length === 0) {
-    return { ok: false as const, message: "Potrebna je barem jedna usluga." };
+    return { ok: false as const, message: t.serviceRequired };
   }
 
   const totalDuration = items.reduce(
@@ -697,7 +790,7 @@ async function validateAppointmentRequest(args: {
   if (totalDuration <= 0) {
     return {
       ok: false as const,
-      message: "Ukupno trajanje mora biti veće od 0.",
+      message: t.durationPositive,
     };
   }
 
@@ -709,12 +802,11 @@ async function validateAppointmentRequest(args: {
     { data: salonHours, error: salonError },
     { data: employeeSchedule, error: employeeScheduleError },
     { data: existingAppointments, error: appointmentsError },
-    { data: serviceRows, error: servicesError },
-    { data: groupLimits, error: groupLimitsError },
   ] = await Promise.all([
     supabase
       .from("salon_working_hours")
-      .select("day_of_week, opens_at, closes_at, is_closed"),
+      .select("day_of_week, opens_at, closes_at, is_closed")
+      .eq("organization_id", organizationId),
 
     supabase.rpc("get_employee_effective_schedule", {
       p_employee_id: employeeId,
@@ -723,32 +815,10 @@ async function validateAppointmentRequest(args: {
 
     supabase
       .from("appointments")
-      .select(
-        `
-        id,
-        employee_id,
-        room_id,
-        start_time,
-        end_time,
-        status,
-        service:services (
-          id,
-          service_group
-        )
-      `,
-      )
+      .select("id, employee_id, room_id, start_time, end_time, status")
+      .eq("organization_id", organizationId)
       .eq("appointment_date", appointmentDate)
-      .in("status", ["scheduled", "completed"]),
-
-    supabase
-      .from("services")
-      .select("id, service_group")
-      .in(
-        "id",
-        items.map((item) => item.service_id),
-      ),
-
-    supabase.from("service_group_limits").select("group_name, max_parallel"),
+      .in("status", ["scheduled", "confirmed", "completed"]),
   ]);
 
   if (salonError) {
@@ -763,14 +833,6 @@ async function validateAppointmentRequest(args: {
     return { ok: false as const, message: appointmentsError.message };
   }
 
-  if (servicesError) {
-    return { ok: false as const, message: servicesError.message };
-  }
-
-  if (groupLimitsError) {
-    return { ok: false as const, message: groupLimitsError.message };
-  }
-
   const dayOfWeek = new Date(`${appointmentDate}T00:00:00`).getDay();
   const salonDay = (salonHours ?? []).find(
     (row) => row.day_of_week === dayOfWeek,
@@ -779,7 +841,7 @@ async function validateAppointmentRequest(args: {
   if (!salonDay || salonDay.is_closed) {
     return {
       ok: false as const,
-      message: "Salon je zatvoren na odabrani datum.",
+      message: t.salonClosed,
     };
   }
 
@@ -789,7 +851,7 @@ async function validateAppointmentRequest(args: {
   if (startMinutes < salonOpen || endMinutes > salonClose) {
     return {
       ok: false as const,
-      message: "Termin mora biti unutar radnog vremena salona.",
+      message: t.outsideSalonHours,
     };
   }
 
@@ -802,7 +864,7 @@ async function validateAppointmentRequest(args: {
   ) {
     return {
       ok: false as const,
-      message: "Odabrani zaposlenik ne radi na odabrani datum.",
+      message: t.employeeNotWorking,
     };
   }
 
@@ -834,7 +896,7 @@ async function validateAppointmentRequest(args: {
   if (employeeConflict) {
     return {
       ok: false as const,
-      message: "Zaposlenik već ima termin u odabranom vremenu.",
+      message: t.employeeConflict,
     };
   }
 
@@ -852,49 +914,16 @@ async function validateAppointmentRequest(args: {
   if (roomConflict) {
     return {
       ok: false as const,
-      message: "Soba je već zauzeta u odabranom vremenu.",
+      message: t.roomConflict,
     };
   }
 
   const primaryService = items[0];
-  const primaryServiceRow = (serviceRows ?? []).find(
-    (row) => row.id === primaryService.service_id,
-  );
-  const primaryGroup = primaryServiceRow?.service_group ?? null;
-
-  if (primaryGroup) {
-    const groupLimit =
-      (groupLimits ?? []).find((row) => row.group_name === primaryGroup)
-        ?.max_parallel ?? 999;
-
-    const overlappingSameGroup = filteredExisting.filter((item) => {
-      const service = Array.isArray(item.service)
-        ? item.service[0]
-        : item.service;
-
-      return (
-        service?.service_group === primaryGroup &&
-        overlaps(
-          startMinutes,
-          endMinutes,
-          timeToMinutes(item.start_time),
-          timeToMinutes(item.end_time),
-        )
-      );
-    }).length;
-
-    if (overlappingSameGroup >= groupLimit) {
-      return {
-        ok: false as const,
-        message: `Dosegnut je maksimalan broj paralelnih termina za grupu "${primaryGroup}".`,
-      };
-    }
-  }
 
   if (!isValidAppointmentStatus(status)) {
     return {
       ok: false as const,
-      message: "Status termina nije valjan.",
+      message: t.invalidStatus,
     };
   }
 
@@ -906,12 +935,18 @@ async function validateAppointmentRequest(args: {
   };
 }
 
-async function getCurrentAppointmentStatus(appointmentId: string) {
+async function getCurrentAppointmentStatus(
+  appointmentId: string,
+  organizationId: string,
+  locale: AppLocale,
+) {
   const supabase = await createClient();
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const { data, error } = await supabase
     .from("appointments")
     .select("status")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -925,7 +960,7 @@ async function getCurrentAppointmentStatus(appointmentId: string) {
   if (!data || !isValidAppointmentStatus(data.status)) {
     return {
       ok: false as const,
-      message: "Termin nije pronađen.",
+      message: t.appointmentNotFound,
     };
   }
 
@@ -948,8 +983,18 @@ export async function createAppointmentAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "Niste prijavljeni.", values };
+    return { error: getDictionary("hr").appointments.actionMessages.notSignedIn, values };
   }
+
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return { error: getDictionary("hr").appointments.actionMessages.noOrganization, values };
+  }
+
+  const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const clientPhone = normalizeNullableText(formData.get("client_phone"));
   const clientEmail = normalizeNullableText(formData.get("client_email"));
@@ -957,36 +1002,37 @@ export async function createAppointmentAction(
   const internalNote = normalizeNullableText(formData.get("internal_note"));
 
   if (!values.appointment_date) {
-    return { error: "Datum je obavezan.", values };
+    return { error: t.dateRequired, values };
   }
 
   if (!values.start_time) {
-    return { error: "Vrijeme početka je obavezno.", values };
+    return { error: t.startRequired, values };
   }
 
   if (!values.client_name) {
-    return { error: "Ime klijenta je obavezno.", values };
+    return { error: t.clientRequired, values };
   }
 
   if (!values.employee_id) {
-    return { error: "Zaposlenik je obavezan.", values };
+    return { error: t.employeeRequired, values };
   }
 
   if (!values.room_id) {
-    return { error: "Soba je obavezna.", values };
+    return { error: t.roomRequired, values };
   }
 
   if (!isValidAppointmentStatus(values.status)) {
-    return { error: "Status termina nije valjan.", values };
+    return { error: t.invalidStatus, values };
   }
 
   const resolvedClient = await resolveClientId({
+    locale,
+    organizationId,
     clientId: values.client_id,
     clientName: values.client_name,
     clientPhone,
     clientEmail,
     clientNote,
-    internalNote,
   });
 
   if (!resolvedClient.ok) {
@@ -1011,12 +1057,14 @@ export async function createAppointmentAction(
 
   if (!serviceValidation.ok) {
     return {
-      error: serviceValidation.message ?? "Greška validacije usluga.",
+      error: serviceValidation.message ?? t.serviceValidationError,
       values,
     };
   }
 
   const appointmentValidation = await validateAppointmentRequest({
+    locale,
+    organizationId,
     appointmentDate: values.appointment_date,
     startTime: values.start_time,
     employeeId: values.employee_id,
@@ -1033,38 +1081,50 @@ export async function createAppointmentAction(
   const primaryServiceId = appointmentValidation.primaryServiceId;
   const endTime = appointmentValidation.endTime;
 
-  const { data: primaryService } = await supabase
-    .from("services")
-    .select("name")
-    .eq("id", primaryServiceId)
-    .maybeSingle();
+  const { data: selectedServices, error: selectedServicesError } =
+    await supabase
+      .from("services")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .in(
+        "id",
+        serviceItems.map((item) => item.service_id),
+      );
 
-  const serviceName = primaryService?.name ?? "odabranu uslugu";
+  if (selectedServicesError) {
+    return { error: selectedServicesError.message, values };
+  }
+
+  const serviceNameById = new Map(
+    (selectedServices ?? []).map((service) => [service.id, service.name]),
+  );
+  const serviceName =
+    serviceNameById.get(primaryServiceId) ?? "odabranu uslugu";
 
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .insert({
+      organization_id: organizationId,
       client_id: resolvedClient.clientId,
       client_name: values.client_name,
       client_phone: clientPhone,
       client_email: clientEmail,
-      client_note: clientNote,
-      internal_note: internalNote,
-      service_id: primaryServiceId,
+      notes: clientNote,
+      internal_notes: internalNote,
       employee_id: values.employee_id,
       room_id: values.room_id,
       appointment_date: values.appointment_date,
       start_time: values.start_time,
       end_time: endTime,
-      duration_minutes: totalDuration,
       status: values.status,
+      created_by: user.id,
     })
     .select("id")
     .single();
 
   if (appointmentError || !appointment) {
     return {
-      error: appointmentError?.message || "Greška pri spremanju termina.",
+      error: appointmentError?.message || t.saveError,
       values,
     };
   }
@@ -1073,15 +1133,22 @@ export async function createAppointmentAction(
     .from("appointment_services")
     .insert(
       serviceItems.map((item, index) => ({
+        organization_id: organizationId,
         appointment_id: appointment.id,
         service_id: item.service_id,
+        service_name:
+          serviceNameById.get(item.service_id) ?? "Nepoznata usluga",
         duration_minutes: item.duration_minutes,
         sort_order: index + 1,
       })),
     );
 
   if (appointmentServicesError) {
-    await supabase.from("appointments").delete().eq("id", appointment.id);
+    await supabase
+      .from("appointments")
+      .delete()
+      .eq("organization_id", organizationId)
+      .eq("id", appointment.id);
 
     return {
       error: appointmentServicesError.message,
@@ -1090,6 +1157,8 @@ export async function createAppointmentAction(
   }
 
   await sendOrScheduleCreatedSms({
+    salonName: permissions.organizationName,
+    lang: permissions.organizationLocale,
     appointmentId: appointment.id,
     clientPhone,
     clientName: values.client_name,
@@ -1100,6 +1169,8 @@ export async function createAppointmentAction(
   });
 
   await scheduleReminderIfPossible({
+    salonName: permissions.organizationName,
+    lang: permissions.organizationLocale,
     appointmentId: appointment.id,
     clientPhone,
     clientName: values.client_name,
@@ -1147,8 +1218,18 @@ export async function updateAppointmentAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "Niste prijavljeni.", values };
+    return { error: getDictionary("hr").appointments.actionMessages.notSignedIn, values };
   }
+
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return { error: getDictionary("hr").appointments.actionMessages.noOrganization, values };
+  }
+
+  const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const clientPhone = normalizeNullableText(formData.get("client_phone"));
   const clientEmail = normalizeNullableText(formData.get("client_email"));
@@ -1156,36 +1237,41 @@ export async function updateAppointmentAction(
   const internalNote = normalizeNullableText(formData.get("internal_note"));
 
   if (!values.appointment_date) {
-    return { error: "Datum je obavezan.", values };
+    return { error: t.dateRequired, values };
   }
 
   if (!values.start_time) {
-    return { error: "Vrijeme početka je obavezno.", values };
+    return { error: t.startRequired, values };
   }
 
   if (!values.client_name) {
-    return { error: "Ime klijenta je obavezno.", values };
+    return { error: t.clientRequired, values };
   }
 
   if (!values.employee_id) {
-    return { error: "Zaposlenik je obavezan.", values };
+    return { error: t.employeeRequired, values };
   }
 
   if (!values.room_id) {
-    return { error: "Soba je obavezna.", values };
+    return { error: t.roomRequired, values };
   }
 
   if (!isValidAppointmentStatus(values.status)) {
-    return { error: "Status termina nije valjan.", values };
+    return { error: t.invalidStatus, values };
   }
 
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
-  const currentStatusResult = await getCurrentAppointmentStatus(appointmentId);
+  const currentStatusResult = await getCurrentAppointmentStatus(
+    appointmentId,
+    organizationId,
+    locale,
+  );
 
   if (!currentStatusResult.ok) {
     return { error: currentStatusResult.message, values };
@@ -1195,18 +1281,19 @@ export async function updateAppointmentAction(
     !canTransitionAppointmentStatus(currentStatusResult.status, values.status)
   ) {
     return {
-      error: "Promjena statusa termina nije dozvoljena.",
+      error: t.transitionNotAllowed,
       values,
     };
   }
 
   const resolvedClient = await resolveClientId({
+    locale,
+    organizationId,
     clientId: values.client_id,
     clientName: values.client_name,
     clientPhone,
     clientEmail,
     clientNote,
-    internalNote,
   });
 
   if (!resolvedClient.ok) {
@@ -1231,12 +1318,14 @@ export async function updateAppointmentAction(
 
   if (!serviceValidation.ok) {
     return {
-      error: serviceValidation.message ?? "Greška validacije usluga.",
+      error: serviceValidation.message ?? t.serviceValidationError,
       values,
     };
   }
 
   const appointmentValidation = await validateAppointmentRequest({
+    locale,
+    organizationId,
     appointmentId,
     appointmentDate: values.appointment_date,
     startTime: values.start_time,
@@ -1254,13 +1343,25 @@ export async function updateAppointmentAction(
   const primaryServiceId = appointmentValidation.primaryServiceId;
   const endTime = appointmentValidation.endTime;
 
-  const { data: primaryService } = await supabase
-    .from("services")
-    .select("name")
-    .eq("id", primaryServiceId)
-    .maybeSingle();
+  const { data: selectedServices, error: selectedServicesError } =
+    await supabase
+      .from("services")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .in(
+        "id",
+        serviceItems.map((item) => item.service_id),
+      );
 
-  const serviceName = primaryService?.name ?? "odabranu uslugu";
+  if (selectedServicesError) {
+    return { error: selectedServicesError.message, values };
+  }
+
+  const serviceNameById = new Map(
+    (selectedServices ?? []).map((service) => [service.id, service.name]),
+  );
+  const serviceName =
+    serviceNameById.get(primaryServiceId) ?? "odabranu uslugu";
 
   await cancelExistingReminderIfAny(appointmentId);
 
@@ -1271,17 +1372,16 @@ export async function updateAppointmentAction(
       client_name: values.client_name,
       client_phone: clientPhone,
       client_email: clientEmail,
-      client_note: clientNote,
-      internal_note: internalNote,
-      service_id: primaryServiceId,
+      notes: clientNote,
+      internal_notes: internalNote,
       employee_id: values.employee_id,
       room_id: values.room_id,
       appointment_date: values.appointment_date,
       start_time: values.start_time,
       end_time: endTime,
-      duration_minutes: totalDuration,
       status: values.status,
     })
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (appointmentError) {
@@ -1294,6 +1394,7 @@ export async function updateAppointmentAction(
   const { error: deleteServicesError } = await supabase
     .from("appointment_services")
     .delete()
+    .eq("organization_id", organizationId)
     .eq("appointment_id", appointmentId);
 
   if (deleteServicesError) {
@@ -1307,8 +1408,11 @@ export async function updateAppointmentAction(
     .from("appointment_services")
     .insert(
       serviceItems.map((item, index) => ({
+        organization_id: organizationId,
         appointment_id: appointmentId,
         service_id: item.service_id,
+        service_name:
+          serviceNameById.get(item.service_id) ?? "Nepoznata usluga",
         duration_minutes: item.duration_minutes,
         sort_order: index + 1,
       })),
@@ -1322,6 +1426,8 @@ export async function updateAppointmentAction(
   }
 
   await scheduleReminderIfPossible({
+    salonName: permissions.organizationName,
+    lang: permissions.organizationLocale,
     appointmentId,
     clientPhone,
     clientName: values.client_name,
@@ -1341,6 +1447,8 @@ export async function updateAppointmentAction(
 
   if (shouldSendUpdatedSms) {
     await sendUpdatedSmsIfPossible({
+      salonName: permissions.organizationName,
+      lang: permissions.organizationLocale,
       appointmentId,
       clientPhone,
       clientName: values.client_name,
@@ -1363,9 +1471,9 @@ export async function updateAppointmentAction(
         client_name: values.client_name,
         client_phone: clientPhone,
         client_email: clientEmail,
-        client_note: clientNote,
-        internal_note: internalNote,
-        service_id: primaryServiceId,
+        notes: clientNote,
+        internal_notes: internalNote,
+        primary_service_id: primaryServiceId,
         employee_id: values.employee_id,
         room_id: values.room_id,
         appointment_date: values.appointment_date,
@@ -1395,16 +1503,31 @@ export async function cancelAppointmentAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    throw new Error("Niste prijavljeni.");
+    throw new Error(getDictionary("hr").appointments.actionMessages.notSignedIn);
   }
+
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    throw new Error(getDictionary("hr").appointments.actionMessages.noOrganization);
+  }
+
+  const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
-  const currentStatusResult = await getCurrentAppointmentStatus(appointmentId);
+  const currentStatusResult = await getCurrentAppointmentStatus(
+    appointmentId,
+    organizationId,
+    locale,
+  );
 
   if (!currentStatusResult.ok) {
     throw new Error(currentStatusResult.message);
@@ -1413,7 +1536,7 @@ export async function cancelAppointmentAction(
   if (
     !canTransitionAppointmentStatus(currentStatusResult.status, "cancelled")
   ) {
-    throw new Error("Otkazivanje ovog termina nije dozvoljeno.");
+    throw new Error(t.cancellationNotAllowed);
   }
 
   await cancelExistingReminderIfAny(appointmentId);
@@ -1421,6 +1544,7 @@ export async function cancelAppointmentAction(
   const { error } = await supabase
     .from("appointments")
     .update({ status: "cancelled" })
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (error) {
@@ -1459,17 +1583,35 @@ export async function quickUpdateAppointmentStatusAction(
   if (userError || !user) {
     return {
       ok: false,
-      message: "Niste prijavljeni.",
+      message: getDictionary("hr").appointments.actionMessages.notSignedIn,
     };
   }
+
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return {
+      ok: false,
+      message: getDictionary("hr").appointments.actionMessages.noOrganization,
+    };
+  }
+
+  const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
-  const currentStatusResult = await getCurrentAppointmentStatus(appointmentId);
+  const currentStatusResult = await getCurrentAppointmentStatus(
+    appointmentId,
+    organizationId,
+    locale,
+  );
 
   if (!currentStatusResult.ok) {
     return {
@@ -1481,7 +1623,7 @@ export async function quickUpdateAppointmentStatusAction(
   if (!canTransitionAppointmentStatus(currentStatusResult.status, status)) {
     return {
       ok: false,
-      message: "Promjena statusa nije dozvoljena.",
+      message: t.statusChangeNotAllowed,
     };
   }
 
@@ -1490,6 +1632,7 @@ export async function quickUpdateAppointmentStatusAction(
   const { error } = await supabase
     .from("appointments")
     .update({ status })
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (error) {
@@ -1524,10 +1667,10 @@ export async function quickUpdateAppointmentStatusAction(
     ok: true,
     message:
       status === "completed"
-        ? "Termin je označen kao odrađen."
+        ? t.markedCompleted
         : status === "no_show"
-          ? "Termin je označen kao no-show."
-          : "Termin je označen kao otkazan.",
+          ? t.markedNoShow
+          : t.markedCancelled,
   };
 }
 
@@ -1545,13 +1688,26 @@ export async function deleteAppointmentAction(
   if (userError || !user) {
     return {
       ok: false,
-      message: "Niste prijavljeni.",
+      message: getDictionary("hr").appointments.actionMessages.notSignedIn,
     };
   }
+
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return {
+      ok: false,
+      message: getDictionary("hr").appointments.actionMessages.noOrganization,
+    };
+  }
+
+  const organizationId = permissions.organizationId;
+  const t = getDictionary(permissions.organizationLocale).appointments.actionMessages;
 
   const { data: beforeAppointment } = await supabase
     .from("appointments")
     .select("*")
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId)
     .maybeSingle();
 
@@ -1560,6 +1716,7 @@ export async function deleteAppointmentAction(
   const { error } = await supabase
     .from("appointments")
     .delete()
+    .eq("organization_id", organizationId)
     .eq("id", appointmentId);
 
   if (error) {
@@ -1588,6 +1745,6 @@ export async function deleteAppointmentAction(
 
   return {
     ok: true,
-    message: "Termin je obrisan.",
+    message: t.deleted,
   };
 }

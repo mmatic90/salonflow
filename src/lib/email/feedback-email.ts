@@ -4,11 +4,15 @@ import type {
   FeedbackType,
 } from "@/features/feedback/types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const fromEmail =
-  process.env.RESEND_FROM_EMAIL || "Body & Soul <onboarding@resend.dev>";
+  process.env.RESEND_FROM_EMAIL || "SalonFlow <onboarding@resend.dev>";
 const feedbackRecipient =
   process.env.FEEDBACK_NOTIFICATION_EMAIL || "maticmaurizio@gmail.com";
+
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  return apiKey ? new Resend(apiKey) : null;
+}
 
 function escapeHtml(value: string) {
   return value
@@ -29,7 +33,14 @@ export async function sendFeedbackNotificationEmail(args: {
   description: string;
   pageUrl: string | null;
 }) {
-  if (!process.env.RESEND_API_KEY) return;
+  const resend = getResendClient();
+
+  if (!resend) {
+    console.info(
+      "Feedback email skipped because RESEND_API_KEY is not configured.",
+    );
+    return;
+  }
 
   const adminBaseUrl =
     process.env.NEXT_PUBLIC_ADMIN_URL || process.env.NEXT_PUBLIC_SITE_URL || "";
@@ -40,7 +51,7 @@ export async function sendFeedbackNotificationEmail(args: {
   const { error } = await resend.emails.send({
     from: fromEmail,
     to: [feedbackRecipient],
-    subject: `[Body & Soul feedback] ${args.title}`,
+    subject: `[SalonFlow feedback] ${args.title}`,
     html: `
       <div style="font-family:Arial,Helvetica,sans-serif;max-width:680px;margin:0 auto;color:#2f2723;line-height:1.6;">
         <h1 style="font-size:24px;margin-bottom:20px;">Novi feedback</h1>

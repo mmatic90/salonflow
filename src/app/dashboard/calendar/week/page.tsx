@@ -2,15 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getCalendarWeekDataByEmployees } from "@/features/calendar/queries";
+import {
+  getCalendarWeekDataByEmployees,
+  type CalendarAppointmentItem,
+} from "@/features/calendar/queries";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
-import { formatTime, getTodayLocalDate } from "@/lib/utils";
+import { formatTime, getTodayLocalDate, statusLabel } from "@/lib/utils";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 type SearchParams = Promise<{
   week?: string;
 }>;
-
-const dayLabels = ["Pon", "Uto", "Sri", "Čet", "Pet", "Sub"];
 
 function formatDateInputValue(date: Date) {
   const year = date.getFullYear();
@@ -61,19 +64,19 @@ function statusClass(status: string) {
   return "border-[#c7bcad] bg-[#ebe3d6]";
 }
 
-function statusLabel(status: string) {
-  if (status === "scheduled") return "Zakazan";
-  if (status === "completed") return "Odrađen";
-  if (status === "cancelled") return "Otkazan";
-  if (status === "no_show") return "No-show";
-  return status;
-}
-
-function WeekAppointmentCard({ appointment }: { appointment: any }) {
+function WeekAppointmentCard({
+  appointment,
+  locale,
+  roomLabel,
+}: {
+  appointment: CalendarAppointmentItem;
+  locale: "hr" | "en" | "it";
+  roomLabel: string;
+}) {
   const serviceLabel = formatAppointmentServicesLabel(
     appointment.appointment_services
       ?.slice()
-      .sort((a: any, b: any) => a.sort_order - b.sort_order),
+      .sort((a, b) => a.sort_order - b.sort_order),
   );
 
   return (
@@ -96,12 +99,12 @@ function WeekAppointmentCard({ appointment }: { appointment: any }) {
 
       {appointment.room?.name ? (
         <div className="mt-1 text-xs text-app-muted">
-          Soba: {appointment.room.name}
+          {roomLabel}: {appointment.room.name}
         </div>
       ) : null}
 
       <div className="mt-2 inline-flex rounded-full bg-white/70 px-2 py-1 text-[11px] font-medium text-app-text">
-        {statusLabel(appointment.status)}
+        {statusLabel(appointment.status, locale)}
       </div>
     </Link>
   );
@@ -112,6 +115,9 @@ export default async function CalendarWeekPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.calendar;
   const supabase = await createClient();
 
   const {
@@ -138,7 +144,7 @@ export default async function CalendarWeekPage({
     const date = addDays(monday, index);
 
     return {
-      label: dayLabels[index],
+      label: t.daysShort[index],
       value: formatDateInputValue(date),
       display: formatDateHr(formatDateInputValue(date)),
     };
@@ -156,10 +162,10 @@ export default async function CalendarWeekPage({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-app-text md:text-3xl">
-                Tjedni kalendar
+                {t.weeklyTitle}
               </h1>
               <p className="mt-2 text-sm text-app-muted md:text-base">
-                Pregled termina od ponedjeljka do subote:{" "}
+                {t.weeklyOverview}{" "}
                 <span className="font-medium text-app-text">
                   {formatWeekTitle(weekStart, weekEnd)}
                 </span>
@@ -172,21 +178,21 @@ export default async function CalendarWeekPage({
                 className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Prošli tjedan
+                {t.previousWeek}
               </Link>
 
               <Link
                 href="/dashboard/calendar/week"
                 className="inline-flex items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
               >
-                Ovaj tjedan
+                {t.thisWeek}
               </Link>
 
               <Link
                 href={`/dashboard/calendar/week?week=${nextWeek}`}
                 className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
               >
-                Sljedeći tjedan
+                {t.nextWeek}
                 <ChevronRight className="h-4 w-4" />
               </Link>
 
@@ -195,7 +201,7 @@ export default async function CalendarWeekPage({
                 className="inline-flex items-center gap-2 rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
               >
                 <Plus className="h-4 w-4" />
-                Novi termin
+                {t.newAppointment}
               </Link>
             </div>
           </div>
@@ -205,14 +211,14 @@ export default async function CalendarWeekPage({
               href="/dashboard/calendar"
               className="rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text hover:bg-app-bg"
             >
-              Dnevni pregled
+              {t.dailyOverview}
             </Link>
 
             <Link
               href="/dashboard/calendar/time-grid"
               className="rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text hover:bg-app-bg"
             >
-              Time grid
+              {t.timeGridTitle}
             </Link>
           </div>
         </div>
@@ -237,15 +243,14 @@ export default async function CalendarWeekPage({
                 </div>
 
                 <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-app-text">
-                  {employee.appointments.length} termina
+                  {employee.appointments.length} {employee.appointments.length === 1 ? t.appointmentSingular : t.appointmentPlural}
                 </span>
               </div>
 
               <div className="grid min-w-[980px] grid-cols-6">
                 {weekDays.map((day) => {
                   const dayAppointments = employee.appointments.filter(
-                    (appointment: any) =>
-                      appointment.appointment_date === day.value,
+                    (appointment) => appointment.appointment_date === day.value,
                   );
 
                   return (
@@ -264,14 +269,16 @@ export default async function CalendarWeekPage({
 
                       {dayAppointments.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-app-soft bg-app-card-alt p-3 text-xs text-app-muted">
-                          Nema termina
+                          {t.noAppointments}
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {dayAppointments.map((appointment: any) => (
+                          {dayAppointments.map((appointment) => (
                             <WeekAppointmentCard
                               key={appointment.id}
                               appointment={appointment}
+                              locale={permissions.organizationLocale}
+                              roomLabel={t.room}
                             />
                           ))}
                         </div>

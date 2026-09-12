@@ -17,7 +17,7 @@ export type TimeGridAppointment = {
   start_time: string;
   end_time: string;
   duration_minutes: number;
-  status: "scheduled" | "completed" | "cancelled" | "no_show";
+  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
   client_name: string;
   client_phone: string | null;
   service: {
@@ -89,7 +89,7 @@ async function getAppointments(date: string): Promise<TimeGridAppointment[]> {
     throw new Error("Nije moguće dohvatiti termine.");
   }
 
-  return (data ?? []).map((item: any) => {
+  return (data ?? []).map((item) => {
     const service = getSingleRelation(item.service);
     const room = getSingleRelation(item.room);
     const employee = getSingleRelation(item.employee);
@@ -102,6 +102,7 @@ async function getAppointments(date: string): Promise<TimeGridAppointment[]> {
       duration_minutes: Number(item.duration_minutes ?? 0),
       status: item.status as
         | "scheduled"
+        | "confirmed"
         | "completed"
         | "cancelled"
         | "no_show",

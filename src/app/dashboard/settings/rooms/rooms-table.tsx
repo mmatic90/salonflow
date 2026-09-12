@@ -9,8 +9,10 @@ import {
 } from "@/features/settings/actions";
 import SettingsDeleteButton from "@/components/settings-delete-button";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   rooms: RoomItem[];
 };
 
@@ -28,7 +30,8 @@ function toEditable(room: RoomItem): EditableRoom {
   };
 }
 
-export default function RoomsTable({ rooms }: Props) {
+export default function RoomsTable({ locale = "hr", rooms }: Props) {
+  const t = getDictionary(locale).settings;
   const initialItems = useMemo(() => rooms.map(toEditable), [rooms]);
 
   const [items, setItems] = useState<EditableRoom[]>(initialItems);
@@ -65,8 +68,8 @@ export default function RoomsTable({ rooms }: Props) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-app-muted">
-          Uredi sobe pa klikni{" "}
-          <span className="font-medium text-app-text">Spremi izmjene</span>.
+          {t.rooms.editHint}{" "}
+          <span className="font-medium text-app-text">{t.saveChanges}</span>.
         </div>
 
         <div className="flex gap-2">
@@ -77,7 +80,7 @@ export default function RoomsTable({ rooms }: Props) {
             className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
           >
             <RotateCcw className="h-4 w-4" />
-            Poništi
+            {t.reset}
           </button>
 
           <button
@@ -86,7 +89,7 @@ export default function RoomsTable({ rooms }: Props) {
             disabled={pending || !hasChanges}
             className="rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {pending ? "Spremanje..." : "Spremi izmjene"}
+            {pending ? t.saving : t.saveChanges}
           </button>
         </div>
       </div>
@@ -95,9 +98,9 @@ export default function RoomsTable({ rooms }: Props) {
         <table className="min-w-full border-collapse">
           <thead className="bg-app-table-head">
             <tr className="text-left text-sm text-app-muted">
-              <th className="px-4 py-3 font-semibold">Naziv</th>
-              <th className="px-4 py-3 font-semibold">Aktivno</th>
-              <th className="px-4 py-3 font-semibold">Akcije</th>
+              <th className="px-4 py-3 font-semibold">{t.name}</th>
+              <th className="px-4 py-3 font-semibold">{t.active}</th>
+              <th className="px-4 py-3 font-semibold">{t.actions}</th>
             </tr>
           </thead>
 
@@ -140,6 +143,7 @@ export default function RoomsTable({ rooms }: Props) {
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2">
                     <SettingsDeleteButton
+                      locale={locale}
                       label={room.name}
                       onDelete={deleteRoomAction.bind(null, room.id)}
                     />

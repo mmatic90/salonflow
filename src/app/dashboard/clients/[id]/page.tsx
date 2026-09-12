@@ -1,38 +1,58 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import { getClientById } from "@/features/clients/queries";
-import { formatTime } from "@/lib/utils";
+import { getClientCareProfile } from "@/features/clients/care-profile-queries";
+import { formatTime, statusLabel } from "@/lib/utils";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import EmptyStateCard from "@/components/empty-state-card";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CalendarDays,
+  CalendarPlus,
+  Clock3,
+  FileText,
+  Mail,
+  Phone,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 type Params = Promise<{
   id: string;
 }>;
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale: AppLocale) {
   if (!value) return "-";
 
   const date = new Date(`${value}T00:00:00`);
-  return new Intl.DateTimeFormat("hr-HR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
+  return new Intl.DateTimeFormat(
+    locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    },
+  ).format(date);
 }
 
-function segmentLabel(segment: string) {
+function segmentLabel(
+  segment: string,
+  t: ReturnType<typeof getDictionary>["clients"],
+) {
   switch (segment) {
     case "new":
-      return "Novi klijent";
+      return t.segmentNew;
     case "active":
-      return "Aktivan";
+      return t.segmentActive;
     case "regular":
-      return "Redovan";
+      return t.segmentRegular;
     case "at_risk":
-      return "Rizičan";
+      return t.segmentRisk;
     case "lost":
-      return "Izgubljen";
+      return t.segmentLost;
     default:
       return segment;
   }
@@ -55,305 +75,552 @@ function segmentClasses(segment: string) {
   }
 }
 
-function InsightCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function InsightCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-      <div className="text-sm text-app-muted">{label}</div>
-      <div className="mt-2 text-lg font-semibold text-app-text">{value}</div>
+    <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-[0_6px_18px_rgba(15,23,42,0.04)] sm:p-5">
+      <div className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+        {label}
+      </div>
+      <div className="mt-2 truncate text-xl font-extrabold tracking-tight text-app-text">
+        {value}
+      </div>
     </div>
   );
 }
 
-export default async function ClientDetailsPage({
-  params,
-}: {
-  params: Params;
-}) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
+export default async function ClientDetailsPage({ params }: { params: Params }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.clients;
+  const locale = permissions.organizationLocale;
 
   const { id } = await params;
-  const client = await getClientById(id);
+  const [client, careProfile] = await Promise.all([
+    getClientById(id),
+    getClientCareProfile(id),
+  ]);
 
   if (!client) {
     notFound();
   }
 
+  const rebookSource =
+    client.pastAppointments.find(
+      (appointment) => appointment.status === "completed",
+    ) ??
+    client.pastAppointments[0] ??
+    null;
+  const rebookServiceId = rebookSource?.appointment_services
+    ?.slice()
+    .sort((a, b) => a.sort_order - b.sort_order)[0]?.service_id;
+  const rebookHref = rebookServiceId
+    ? `/dashboard/appointments/new?clientId=${client.id}&serviceId=${rebookServiceId}`
+    : `/dashboard/appointments/new?clientId=${client.id}`;
+  const rebookLabel =
+    locale === "en"
+      ? "Rebook"
+      : locale === "it"
+        ? "Ripeti appuntamento"
+        : "Ponovi termin";
+  const treatmentNoteLabel =
+    locale === "en"
+      ? "Treatment note"
+      : locale === "it"
+        ? "Nota del trattamento"
+        : "Tretmanska bilješka";
+  const attendanceUi = {
+    title:
+      locale === "en"
+        ? "Attendance"
+        : locale === "it"
+          ? "Presenze"
+          : "Dolaznost",
+    completed:
+      locale === "en"
+        ? "Completed"
+        : locale === "it"
+          ? "Completati"
+          : "Odrađeno",
+    cancelled:
+      locale === "en"
+        ? "Cancelled"
+        : locale === "it"
+          ? "Annullati"
+          : "Otkazano",
+    noShow: "No-show",
+    salonNote:
+      locale === "en"
+        ? "Salon note"
+        : locale === "it"
+          ? "Nota del salone"
+          : "Napomena salona",
+    rates:
+      locale === "en"
+        ? "No-show rate"
+        : locale === "it"
+          ? "Tasso no-show"
+          : "Stopa no-show",
+    cancellationRate:
+      locale === "en"
+        ? "cancellation rate"
+        : locale === "it"
+          ? "tasso annullamenti"
+          : "stopa otkazivanja",
+  };
+  const careUi = {
+    title:
+      locale === "en"
+        ? "Care and safety"
+        : locale === "it"
+          ? "Cura e sicurezza"
+          : "Njega i sigurnost",
+    allergies:
+      locale === "en"
+        ? "Allergies and sensitivities"
+        : locale === "it"
+          ? "Allergie e sensibilità"
+          : "Alergije i osjetljivosti",
+    contraindications:
+      locale === "en"
+        ? "Contraindications"
+        : locale === "it"
+          ? "Controindicazioni"
+          : "Kontraindikacije",
+    preferences:
+      locale === "en"
+        ? "Treatment preferences"
+        : locale === "it"
+          ? "Preferenze di trattamento"
+          : "Preferencije tretmana",
+  };
+  const hasCareProfile = Boolean(
+    careProfile?.allergies_sensitivities ||
+      careProfile?.contraindications ||
+      careProfile?.treatment_preferences,
+  );
+
   return (
-    <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-bold text-app-text">
-                  {client.full_name}
-                </h1>
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${segmentClasses(
-                    client.insights.segment,
-                  )}`}
-                >
-                  {segmentLabel(client.insights.segment)}
-                </span>
+    <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+          <div className="bg-gradient-to-br from-white via-white to-app-bg p-5 sm:p-6 md:p-7">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-app-accent text-lg font-extrabold text-white shadow-md">
+                  {client.full_name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="truncate text-2xl font-extrabold tracking-tight text-app-text sm:text-3xl">
+                      {client.full_name}
+                    </h1>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-bold ${segmentClasses(client.insights.segment)}`}
+                    >
+                      {segmentLabel(client.insights.segment, t)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-app-muted">
+                    {client.phone ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5" />
+                        {client.phone}
+                      </span>
+                    ) : null}
+                    {client.email ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5" />
+                        {client.email}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
               </div>
 
-              <p className="mt-2 text-app-muted">
-                Pregled podataka, inteligencije klijenta i povijesti termina.
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Link
+                  href={`/dashboard/appointments/new?clientId=${client.id}`}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  <CalendarPlus className="h-4 w-4" />
+                  {dictionary.appointments.newAppointment}
+                </Link>
+                {rebookSource ? (
+                  <Link
+                    href={rebookHref}
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-app-accent/25 bg-app-accent/5 px-4 py-2 font-semibold text-app-accent shadow-sm transition hover:-translate-y-0.5 hover:bg-app-accent/10"
+                  >
+                    <CalendarDays className="h-4 w-4" /> {rebookLabel}
+                  </Link>
+                ) : null}
+                <Link
+                  href={`/dashboard/clients/${client.id}/edit`}
+                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-semibold text-app-text shadow-sm transition hover:bg-app-bg"
+                >
+                  {t.edit}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <InsightCard label={t.totalAppointments} value={client.appointments_count} />
+          <InsightCard label={t.completed} value={client.insights.completed_appointments} />
+          <InsightCard
+            label={t.lastVisit}
+            value={formatDate(client.insights.last_completed_appointment, locale)}
+          />
+          <InsightCard
+            label={t.nextAppointment}
+            value={formatDate(client.next_appointment, locale)}
+          />
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+          <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-app-muted">{t.badge}</p>
+                <h2 className="text-xl font-bold text-app-text">{t.profile}</h2>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-app-bg p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                  {t.favoriteService}
+                </p>
+                <p className="mt-2 font-bold text-app-text">
+                  {client.insights.favorite_service || t.noData}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-app-bg p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                  {t.favoriteEmployee}
+                </p>
+                <p className="mt-2 font-bold text-app-text">
+                  {client.insights.favorite_employee || t.noData}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-app-bg p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                  {t.averageBetweenVisits}
+                </p>
+                <p className="mt-2 font-bold text-app-text">
+                  {client.insights.average_days_between_visits !== null
+                    ? `${client.insights.average_days_between_visits} ${t.days}`
+                    : t.noData}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-app-soft bg-app-bg/45 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                {attendanceUi.title}
+              </p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-white px-3 py-3 text-center">
+                  <p className="text-xl font-extrabold text-app-text">
+                    {client.insights.completed_appointments}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-app-muted">
+                    {attendanceUi.completed}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-white px-3 py-3 text-center">
+                  <p className="text-xl font-extrabold text-app-text">
+                    {client.insights.cancelled_appointments}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-app-muted">
+                    {attendanceUi.cancelled}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-white px-3 py-3 text-center">
+                  <p className="text-xl font-extrabold text-app-text">
+                    {client.insights.no_show_appointments}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-app-muted">
+                    {attendanceUi.noShow}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs leading-5 text-app-muted">
+                {attendanceUi.rates}: {client.insights.no_show_rate}% · {attendanceUi.cancellationRate}: {client.insights.cancellation_rate}%
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <Link
-                href={`/dashboard/clients/${client.id}/edit`}
-                className="rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
-              >
-                Uredi
-              </Link>
-              <Link
-                href="/dashboard/clients"
-                className="rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
-              >
-                Natrag
-              </Link>
+            <div className="mt-4 rounded-2xl border border-app-soft bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                {attendanceUi.salonNote}
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-app-text">
+                {client.note || t.noNotes}
+              </p>
             </div>
           </div>
-        </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <InsightCard label="Telefon" value={client.phone || "-"} />
-          <InsightCard label="Email" value={client.email || "-"} />
-          <InsightCard label="Broj termina" value={client.appointments_count} />
-          <InsightCard
-            label="Sljedeći termin"
-            value={formatDate(client.next_appointment)}
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <InsightCard
-            label="Odrađeni termini"
-            value={client.insights.completed_appointments}
-          />
-          <InsightCard
-            label="Otkazani termini"
-            value={client.insights.cancelled_appointments}
-          />
-          <InsightCard
-            label="No-show termini"
-            value={client.insights.no_show_appointments}
-          />
-          <InsightCard
-            label="Zadnji dolazak"
-            value={formatDate(client.insights.last_completed_appointment)}
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <InsightCard
-            label="No-show rate"
-            value={`${client.insights.no_show_rate}%`}
-          />
-          <InsightCard
-            label="Cancellation rate"
-            value={`${client.insights.cancellation_rate}%`}
-          />
-          <InsightCard
-            label="Najčešća usluga"
-            value={client.insights.favorite_service || "-"}
-          />
-          <InsightCard
-            label="Omiljeni zaposlenik"
-            value={client.insights.favorite_employee || "-"}
-          />
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-app-text">
-              Inteligencija klijenta
-            </h2>
-
-            <div className="mt-4 space-y-3">
-              <div className="rounded-xl border border-app-soft bg-white px-4 py-3 text-sm text-app-text">
-                Prosječan razmak između dolazaka:{" "}
-                <span className="font-semibold">
-                  {client.insights.average_days_between_visits !== null
-                    ? `${client.insights.average_days_between_visits} dana`
-                    : "-"}
-                </span>
+          <div className="space-y-5">
+            {hasCareProfile ? (
+              <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <h2 className="text-xl font-bold text-app-text">{careUi.title}</h2>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {careProfile?.allergies_sensitivities ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.1em] text-amber-800">
+                        {careUi.allergies}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-amber-950">
+                        {careProfile.allergies_sensitivities}
+                      </p>
+                    </div>
+                  ) : null}
+                  {careProfile?.contraindications ? (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.1em] text-red-700">
+                        {careUi.contraindications}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-red-950">
+                        {careProfile.contraindications}
+                      </p>
+                    </div>
+                  ) : null}
+                  {careProfile?.treatment_preferences ? (
+                    <div className="rounded-2xl border border-app-soft bg-app-bg/55 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.1em] text-app-muted">
+                        {careUi.preferences}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-app-text">
+                        {careProfile.treatment_preferences}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
               </div>
+            ) : null}
 
-              <div className="rounded-xl border border-app-soft bg-white px-4 py-3 text-sm text-app-text">
-                Segment klijenta:{" "}
-                <span className="font-semibold">
-                  {segmentLabel(client.insights.segment)}
-                </span>
+            <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <h2 className="text-xl font-bold text-app-text">{t.crmSignals}</h2>
+              </div>
+              <div className="mt-5 space-y-3">
+                {client.insights.alerts.length ? (
+                  client.insights.alerts.map((alert, index) => (
+                    <div
+                      key={`${alert}-${index}`}
+                      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+                    >
+                      {alert}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                    {t.noWarnings}
+                  </div>
+                )}
               </div>
             </div>
           </div>
+        </section>
 
-          <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-app-text">Upozorenja</h2>
-
-            <div className="mt-4 space-y-3">
-              {client.insights.alerts.length > 0 ? (
-                client.insights.alerts.map((alert, index) => (
-                  <div
-                    key={`${alert}-${index}`}
-                    className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-                  >
-                    {alert}
-                  </div>
-                ))
-              ) : (
-                <EmptyStateCard
-                  title="Nema upozorenja"
-                  description="Za ovog klijenta trenutno nema posebnih upozorenja."
-                />
-              )}
+        <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-app-muted">{t.upcoming}</p>
+              <h2 className="mt-1 text-xl font-bold text-app-text">
+                {t.futureAppointments}
+              </h2>
             </div>
+            <CalendarDays className="h-5 w-5 text-app-accent" />
           </div>
-        </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {client.upcomingAppointments.length ? (
+              client.upcomingAppointments.map((appointment) => (
+                <Link
+                  key={appointment.id}
+                  href={`/dashboard/appointments/${appointment.id}/edit`}
+                  className="rounded-2xl border border-app-soft bg-app-bg/60 p-4 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-app-text">
+                        {formatDate(appointment.appointment_date, locale)}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm text-app-muted">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        {formatTime(appointment.start_time)} – {formatTime(appointment.end_time)}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-app-text">
+                      {statusLabel(appointment.status, locale)}
+                    </span>
+                  </div>
+                  <p className="mt-4 font-semibold text-app-text">
+                    {formatAppointmentServicesLabel(
+                      appointment.appointment_services
+                        ?.slice()
+                        .sort((a, b) => a.sort_order - b.sort_order),
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-app-muted">
+                    {appointment.employee?.display_name || "-"} · {appointment.room?.name || "-"}
+                  </p>
+                </Link>
+              ))
+            ) : (
+              <div className="md:col-span-2 xl:col-span-3">
+                <EmptyStateCard
+                  title={t.noFutureAppointments}
+                  description={t.noFutureAppointmentsDescription}
+                />
+              </div>
+            )}
+          </div>
+        </section>
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-app-text">
-              Budući termini
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+          <div className="border-b border-app-soft bg-gradient-to-r from-white to-app-bg/70 p-5 sm:p-6">
+            <p className="text-sm font-semibold text-app-muted">{t.records}</p>
+            <h2 className="mt-1 text-xl font-bold text-app-text">
+              {t.appointmentHistory}
             </h2>
-
-            <div className="mt-4 space-y-3">
-              {client.upcomingAppointments.length > 0 ? (
-                client.upcomingAppointments.map((appointment) => (
-                  <div
-                    key={appointment.id}
-                    className="rounded-xl border border-app-soft bg-white px-4 py-3"
-                  >
-                    <div className="font-medium text-app-text">
-                      {formatDate(appointment.appointment_date)} ·{" "}
-                      {formatTime(appointment.start_time)} -{" "}
-                      {formatTime(appointment.end_time)}
-                    </div>
-                    <div className="mt-1 text-sm text-app-muted">
-                      {formatAppointmentServicesLabel(
-                        appointment.appointment_services
-                          ?.slice()
-                          .sort((a, b) => a.sort_order - b.sort_order),
-                      )}{" "}
-                      · {appointment.employee?.display_name || "-"} ·{" "}
-                      {appointment.room?.name || "-"}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <EmptyStateCard
-                  title="Nema budućih termina"
-                  description="Za ovog klijenta trenutno nema nadolazećih rezervacija."
-                />
-              )}
-            </div>
           </div>
-
-          <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-app-text">Bilješke</h2>
-
-            <div className="mt-4 space-y-3">
-              {client.note ? (
-                <div className="rounded-xl border border-app-soft bg-white px-4 py-3 text-sm text-app-text">
-                  {client.note}
-                </div>
-              ) : (
-                <EmptyStateCard
-                  title="Nema bilješke"
-                  description="Za ovog klijenta još nije spremljena korisnička bilješka."
-                />
-              )}
-
-              {client.internal_note ? (
-                <div className="rounded-xl border border-app-soft bg-white px-4 py-3 text-sm text-app-text">
-                  {client.internal_note}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-app-text">
-            Povijest termina
-          </h2>
-
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full border-collapse">
-              <thead className="bg-app-table-head">
-                <tr className="text-left text-sm text-app-muted">
-                  <th className="px-4 py-3 font-semibold">Datum</th>
-                  <th className="px-4 py-3 font-semibold">Vrijeme</th>
-                  <th className="px-4 py-3 font-semibold">Usluga</th>
-                  <th className="px-4 py-3 font-semibold">Zaposlenik</th>
-                  <th className="px-4 py-3 font-semibold">Soba</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-
-              <tbody>
+          {client.pastAppointments.length ? (
+            <>
+              <div className="grid gap-3 p-4 md:hidden">
                 {client.pastAppointments.map((appointment) => (
-                  <tr
+                  <Link
                     key={appointment.id}
-                    className="border-t border-app-soft text-sm transition hover:bg-app-card-alt"
+                    href={`/dashboard/appointments/${appointment.id}/edit`}
+                    className="rounded-2xl border border-app-soft p-4"
                   >
-                    <td className="px-4 py-4 text-app-text">
-                      {formatDate(appointment.appointment_date)}
-                    </td>
-                    <td className="px-4 py-4 text-app-text">
-                      {formatTime(appointment.start_time)} -{" "}
-                      {formatTime(appointment.end_time)}
-                    </td>
-                    <td className="px-4 py-4 text-app-text">
+                    <div className="flex justify-between gap-3">
+                      <div>
+                        <p className="font-bold text-app-text">
+                          {formatDate(appointment.appointment_date, locale)}
+                        </p>
+                        <p className="mt-1 text-sm text-app-muted">
+                          {formatTime(appointment.start_time)} – {formatTime(appointment.end_time)}
+                        </p>
+                      </div>
+                      <span className="h-fit rounded-full bg-app-bg px-2.5 py-1 text-xs font-semibold text-app-text">
+                        {statusLabel(appointment.status, locale)}
+                      </span>
+                    </div>
+                    <p className="mt-3 font-semibold text-app-text">
                       {formatAppointmentServicesLabel(
                         appointment.appointment_services
                           ?.slice()
                           .sort((a, b) => a.sort_order - b.sort_order),
                       )}
-                    </td>
-                    <td className="px-4 py-4 text-app-text">
-                      {appointment.employee?.display_name || "-"}
-                    </td>
-                    <td className="px-4 py-4 text-app-text">
-                      {appointment.room?.name || "-"}
-                    </td>
-                    <td className="px-4 py-4 text-app-muted">
-                      {appointment.status}
-                    </td>
-                  </tr>
+                    </p>
+                    <p className="mt-1 text-sm text-app-muted">
+                      {appointment.employee?.display_name || "-"} · {appointment.room?.name || "-"}
+                    </p>
+                    {appointment.internal_note ? (
+                      <div className="mt-3 rounded-xl border border-app-soft bg-app-bg/55 p-3">
+                        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-app-muted">
+                          <FileText className="h-3.5 w-3.5" />
+                          {treatmentNoteLabel}
+                        </p>
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm leading-5 text-app-text">
+                          {appointment.internal_note}
+                        </p>
+                      </div>
+                    ) : null}
+                  </Link>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          {client.pastAppointments.length === 0 ? (
-            <div className="mt-4">
+              </div>
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-full border-collapse">
+                  <thead className="bg-app-table-head">
+                    <tr className="text-left text-sm text-app-muted">
+                      <th className="px-5 py-3 font-semibold">{t.date}</th>
+                      <th className="px-5 py-3 font-semibold">{t.time}</th>
+                      <th className="px-5 py-3 font-semibold">{t.service}</th>
+                      <th className="px-5 py-3 font-semibold">{t.employee}</th>
+                      <th className="px-5 py-3 font-semibold">{t.room}</th>
+                      <th className="px-5 py-3 font-semibold">{t.status}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {client.pastAppointments.map((appointment) => (
+                      <tr
+                        key={appointment.id}
+                        className="border-t border-app-soft text-sm transition hover:bg-app-card-alt"
+                      >
+                        <td className="px-5 py-4 font-semibold text-app-text">
+                          {formatDate(appointment.appointment_date, locale)}
+                        </td>
+                        <td className="px-5 py-4 text-app-muted">
+                          {formatTime(appointment.start_time)} – {formatTime(appointment.end_time)}
+                        </td>
+                        <td className="px-5 py-4 font-medium text-app-text">
+                          <div>
+                            {formatAppointmentServicesLabel(
+                              appointment.appointment_services
+                                ?.slice()
+                                .sort((a, b) => a.sort_order - b.sort_order),
+                            )}
+                          </div>
+                          {appointment.internal_note ? (
+                            <div className="mt-2 max-w-md rounded-lg border border-app-soft bg-app-bg/55 px-3 py-2">
+                              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-app-muted">
+                                <FileText className="h-3 w-3" />
+                                {treatmentNoteLabel}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-xs font-normal leading-5 text-app-text">
+                                {appointment.internal_note}
+                              </p>
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="px-5 py-4 text-app-muted">
+                          {appointment.employee?.display_name || "-"}
+                        </td>
+                        <td className="px-5 py-4 text-app-muted">
+                          {appointment.room?.name || "-"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="rounded-full bg-app-bg px-2.5 py-1 text-xs font-semibold text-app-text">
+                            {statusLabel(appointment.status, locale)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <div className="p-5">
               <EmptyStateCard
-                title="Nema povijesti termina"
-                description="Ovaj klijent još nema završenih ili prošlih termina u evidenciji."
+                title={t.noHistory}
+                description={t.noHistoryDescription}
               />
             </div>
-          ) : null}
-        </div>
+          )}
+        </section>
+
+        <Link
+          href="/dashboard/clients"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-app-muted transition hover:text-app-text"
+        >
+          <ArrowLeft className="h-4 w-4" /> {t.backToClients}
+        </Link>
       </div>
     </main>
   );

@@ -1,17 +1,34 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarDays,
+  Clock3,
+  DoorOpen,
+  Plus,
+  Shapes,
+  Timer,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   getCalendarDayDataByEmployees,
   getCalendarDayDataByRooms,
+  type CalendarAppointmentItem,
+  type CalendarEmployeeGroup,
 } from "@/features/calendar/queries";
-import { formatTime, getTodayLocalDate } from "@/lib/utils";
+import { formatTime, getTodayLocalDate, statusLabel } from "@/lib/utils";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import DateQueryPicker from "@/components/date-query-picker";
 import AppointmentMiniDetails from "@/components/appointment-mini-details";
 import { getWorkStatusClasses } from "@/features/schedule/status-helpers";
 import AutoSubmitSelect from "@/components/auto-submit-select";
 import AppointmentStatusActions from "@/components/appointment-status-actions";
 import EmptyStateCard from "@/components/empty-state-card";
+import CalendarCurrentTime from "@/components/calendar-current-time";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
 
 type SearchParams = Promise<{
@@ -21,63 +38,146 @@ type SearchParams = Promise<{
   room?: string;
 }>;
 
-function formatDateTitle(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-
-  return new Intl.DateTimeFormat("hr-HR", {
+function formatDateTitle(value: string, locale: AppLocale) {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR", {
     weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
+    day: "numeric",
+    month: "long",
     year: "numeric",
-  }).format(date);
+  }).format(new Date(`${value}T00:00:00`));
+}
+
+function shiftDate(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 function statusClasses(status: string) {
   switch (status) {
-    case "scheduled":
-      return "border-[#c7bcad] bg-[#ebe3d6]";
+    case "confirmed":
+      return "border-emerald-200 bg-emerald-50/80";
     case "completed":
-      return "border-[#8a7d6f] bg-[#d8cec1]";
+      return "border-slate-200 bg-slate-50";
     case "cancelled":
-      return "border-[#d8cdc0] bg-[#f2ece5]";
+      return "border-rose-200 bg-rose-50/70 opacity-75";
     case "no_show":
-      return "border-[#6a655f] bg-[#ded7cf]";
+      return "border-amber-200 bg-amber-50/80";
     default:
       return "border-app-soft bg-white";
   }
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case "scheduled":
-      return "Zakazan";
-    case "completed":
-      return "Odrađen";
-    case "cancelled":
-      return "Otkazan";
-    case "no_show":
-      return "Nije došao";
-    default:
-      return status;
-  }
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toLocaleUpperCase("hr"))
+    .join("") || "SF";
 }
 
-function ViewChip({
-  href,
-  active,
-  children,
+function appointmentCountLabel(
+  count: number,
+  singular: string,
+  plural: string,
+) {
+  return count + " " + (count === 1 ? singular : plural);
+}
+
+function EmployeeColumnHeader({
+  group,
+  stickyTop,
+  t,
 }: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
+  group: CalendarEmployeeGroup;
+  stickyTop: string;
+  t: ReturnType<typeof getDictionary>["calendar"];
 }) {
+  const accent = group.colorHex || "#8a7d6f";
+  const workingHours = group.workStatus.isWorking && group.workStatus.label.includes("-")
+    ? group.workStatus.label.replace(" - ", " – ")
+    : null;
+  const statusText = group.workStatus.isWorking ? t.worksToday : group.workStatus.label;
+
+  return (
+    <div className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}>
+      <div className="h-1.5 w-full" style={{ backgroundColor: accent }} />
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3.5">
+            <div
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-4 border-white text-sm font-bold text-white shadow-md ring-1 ring-black/5"
+              style={{ backgroundColor: accent }}
+              aria-hidden="true"
+            >
+              {getInitials(group.employeeName)}
+            </div>
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-bold tracking-tight text-app-text">{group.employeeName}</h2>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-app-muted">
+                <Clock3 className="h-3.5 w-3.5 shrink-0" />
+                {workingHours || t.noWorkingHours}
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full border border-app-soft bg-white/90 px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
+            {appointmentCountLabel(group.appointments.length, t.appointmentSingular, t.appointmentPlural)}
+          </span>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-app-soft/80 pt-3">
+          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${getWorkStatusClasses(group.workStatus)}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${group.workStatus.isWorking ? "bg-emerald-500" : "bg-current"}`} />
+            {statusText}
+          </span>
+          {group.workStatus.isOverride ? <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-app-muted">{t.specialSchedule}</span> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RoomColumnHeader({
+  roomName,
+  appointmentCount,
+  stickyTop,
+  t,
+}: {
+  roomName: string;
+  appointmentCount: number;
+  stickyTop: string;
+  t: ReturnType<typeof getDictionary>["calendar"];
+}) {
+  return (
+    <div className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}>
+      <div className="h-1.5 w-full bg-app-accent" />
+      <div className="flex items-center justify-between gap-4 p-5">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent shadow-sm ring-1 ring-app-accent/10">
+            <DoorOpen className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-app-muted">{t.roomLabel}</p>
+            <h2 className="mt-1 truncate text-lg font-bold tracking-tight text-app-text">{roomName}</h2>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full border border-app-soft bg-white/90 px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
+          {appointmentCountLabel(appointmentCount, t.appointmentSingular, t.appointmentPlural)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ViewChip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
   return (
     <Link
       href={href}
-      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+      className={`inline-flex min-h-11 flex-1 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition sm:flex-none ${
         active
           ? "bg-app-accent text-white shadow-sm"
-          : "border border-app-soft bg-white text-app-text hover:bg-app-bg"
+          : "border border-app-soft bg-white text-app-text hover:border-app-accent/30 hover:bg-app-bg"
       }`}
     >
       {children}
@@ -85,320 +185,226 @@ function ViewChip({
   );
 }
 
-function CalendarCard({
-  appointment,
-}: {
-  appointment: {
-    id: string;
-    start_time: string;
-    end_time: string;
-    duration_minutes: number;
-    status: "scheduled" | "completed" | "cancelled" | "no_show";
-    client_name: string;
-    client_phone: string | null;
-    service: { name: string; service_group: string | null } | null;
-    appointment_services?: {
-      id: string;
-      duration_minutes: number;
-      sort_order: number;
-      service: {
-        id: string;
-        name: string;
-        service_group: string | null;
-      } | null;
-    }[];
-    metaLabel?: string;
-  };
-}) {
+function StatCard({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
   return (
-    <Link
-      href={`/dashboard/appointments/${appointment.id}/edit`}
-      className={`group relative block rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md ${statusClasses(
-        appointment.status,
-      )}`}
-    >
+    <div className="rounded-2xl border border-app-soft bg-white p-3.5 shadow-sm sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-app-text">
-            {formatTime(appointment.start_time)} -{" "}
-            {formatTime(appointment.end_time)}
-          </div>
-          <div className="mt-1 text-sm text-app-muted">
-            {appointment.duration_minutes} min
-          </div>
+          <p className="text-sm font-medium text-app-muted">{label}</p>
+          <p className="mt-2 text-xl font-bold tracking-tight text-app-text sm:text-2xl">{value}</p>
+          <p className="mt-1 text-xs text-app-muted">{detail}</p>
         </div>
-
-        <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-app-text">
-          {statusLabel(appointment.status)}
-        </span>
+        <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent xs:flex sm:flex">
+          {icon}
+        </div>
       </div>
-
-      <div className="mt-4">
-        <div className="font-medium text-app-text">
-          {appointment.client_name}
-        </div>
-
-        <div className="mt-1 text-sm text-app-text">
-          {formatAppointmentServicesLabel(
-            appointment.appointment_services
-              ?.slice()
-              .sort((a, b) => a.sort_order - b.sort_order),
-          )}
-        </div>
-
-        {appointment.service?.service_group ? (
-          <div className="mt-1 text-xs text-app-muted">
-            {appointment.service.service_group}
-          </div>
-        ) : null}
-      </div>
-
-      {appointment.metaLabel ? (
-        <div className="mt-3 text-sm text-app-muted">
-          {appointment.metaLabel}
-        </div>
-      ) : null}
-
-      {appointment.client_phone ? (
-        <div className="mt-2 text-xs text-app-muted">
-          {appointment.client_phone}
-        </div>
-      ) : null}
-
-      <div className="mt-3">
-        <AppointmentStatusActions
-          appointmentId={appointment.id}
-          currentStatus={appointment.status}
-          compact
-        />
-      </div>
-
-      <AppointmentMiniDetails
-        clientName={appointment.client_name}
-        serviceName={formatAppointmentServicesLabel(
-          appointment.appointment_services
-            ?.slice()
-            .sort((a, b) => a.sort_order - b.sort_order),
-        )}
-        startTime={formatTime(appointment.start_time)}
-        endTime={formatTime(appointment.end_time)}
-        durationMinutes={appointment.duration_minutes}
-        extraLine={appointment.metaLabel}
-      />
-    </Link>
+    </div>
   );
 }
 
-export default async function CalendarPage({
-  searchParams,
+function CalendarCard({
+  appointment,
+  colorHex,
+  metaLabel,
+  locale,
+  untilLabel,
 }: {
-  searchParams: SearchParams;
+  appointment: CalendarAppointmentItem;
+  colorHex?: string | null;
+  metaLabel?: string;
+  locale: AppLocale;
+  untilLabel: string;
 }) {
+  const serviceLabel = formatAppointmentServicesLabel(
+    appointment.appointment_services?.slice().sort((a, b) => a.sort_order - b.sort_order),
+  );
+  const accent = colorHex || appointment.employee?.color_hex || "#8a7d6f";
+
+  return (
+    <div
+      className={`group relative overflow-hidden rounded-3xl border shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.10)] ${statusClasses(appointment.status)}`}
+    >
+      <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: accent }} />
+
+      <Link href={`/dashboard/appointments/${appointment.id}/edit`} className="block p-4 pl-5 sm:p-5 sm:pl-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-xl font-extrabold leading-none tracking-tight text-app-text sm:text-2xl">
+              {formatTime(appointment.start_time)}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-app-muted">
+              <Clock3 className="h-3.5 w-3.5" />
+              {untilLabel} {formatTime(appointment.end_time)}
+            </div>
+          </div>
+
+          <span className="shrink-0 rounded-full border border-white/80 bg-white/90 px-3 py-1 text-[11px] font-bold text-app-text shadow-sm backdrop-blur">
+            {statusLabel(appointment.status, locale)}
+          </span>
+        </div>
+
+        <div className="mt-4 sm:mt-5">
+          <p className="truncate text-base font-bold text-app-text">{appointment.client_name}</p>
+          <div className="mt-2 flex min-w-0 items-center gap-2 text-sm font-medium text-app-text">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/85 text-app-accent shadow-sm">
+              <Shapes className="h-4 w-4" />
+            </div>
+            <span className="truncate">{serviceLabel}</span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-app-muted sm:mt-5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+            <Timer className="h-3.5 w-3.5" />
+            {appointment.duration_minutes} min
+          </span>
+          {metaLabel ? (
+            <span className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+              {metaLabel}
+            </span>
+          ) : null}
+          {appointment.client_phone ? (
+            <span className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+              {appointment.client_phone}
+            </span>
+          ) : null}
+        </div>
+
+        <AppointmentMiniDetails
+          clientName={appointment.client_name}
+          serviceName={serviceLabel}
+          startTime={formatTime(appointment.start_time)}
+          endTime={formatTime(appointment.end_time)}
+          durationMinutes={appointment.duration_minutes}
+          extraLine={metaLabel}
+        />
+      </Link>
+
+      <div className="border-t border-black/5 bg-white/35 px-4 py-3 pl-5 backdrop-blur-sm sm:px-5 sm:pl-6">
+        <AppointmentStatusActions locale={locale} appointmentId={appointment.id} currentStatus={appointment.status} compact />
+      </div>
+    </div>
+  );
+}
+
+export default async function CalendarPage({ searchParams }: { searchParams: SearchParams }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.calendar;
   const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) redirect("/login");
 
   const resolvedSearchParams = await searchParams;
-  const selectedDate = resolvedSearchParams.date || getTodayLocalDate();
-  const selectedView =
-    resolvedSearchParams.view === "rooms" ? "rooms" : "employees";
+  const today = getTodayLocalDate();
+  const selectedDate = resolvedSearchParams.date || today;
+  const selectedView = resolvedSearchParams.view === "rooms" ? "rooms" : "employees";
 
-  const roomGroups =
-    selectedView === "rooms"
-      ? await getCalendarDayDataByRooms(selectedDate)
-      : [];
-
-  const employeeGroups =
-    selectedView === "employees"
-      ? await getCalendarDayDataByEmployees(selectedDate)
-      : [];
+  const [roomGroups, employeeGroups] = await Promise.all([
+    selectedView === "rooms" ? getCalendarDayDataByRooms(selectedDate) : Promise.resolve([]),
+    selectedView === "employees" ? getCalendarDayDataByEmployees(selectedDate) : Promise.resolve([]),
+  ]);
 
   const selectedEmployeeId = resolvedSearchParams.employee || "";
   const selectedRoomId = resolvedSearchParams.room || "";
+  const mobileEmployeeGroups = selectedView === "employees" && employeeGroups.length
+    ? [employeeGroups.find((group) => group.employeeId === selectedEmployeeId) || employeeGroups[0]]
+    : employeeGroups;
+  const mobileRoomGroups = selectedView === "rooms" && roomGroups.length
+    ? [roomGroups.find((group) => group.roomId === selectedRoomId) || roomGroups[0]]
+    : roomGroups;
 
-  const mobileEmployeeGroups =
-    selectedView === "employees" && selectedEmployeeId
-      ? employeeGroups.filter(
-          (group) => group.employeeId === selectedEmployeeId,
-        )
-      : selectedView === "employees" && employeeGroups.length > 0
-        ? [employeeGroups[0]]
-        : employeeGroups;
+  const appointments = selectedView === "employees"
+    ? employeeGroups.flatMap((group) => group.appointments)
+    : roomGroups.flatMap((group) => group.appointments);
+  const uniqueAppointments = Array.from(new Map(appointments.map((appointment) => [appointment.id, appointment])).values());
+  const activeAppointments = uniqueAppointments.filter((appointment) => appointment.status !== "cancelled");
+  const uniqueClients = new Set(activeAppointments.map((appointment) => appointment.client_name.trim().toLocaleLowerCase("hr"))).size;
+  const bookedMinutes = activeAppointments.reduce((sum, appointment) => sum + appointment.duration_minutes, 0);
+  const workingEmployees = employeeGroups.filter((group) => group.workStatus.isWorking).length;
+  const hours = Math.floor(bookedMinutes / 60);
+  const minutes = bookedMinutes % 60;
 
-  const mobileRoomGroups =
-    selectedView === "rooms" && selectedRoomId
-      ? roomGroups.filter((group) => group.roomId === selectedRoomId)
-      : selectedView === "rooms" && roomGroups.length > 0
-        ? [roomGroups[0]]
-        : roomGroups;
+  const previousDate = shiftDate(selectedDate, -1);
+  const nextDate = shiftDate(selectedDate, 1);
+  const isToday = selectedDate === today;
 
   return (
-    <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm md:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-app-text md:text-3xl">
-                Dnevni kalendar
-              </h1>
-              <p className="mt-2 text-sm text-app-muted md:text-base">
-                Pregled termina za {formatDateTitle(selectedDate)}
-              </p>
+    <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+          <div className="border-b border-app-soft bg-gradient-to-br from-white to-app-bg p-4 sm:p-5 md:p-7">
+            <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-xl font-bold capitalize tracking-tight text-app-text sm:text-2xl md:text-3xl">{formatDateTitle(selectedDate, permissions.organizationLocale)}</h1>
+                  <CalendarCurrentTime
+                    selectedDate={selectedDate}
+                    today={today}
+                    locale={permissions.organizationLocale}
+                    nowLabel={t.now}
+                  />
+                </div>
+
+                <div className="mt-4 w-full max-w-xs">
+                  <DateQueryPicker locale={permissions.organizationLocale} value={selectedDate} basePath="/dashboard/calendar" extraParams={{ view: selectedView }} />
+                </div>
+              </div>
+
+              <div className="flex w-full shrink-0 flex-col items-stretch gap-3 self-start sm:w-auto sm:items-end xl:self-center">
+                <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-auto">
+                  <Plus className="h-4 w-4" /> {t.newAppointment}
+                </Link>
+
+                <div className="inline-flex w-full self-end rounded-xl border border-app-soft bg-white p-1 shadow-sm sm:w-auto">
+                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label={t.previousDay}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Link>
+                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`flex min-h-11 flex-[1.3] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>{t.today}</Link>
+                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label={t.nextDay}>
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <DateQueryPicker
-                value={selectedDate}
-                basePath="/dashboard/calendar"
-                extraParams={{ view: selectedView }}
-              />
+            <div className="mt-5 flex w-full gap-2 sm:mt-6 sm:w-auto sm:flex-wrap sm:gap-3">
+              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=employees`} active={selectedView === "employees"}>{t.byEmployees}</ViewChip>
+              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=rooms`} active={selectedView === "rooms"}>{t.byRooms}</ViewChip>
+            </div>
 
-              <Link
-                href={`/dashboard/appointments/new?date=${selectedDate}`}
-                className="inline-flex h-[42px] items-center justify-center rounded-xl bg-app-accent px-4 py-2 font-medium text-white transition hover:opacity-90"
-              >
-                Novi termin
-              </Link>
+            <div className="mt-4 rounded-2xl border border-app-soft bg-white/80 p-3 shadow-sm lg:hidden">
+              {selectedView === "employees" ? (
+                <AutoSubmitSelect label={t.employee} action="/dashboard/calendar" name="employee" value={selectedEmployeeId || employeeGroups[0]?.employeeId || ""} hiddenFields={{ date: selectedDate, view: "employees" }} options={employeeGroups.map((group) => ({ value: group.employeeId, label: group.employeeName }))} />
+              ) : (
+                <AutoSubmitSelect label={t.room} action="/dashboard/calendar" name="room" value={selectedRoomId || roomGroups[0]?.roomId || ""} hiddenFields={{ date: selectedDate, view: "rooms" }} options={roomGroups.map((group) => ({ value: group.roomId, label: group.roomName }))} />
+              )}
             </div>
           </div>
+        </section>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <ViewChip
-              href={`/dashboard/calendar?date=${selectedDate}&view=employees`}
-              active={selectedView === "employees"}
-            >
-              Prikaz po zaposlenicima
-            </ViewChip>
-
-            <ViewChip
-              href={`/dashboard/calendar?date=${selectedDate}&view=rooms`}
-              active={selectedView === "rooms"}
-            >
-              Prikaz po sobama
-            </ViewChip>
-          </div>
-
-          {selectedView === "employees" ? (
-            <div className="mt-4 lg:hidden">
-              <AutoSubmitSelect
-                label="Zaposlenik"
-                action="/dashboard/calendar"
-                name="employee"
-                value={
-                  selectedEmployeeId || employeeGroups[0]?.employeeId || ""
-                }
-                hiddenFields={{
-                  date: selectedDate,
-                  view: "employees",
-                }}
-                options={employeeGroups.map((group) => ({
-                  value: group.employeeId,
-                  label: group.employeeName,
-                }))}
-              />
-            </div>
-          ) : (
-            <div className="mt-4 lg:hidden">
-              <AutoSubmitSelect
-                label="Soba"
-                action="/dashboard/calendar"
-                name="room"
-                value={selectedRoomId || roomGroups[0]?.roomId || ""}
-                hiddenFields={{
-                  date: selectedDate,
-                  view: "rooms",
-                }}
-                options={roomGroups.map((group) => ({
-                  value: group.roomId,
-                  label: group.roomName,
-                }))}
-              />
-            </div>
-          )}
-        </div>
+        <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          <StatCard icon={<CalendarDays className="h-5 w-5" />} label={t.appointments} value={String(activeAppointments.length)} detail={`${uniqueAppointments.length - activeAppointments.length} {t.cancelled}`} />
+          <StatCard icon={<UserRound className="h-5 w-5" />} label={t.clients} value={String(uniqueClients)} detail={t.uniqueClients} />
+          <StatCard icon={<Timer className="h-5 w-5" />} label={t.bookedTime} value={`${hours} h ${minutes} min`} detail={t.totalDuration} />
+          <StatCard icon={<UsersRound className="h-5 w-5" />} label={t.activeCapacity} value={selectedView === "employees" ? `${workingEmployees}/${employeeGroups.length}` : String(roomGroups.length)} detail={selectedView === "employees" ? t.employeesWorking : t.activeRooms} />
+        </section>
 
         {selectedView === "rooms" ? (
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileRoomGroups.map((group) => (
-                <section
-                  key={group.roomId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-app-text">
-                      {group.roomName}
-                    </h2>
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
-                  </div>
-
-                  {group.appointments.length === 0 ? (
-                    <EmptyStateCard
-                      title="Nema termina u ovoj sobi"
-                      description="Za odabrani datum nema rezervacija u ovoj sobi."
-                    />
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.employee
-                              ? `Zaposlenik: ${appointment.employee.display_name}`
-                              : "Nepoznati zaposlenik",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <section key={group.roomId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-16" t={t} />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} metaLabel={appointment.employee ? t.employee + ": " + appointment.employee.display_name : t.noEmployee} />)}</div> : <EmptyStateCard title={t.noAppointmentsInRoom} description={t.noAppointmentsInRoomDescription} />}</div>
                 </section>
               ))}
             </div>
-
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {roomGroups.map((group) => (
-                <section
-                  key={group.roomId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-app-text">
-                      {group.roomName}
-                    </h2>
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
-                  </div>
-
-                  {group.appointments.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-app-soft bg-app-card-alt p-4 text-sm text-app-muted">
-                      Nema termina u ovoj sobi.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.employee
-                              ? `Zaposlenik: ${appointment.employee.display_name}`
-                              : "Nepoznati zaposlenik",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" t={t} />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} metaLabel={appointment.employee ? t.employee + ": " + appointment.employee.display_name : t.noEmployee} />)}</div> : <EmptyStateCard title={t.noAppointmentsInRoom} description={t.noAppointmentsInRoomDescription} />}</div>
                 </section>
               ))}
             </div>
@@ -407,109 +413,17 @@ export default async function CalendarPage({
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileEmployeeGroups.map((group) => (
-                <section
-                  key={group.employeeId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="inline-block h-4 w-4 rounded-full"
-                        style={{ backgroundColor: group.colorHex || "#999999" }}
-                      />
-                      <div>
-                        <h2 className="text-xl font-semibold text-app-text">
-                          {group.employeeName}
-                        </h2>
-                        <div
-                          className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getWorkStatusClasses(
-                            group.workStatus,
-                          )}`}
-                        >
-                          {group.workStatus.label}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
-                  </div>
-
-                  {group.appointments.length === 0 ? (
-                    <EmptyStateCard
-                      title="Nema termina za ovog zaposlenika"
-                      description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina."
-                    />
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.room
-                              ? `Soba: ${appointment.room.name}`
-                              : "Nepoznata soba",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <section key={group.employeeId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                  <EmployeeColumnHeader group={group} stickyTop="top-16" t={t} />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} colorHex={group.colorHex} metaLabel={appointment.room ? t.room + ": " + appointment.room.name : t.noRoom} />)}</div> : <EmptyStateCard title={t.noAppointmentsForEmployee} description={t.noAppointmentsForEmployeeDescription} />}</div>
                 </section>
               ))}
             </div>
-
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {employeeGroups.map((group) => (
-                <section
-                  key={group.employeeId}
-                  className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"
-                >
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span
-                        className="inline-block h-4 w-4 rounded-full"
-                        style={{ backgroundColor: group.colorHex || "#999999" }}
-                      />
-                      <div>
-                        <h2 className="text-xl font-semibold text-app-text">
-                          {group.employeeName}
-                        </h2>
-                        <div
-                          className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getWorkStatusClasses(
-                            group.workStatus,
-                          )}`}
-                        >
-                          {group.workStatus.label}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                      {group.appointments.length} termina
-                    </span>
-                  </div>
-
-                  {group.appointments.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-app-soft bg-app-card-alt p-4 text-sm text-app-muted">
-                      Nema termina za ovog zaposlenika.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {group.appointments.map((appointment) => (
-                        <CalendarCard
-                          key={appointment.id}
-                          appointment={{
-                            ...appointment,
-                            metaLabel: appointment.room
-                              ? `Soba: ${appointment.room.name}`
-                              : "Nepoznata soba",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <section key={group.employeeId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                  <EmployeeColumnHeader group={group} stickyTop="top-4" t={t} />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} colorHex={group.colorHex} metaLabel={appointment.room ? t.room + ": " + appointment.room.name : t.noRoom} />)}</div> : <EmptyStateCard title={t.noAppointmentsForEmployee} description={t.noAppointmentsForEmployeeDescription} />}</div>
                 </section>
               ))}
             </div>

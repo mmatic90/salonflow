@@ -1,14 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 
+export type OrganizationRole = "owner" | "admin" | "manager" | "employee";
 export type AppRole = "admin" | "employee";
-
-const SYSTEM_DEVELOPER_EMAILS = new Set([
-  "maurizio@bodyandsoul.hr",
-]);
 
 export type CurrentUserPermissions = {
   userId: string;
   email: string | null;
+  organizationId: string;
+  organizationName: string;
+  organizationLocale: "hr" | "en" | "it";
+  organizationTheme: "sand" | "rose" | "slate";
+  organizationLogoUrl: string | null;
+  organizationRole: OrganizationRole;
   role: AppRole;
   employeeId: string | null;
   displayName: string;
@@ -16,10 +19,6 @@ export type CurrentUserPermissions = {
   isEmployee: boolean;
   isSystemDeveloper: boolean;
 };
-
-export function isSystemDeveloperEmail(email: string | null | undefined) {
-  return SYSTEM_DEVELOPER_EMAILS.has(String(email ?? "").trim().toLowerCase());
-}
 
 export async function getCurrentUserPermissions(): Promise<CurrentUserPermissions | null> {
   const supabase = await createClient();
@@ -33,41 +32,61 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     return null;
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, email, role, display_name, is_active")
-    .eq("id", user.id)
+  const { data: membership, error: membershipError } = await supabase
+    .from("organization_members")
+    .select("organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active)")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .limit(1)
     .maybeSingle();
 
-  if (profileError || !profile || profile.is_active === false) {
+  if (membershipError || !membership) {
     return null;
   }
 
-  const { data: employee, error: employeeError } = await supabase
+  const organization = Array.isArray(membership.organizations)
+    ? membership.organizations[0]
+    : membership.organizations;
+
+  if (!organization || organization.is_active === false) {
+    return null;
+  }
+
+  const { data: employee } = await supabase
     .from("employees")
-    .select("id, color_hex, is_active")
-    .eq("profile_id", user.id)
+    .select("id, color, is_active, first_name, last_name")
+    .eq("organization_id", membership.organization_id)
+    .eq("user_id", user.id)
     .maybeSingle();
-
-  if (employeeError) {
-    return null;
-  }
 
   if (employee && employee.is_active === false) {
     return null;
   }
 
-  const email = profile.email ?? user.email ?? null;
+  const organizationRole = membership.role as OrganizationRole;
+  const appRole: AppRole = organizationRole === "employee" ? "employee" : "admin";
+  const employeeName = employee
+    ? [employee.first_name, employee.last_name].filter(Boolean).join(" ")
+    : null;
 
   return {
     userId: user.id,
-    email,
-    role: profile.role as AppRole,
+    email: user.email ?? null,
+    organizationId: membership.organization_id,
+    organizationName: organization.name,
+    organizationLocale:
+      organization.locale === "en" || organization.locale === "it" ? organization.locale : "hr",
+    organizationTheme:
+      organization.theme === "rose" || organization.theme === "slate" ? organization.theme : "sand",
+    organizationLogoUrl: organization.logo_url ?? null,
+    organizationRole,
+    role: appRole,
     employeeId: employee?.id ?? null,
-    displayName: profile.display_name ?? user.email ?? "Korisnik",
-    colorHex: employee?.color_hex ?? null,
+    displayName:
+      membership.display_name ?? employeeName ?? user.user_metadata?.display_name ?? user.email ?? "Korisnik",
+    colorHex: employee?.color ?? null,
     isEmployee: Boolean(employee),
-    isSystemDeveloper: isSystemDeveloperEmail(email),
+    isSystemDeveloper: organizationRole === "owner",
   };
 }
 

@@ -5,8 +5,10 @@ import { RotateCcw } from "lucide-react";
 import type { SalonWorkingHourItem } from "@/features/settings/types";
 import { bulkUpdateSalonWorkingHoursAction } from "@/features/settings/actions";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   hours: SalonWorkingHourItem[];
 };
 
@@ -17,15 +19,7 @@ type EditableHour = {
   is_closed: boolean;
 };
 
-const dayRows = [
-  { value: 1, label: "Ponedjeljak" },
-  { value: 2, label: "Utorak" },
-  { value: 3, label: "Srijeda" },
-  { value: 4, label: "Četvrtak" },
-  { value: 5, label: "Petak" },
-  { value: 6, label: "Subota" },
-  { value: 0, label: "Nedjelja" },
-];
+const dayValues = [1, 2, 3, 4, 5, 6, 0];
 
 function toEditable(
   rows: SalonWorkingHourItem[],
@@ -41,9 +35,11 @@ function toEditable(
   };
 }
 
-export default function SalonHoursTable({ hours }: Props) {
+export default function SalonHoursTable({ locale = "hr", hours }: Props) {
+  const t = getDictionary(locale).settings;
+  const dayRows = dayValues.map((value) => ({ value, label: t.salonHours.days[value] }));
   const initialItems = useMemo(
-    () => dayRows.map((day) => toEditable(hours, day.value)),
+    () => dayValues.map((day) => toEditable(hours, day)),
     [hours],
   );
 
@@ -83,8 +79,8 @@ export default function SalonHoursTable({ hours }: Props) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-app-muted">
-          Uredi radno vrijeme pa klikni{" "}
-          <span className="font-medium text-app-text">Spremi izmjene</span>.
+          {t.salonHours.editHint}{" "}
+          <span className="font-medium text-app-text">{t.saveChanges}</span>.
         </div>
 
         <div className="flex gap-2">
@@ -95,7 +91,7 @@ export default function SalonHoursTable({ hours }: Props) {
             className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
           >
             <RotateCcw className="h-4 w-4" />
-            Poništi
+            {t.reset}
           </button>
 
           <button
@@ -104,7 +100,7 @@ export default function SalonHoursTable({ hours }: Props) {
             disabled={pending || !hasChanges}
             className="rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {pending ? "Spremanje..." : "Spremi izmjene"}
+            {pending ? t.saving : t.saveChanges}
           </button>
         </div>
       </div>
@@ -113,10 +109,10 @@ export default function SalonHoursTable({ hours }: Props) {
         <table className="min-w-full border-collapse">
           <thead className="bg-app-table-head">
             <tr className="text-left text-sm text-app-muted">
-              <th className="px-4 py-3 font-semibold">Dan</th>
-              <th className="px-4 py-3 font-semibold">Zatvoreno</th>
-              <th className="px-4 py-3 font-semibold">Otvara</th>
-              <th className="px-4 py-3 font-semibold">Zatvara</th>
+              <th className="px-4 py-3 font-semibold">{t.salonHours.day}</th>
+              <th className="px-4 py-3 font-semibold">{t.salonHours.closed}</th>
+              <th className="px-4 py-3 font-semibold">{t.salonHours.opens}</th>
+              <th className="px-4 py-3 font-semibold">{t.salonHours.closes}</th>
             </tr>
           </thead>
 
@@ -144,7 +140,7 @@ export default function SalonHoursTable({ hours }: Props) {
                       className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
                         item.is_closed ? "bg-app-soft" : "bg-app-accent"
                       }`}
-                      title={item.is_closed ? "Zatvoreno" : "Otvoreno"}
+                      title={item.is_closed ? t.salonHours.closed : t.salonHours.open}
                     >
                       <span
                         className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
@@ -218,7 +214,7 @@ export default function SalonHoursTable({ hours }: Props) {
               <div className="mt-3 grid gap-3">
                 <div>
                   <label className="mb-1 block text-sm text-app-muted">
-                    Otvara
+                    {t.salonHours.opens}
                   </label>
                   <input
                     type="time"
@@ -233,7 +229,7 @@ export default function SalonHoursTable({ hours }: Props) {
 
                 <div>
                   <label className="mb-1 block text-sm text-app-muted">
-                    Zatvara
+                    {t.salonHours.closes}
                   </label>
                   <input
                     type="time"

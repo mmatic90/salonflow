@@ -4,13 +4,17 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit/write-audit-log";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 export type ClientFormValues = {
   full_name: string;
   phone: string;
   email: string;
   note: string;
-  internal_note: string;
+  allergies_sensitivities: string;
+  contraindications: string;
+  treatment_preferences: string;
 };
 
 export type ClientActionState = {
@@ -23,8 +27,16 @@ function normalizeText(value: FormDataEntryValue | null) {
 }
 
 function normalizeNullableText(value: FormDataEntryValue | null) {
-  const parsed = typeof value === "string" ? value.trim() : "";
+  const parsed = normalizeText(value);
   return parsed.length > 0 ? parsed : null;
+}
+
+function splitFullName(fullName: string) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts.shift() ?? "",
+    lastName: parts.length > 0 ? parts.join(" ") : null,
+  };
 }
 
 function getFormValues(formData: FormData): ClientFormValues {
@@ -33,42 +45,55 @@ function getFormValues(formData: FormData): ClientFormValues {
     phone: normalizeText(formData.get("phone")),
     email: normalizeText(formData.get("email")),
     note: normalizeText(formData.get("note")),
-    internal_note: normalizeText(formData.get("internal_note")),
+    allergies_sensitivities: normalizeText(
+      formData.get("allergies_sensitivities"),
+    ),
+    contraindications: normalizeText(formData.get("contraindications")),
+    treatment_preferences: normalizeText(formData.get("treatment_preferences")),
   };
+}
+
+function revalidateClientPaths(clientId?: string) {
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/clients");
+  revalidatePath("/dashboard/clients/new");
+  revalidatePath("/dashboard/appointments");
+  revalidatePath("/dashboard/appointments/new");
+  if (clientId) {
+    revalidatePath(`/dashboard/clients/${clientId}`);
+    revalidatePath(`/dashboard/clients/${clientId}/edit`);
+  }
 }
 
 export async function createClientAction(
   _prevState: ClientActionState,
   formData: FormData,
 ): Promise<ClientActionState> {
+  const permissions = await requireDashboardUser();
   const supabase = await createClient();
+  const t = getDictionary(permissions.organizationLocale).clients.actionMessages;
   const values = getFormValues(formData);
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      error: "Niste prijavljeni.",
-      values,
-    };
-  }
-
   if (!values.full_name) {
-    return {
-      error: "Ime klijenta je obavezno.",
-      values,
-    };
+    return { error: t.nameRequired, values };
   }
 
+  const { firstName, lastName } = splitFullName(values.full_name);
   const payload = {
-    full_name: values.full_name,
+    organization_id: permissions.organizationId,
+    first_name: firstName,
+    last_name: lastName,
     phone: normalizeNullableText(formData.get("phone")),
     email: normalizeNullableText(formData.get("email")),
-    note: normalizeNullableText(formData.get("note")),
-    internal_note: normalizeNullableText(formData.get("internal_note")),
+    notes: normalizeNullableText(formData.get("note")),
+    allergies_sensitivities: normalizeNullableText(
+      formData.get("allergies_sensitivities"),
+    ),
+    contraindications: normalizeNullableText(formData.get("contraindications")),
+    treatment_preferences: normalizeNullableText(
+      formData.get("treatment_preferences"),
+    ),
+    marketing_consent: false,
     is_active: true,
   };
 
@@ -79,10 +104,7 @@ export async function createClientAction(
     .single();
 
   if (error || !client) {
-    return {
-      error: error?.message || "Nije moguće spremiti klijenta.",
-      values,
-    };
+    return { error: error?.message || t.saveError, values };
   }
 
   await writeAuditLog({
@@ -93,12 +115,7 @@ export async function createClientAction(
     details: payload,
   });
 
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/clients");
-  revalidatePath("/dashboard/clients/new");
-  revalidatePath("/dashboard/appointments");
-  revalidatePath("/dashboard/appointments/new");
-
+  revalidateClientPaths(client.id);
   redirect("/dashboard/clients");
 }
 
@@ -107,59 +124,52 @@ export async function updateClientAction(
   _prevState: ClientActionState,
   formData: FormData,
 ): Promise<ClientActionState> {
+  const permissions = await requireDashboardUser();
   const supabase = await createClient();
+  const t = getDictionary(permissions.organizationLocale).clients.actionMessages;
   const values = getFormValues(formData);
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      error: "Niste prijavljeni.",
-      values,
-    };
-  }
-
   if (!values.full_name) {
-    return {
-      error: "Ime klijenta je obavezno.",
-      values,
-    };
+    return { error: t.nameRequired, values };
   }
 
   const { data: beforeClient, error: beforeError } = await supabase
     .from("clients")
-    .select("id, full_name, phone, email, note, internal_note, is_active")
+    .select(
+      "id, first_name, last_name, phone, email, notes, allergies_sensitivities, contraindications, treatment_preferences, is_active",
+    )
+    .eq("organization_id", permissions.organizationId)
     .eq("id", clientId)
     .maybeSingle();
 
   if (beforeError) {
-    return {
-      error: beforeError.message,
-      values,
-    };
+    return { error: beforeError.message, values };
   }
 
+  const { firstName, lastName } = splitFullName(values.full_name);
   const payload = {
-    full_name: values.full_name,
+    first_name: firstName,
+    last_name: lastName,
     phone: normalizeNullableText(formData.get("phone")),
     email: normalizeNullableText(formData.get("email")),
-    note: normalizeNullableText(formData.get("note")),
-    internal_note: normalizeNullableText(formData.get("internal_note")),
+    notes: normalizeNullableText(formData.get("note")),
+    allergies_sensitivities: normalizeNullableText(
+      formData.get("allergies_sensitivities"),
+    ),
+    contraindications: normalizeNullableText(formData.get("contraindications")),
+    treatment_preferences: normalizeNullableText(
+      formData.get("treatment_preferences"),
+    ),
   };
 
   const { error } = await supabase
     .from("clients")
     .update(payload)
+    .eq("organization_id", permissions.organizationId)
     .eq("id", clientId);
 
   if (error) {
-    return {
-      error: error.message,
-      values,
-    };
+    return { error: error.message, values };
   }
 
   await writeAuditLog({
@@ -167,78 +177,57 @@ export async function updateClientAction(
     entityType: "client",
     entityId: clientId,
     entityLabel: values.full_name,
-    details: {
-      before: beforeClient,
-      after: payload,
-    },
+    details: { before: beforeClient, after: payload },
   });
 
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/clients");
-  revalidatePath(`/dashboard/clients/${clientId}`);
-  revalidatePath(`/dashboard/clients/${clientId}/edit`);
-  revalidatePath("/dashboard/appointments");
-  revalidatePath("/dashboard/appointments/new");
-
+  revalidateClientPaths(clientId);
   redirect(`/dashboard/clients/${clientId}`);
 }
 
 export async function deleteClientAction(clientId: string) {
+  const permissions = await requireDashboardUser();
   const supabase = await createClient();
+  const t = getDictionary(permissions.organizationLocale).clients.actionMessages;
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return {
-      ok: false,
-      message: "Niste prijavljeni.",
-    };
-  }
-
-  const { data: clientBefore } = await supabase
+  const { data: clientBefore, error: beforeError } = await supabase
     .from("clients")
-    .select("id, full_name, phone, email, note, internal_note, is_active")
+    .select(
+      "id, first_name, last_name, phone, email, notes, allergies_sensitivities, contraindications, treatment_preferences, is_active",
+    )
+    .eq("organization_id", permissions.organizationId)
     .eq("id", clientId)
     .maybeSingle();
+
+  if (beforeError) {
+    return { ok: false, message: beforeError.message };
+  }
 
   const { error } = await supabase
     .from("clients")
     .update({ is_active: false })
+    .eq("organization_id", permissions.organizationId)
     .eq("id", clientId);
 
   if (error) {
-    return {
-      ok: false,
-      message: error.message,
-    };
+    return { ok: false, message: error.message };
   }
+
+  const entityLabel = clientBefore
+    ? [clientBefore.first_name, clientBefore.last_name].filter(Boolean).join(" ")
+    : null;
 
   await writeAuditLog({
     action: "client_deleted",
     entityType: "client",
     entityId: clientId,
-    entityLabel: clientBefore?.full_name ?? null,
+    entityLabel,
     details: {
       soft_delete: true,
       before: clientBefore,
-      after: {
-        is_active: false,
-      },
+      after: { is_active: false },
     },
   });
 
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/clients");
-  revalidatePath("/dashboard/clients/new");
-  revalidatePath("/dashboard/appointments");
-  revalidatePath("/dashboard/appointments/new");
-  revalidatePath("/dashboard/appointments/[id]/edit");
-
-  return {
-    ok: true,
-    message: "Klijent je uklonjen s liste.",
-  };
+  revalidateClientPaths(clientId);
+  return { ok: true, message: t.removed };
 }

@@ -1,6 +1,54 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserPermissions } from "@/lib/permissions";
+import { getTodayLocalDate } from "@/lib/utils";
 
-type AppointmentStatus = "scheduled" | "completed" | "cancelled" | "no_show";
+type AppointmentStatus =
+  | "scheduled"
+  | "confirmed"
+  | "completed"
+  | "cancelled"
+  | "no_show";
+
+type RawEmployeeRelation = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+};
+
+type RawRoomRelation = {
+  id: string;
+  name: string | null;
+};
+
+type RawServiceRelation = {
+  id: string;
+  name: string | null;
+  category: string | null;
+};
+
+type RawAppointmentService = {
+  id: string;
+  service_id: string | null;
+  service_name: string | null;
+  duration_minutes: number | null;
+  sort_order: number | null;
+  service: RawServiceRelation | RawServiceRelation[] | null;
+};
+
+type RawClientAppointment = {
+  id: string;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  status: AppointmentStatus;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  internal_notes: string | null;
+  appointment_services: RawAppointmentService[] | null;
+  employee: RawEmployeeRelation | RawEmployeeRelation[] | null;
+  room: RawRoomRelation | RawRoomRelation[] | null;
+};
 
 export type ClientListItem = {
   id: string;
@@ -35,14 +83,8 @@ export type ClientAppointmentRow = {
       service_group: string | null;
     } | null;
   }[];
-  employee: {
-    id: string;
-    display_name: string;
-  } | null;
-  room: {
-    id: string;
-    name: string;
-  } | null;
+  employee: { id: string; display_name: string } | null;
+  room: { id: string; name: string } | null;
 };
 
 export type ClientInsights = {
@@ -61,193 +103,147 @@ export type ClientInsights = {
   alerts: string[];
 };
 
-export type ClientDetails = {
-  id: string;
-  full_name: string;
-  phone: string | null;
-  email: string | null;
-  note: string | null;
-  internal_note: string | null;
-  appointments_count: number;
-  last_appointment: string | null;
-  next_appointment: string | null;
+export type ClientDetails = ClientListItem & {
   pastAppointments: ClientAppointmentRow[];
   upcomingAppointments: ClientAppointmentRow[];
   insights: ClientInsights;
 };
 
+function fullName(firstName: string | null, lastName: string | null) {
+  return (
+    [firstName, lastName].filter(Boolean).join(" ").trim() || "Klijent bez imena"
+  );
+}
+
 function getSingleRelation<T>(value: T | T[] | null | undefined): T | null {
-  if (Array.isArray(value)) {
-    return value[0] ?? null;
-  }
-  return value ?? null;
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
 
 function daysBetween(dateA: string, dateB: string) {
   const a = new Date(`${dateA}T00:00:00`);
   const b = new Date(`${dateB}T00:00:00`);
-  const diff = Math.abs(b.getTime() - a.getTime());
-  return Math.round(diff / (1000 * 60 * 60 * 24));
+  return Math.round(Math.abs(b.getTime() - a.getTime()) / 86400000);
 }
 
 function getClientSegment(args: {
-  completedAppointments: number;
-  cancelledAppointments: number;
-  noShowAppointments: number;
-  lastCompletedAppointment: string | null;
-  todayStr: string;
+  completed: number;
+  cancelled: number;
+  noShow: number;
+  lastCompleted: string | null;
+  today: string;
 }) {
-  const {
-    completedAppointments,
-    cancelledAppointments,
-    noShowAppointments,
-    lastCompletedAppointment,
-    todayStr,
-  } = args;
+  if (args.completed <= 1) return "new" as const;
+  if (args.cancelled + args.noShow >= 2) return "at_risk" as const;
+  if (!args.lastCompleted) return "lost" as const;
 
-  const riskEvents = cancelledAppointments + noShowAppointments;
-
-  if (completedAppointments <= 1) {
-    return "new" as const;
-  }
-
-  if (riskEvents >= 2) {
-    return "at_risk" as const;
-  }
-
-  if (!lastCompletedAppointment) {
-    return "lost" as const;
-  }
-
-  const daysSinceLastVisit = daysBetween(lastCompletedAppointment, todayStr);
-
-  if (completedAppointments >= 4 && daysSinceLastVisit <= 90) {
-    return "regular" as const;
-  }
-
-  if (daysSinceLastVisit <= 60) {
-    return "active" as const;
-  }
-
+  const days = daysBetween(args.lastCompleted, args.today);
+  if (args.completed >= 4 && days <= 90) return "regular" as const;
+  if (days <= 60) return "active" as const;
   return "lost" as const;
 }
 
 export async function getClientsList(
   search?: string,
 ): Promise<ClientListItem[]> {
-  const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) return [];
 
-  let query = supabase
+  const supabase = await createClient();
+  let clientsQuery = supabase
     .from("clients")
-    .select(
-      `
-      id,
-      full_name,
-      phone,
-      email,
-      note,
-      internal_note,
-      appointments:appointments!appointments_client_id_fkey (
-        id,
-        appointment_date
-      )
-    `,
-    )
+    .select("id, first_name, last_name, phone, email, notes")
+    .eq("organization_id", permissions.organizationId)
     .eq("is_active", true);
 
   if (search?.trim()) {
-    const q = search.trim();
-    query = query.or(
-      `full_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`,
+    const q = search.trim().replace(/[(),]/g, " ");
+    clientsQuery = clientsQuery.or(
+      `first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`,
     );
   }
 
-  const { data, error } = await query.order("full_name", { ascending: true });
+  const { data: clients, error: clientsError } = await clientsQuery
+    .order("first_name", { ascending: true })
+    .order("last_name", { ascending: true });
 
-  if (error) {
-    console.error(error);
+  if (clientsError) {
+    console.error("getClientsList clients query failed:", clientsError.message);
     throw new Error("Nije moguće dohvatiti klijente.");
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().slice(0, 10);
+  const clientIds = (clients ?? []).map((client) => client.id);
+  if (clientIds.length === 0) return [];
 
-  return (data ?? []).map((client: any) => {
-    const appointments = (client.appointments ?? []) as {
-      id: string;
-      appointment_date: string;
-    }[];
+  const { data: appointments, error: appointmentsError } = await supabase
+    .from("appointments")
+    .select("client_id, appointment_date")
+    .eq("organization_id", permissions.organizationId)
+    .in("client_id", clientIds);
 
-    let lastAppointment: string | null = null;
-    let nextAppointment: string | null = null;
+  if (appointmentsError) {
+    console.error(
+      "getClientsList appointments summary failed:",
+      appointmentsError.message,
+    );
+    throw new Error("Nije moguće dohvatiti termine klijenata.");
+  }
 
-    for (const appointment of appointments) {
-      if (appointment.appointment_date <= todayStr) {
-        if (
-          !lastAppointment ||
-          appointment.appointment_date > lastAppointment
-        ) {
-          lastAppointment = appointment.appointment_date;
-        }
-      }
+  const today = getTodayLocalDate();
+  const appointmentsByClient = new Map<
+    string,
+    Array<{ appointment_date: string }>
+  >();
 
-      if (appointment.appointment_date >= todayStr) {
-        if (
-          !nextAppointment ||
-          appointment.appointment_date < nextAppointment
-        ) {
-          nextAppointment = appointment.appointment_date;
-        }
-      }
-    }
+  for (const appointment of appointments ?? []) {
+    if (!appointment.client_id || !appointment.appointment_date) continue;
+    const current = appointmentsByClient.get(appointment.client_id) ?? [];
+    current.push({ appointment_date: appointment.appointment_date });
+    appointmentsByClient.set(appointment.client_id, current);
+  }
+
+  return (clients ?? []).map((client) => {
+    const clientAppointments = appointmentsByClient.get(client.id) ?? [];
+    const dates = clientAppointments
+      .map((item) => item.appointment_date)
+      .filter(Boolean);
+    const past = dates.filter((date) => date <= today).sort().reverse();
+    const future = dates.filter((date) => date >= today).sort();
 
     return {
       id: client.id,
-      full_name: client.full_name,
+      full_name: fullName(client.first_name, client.last_name),
       phone: client.phone,
       email: client.email,
-      note: client.note,
-      internal_note: client.internal_note,
-      appointments_count: appointments.length,
-      last_appointment: lastAppointment,
-      next_appointment: nextAppointment,
+      note: client.notes,
+      internal_note: null,
+      appointments_count: clientAppointments.length,
+      last_appointment: past[0] ?? null,
+      next_appointment: future[0] ?? null,
     };
   });
 }
 
 export async function getClientById(id: string): Promise<ClientDetails | null> {
-  const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) return null;
 
+  const supabase = await createClient();
   const { data: client, error: clientError } = await supabase
     .from("clients")
-    .select(
-      `
-      id,
-      full_name,
-      phone,
-      email,
-      note,
-      internal_note,
-      is_active
-    `,
-    )
+    .select("id, first_name, last_name, phone, email, notes, is_active")
+    .eq("organization_id", permissions.organizationId)
     .eq("id", id)
     .maybeSingle();
 
   if (clientError) {
-    console.error("getClientById - client error:", clientError);
+    console.error("getClientById client query failed:", clientError.message);
     throw new Error("Nije moguće dohvatiti klijenta.");
   }
-
-  if (!client) {
-    return null;
-  }
+  if (!client) return null;
 
   const { data: appointments, error: appointmentsError } = await supabase
     .from("appointments")
-    .select(
-      `
+    .select(`
       id,
       appointment_date,
       start_time,
@@ -256,275 +252,219 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
       client_name,
       client_phone,
       client_email,
-      internal_note,
+      internal_notes,
       appointment_services (
         id,
         service_id,
+        service_name,
         duration_minutes,
         sort_order,
         service:services (
           id,
           name,
-          service_group
+          category
         )
       ),
       employee:employees (
         id,
-        display_name
+        first_name,
+        last_name
       ),
       room:rooms (
         id,
         name
       )
-    `,
-    )
+    `)
+    .eq("organization_id", permissions.organizationId)
     .eq("client_id", id)
     .order("appointment_date", { ascending: false })
     .order("start_time", { ascending: false });
 
   if (appointmentsError) {
-    console.error("getClientById - appointments error:", appointmentsError);
+    console.error("getClientById appointments query failed:", {
+      message: appointmentsError.message,
+      details: appointmentsError.details,
+      hint: appointmentsError.hint,
+      code: appointmentsError.code,
+    });
     throw new Error("Nije moguće dohvatiti detalje klijenta.");
   }
 
-  const rows: ClientAppointmentRow[] = (appointments ?? []).map((item: any) => {
+  const rows: ClientAppointmentRow[] = (
+    (appointments ?? []) as RawClientAppointment[]
+  ).map((item) => {
     const employee = getSingleRelation(item.employee);
     const room = getSingleRelation(item.room);
 
     return {
-      id: String(item.id ?? ""),
-      appointment_date: String(item.appointment_date ?? ""),
-      start_time: String(item.start_time ?? ""),
-      end_time: String(item.end_time ?? ""),
-      status: item.status as AppointmentStatus,
+      id: String(item.id),
+      appointment_date: String(item.appointment_date),
+      start_time: String(item.start_time),
+      end_time: String(item.end_time),
+      status: item.status,
       client_name: String(item.client_name ?? ""),
-      client_phone: item.client_phone ? String(item.client_phone) : null,
-      client_email: item.client_email ? String(item.client_email) : null,
-      internal_note: item.internal_note ? String(item.internal_note) : null,
+      client_phone: item.client_phone ?? null,
+      client_email: item.client_email ?? null,
+      internal_note: item.internal_notes ?? null,
       appointment_services: Array.isArray(item.appointment_services)
-        ? item.appointment_services.map((serviceItem: any) => {
-            const service = getSingleRelation(serviceItem.service);
-
+        ? item.appointment_services.map((entry) => {
+            const service = getSingleRelation(entry.service);
             return {
-              id: String(serviceItem.id ?? ""),
-              service_id: String(serviceItem.service_id ?? ""),
-              duration_minutes: Number(serviceItem.duration_minutes ?? 0),
-              sort_order: Number(serviceItem.sort_order ?? 0),
-              service: service
-                ? {
-                    id: String(service.id ?? ""),
-                    name: String(service.name ?? ""),
-                    service_group: service.service_group
-                      ? String(service.service_group)
-                      : null,
-                  }
-                : null,
+              id: String(entry.id),
+              service_id: String(entry.service_id ?? ""),
+              duration_minutes: Number(entry.duration_minutes ?? 0),
+              sort_order: Number(entry.sort_order ?? 0),
+              service: {
+                id: String(service?.id ?? entry.service_id ?? ""),
+                name: String(service?.name ?? entry.service_name ?? "Usluga"),
+                service_group: service?.category ?? null,
+              },
             };
           })
         : [],
       employee: employee
         ? {
-            id: String(employee.id ?? ""),
-            display_name: String(employee.display_name ?? ""),
+            id: String(employee.id),
+            display_name: fullName(employee.first_name, employee.last_name),
           }
         : null,
       room: room
-        ? {
-            id: String(room.id ?? ""),
-            name: String(room.name ?? ""),
-          }
+        ? { id: String(room.id), name: String(room.name ?? "") }
         : null,
     };
   });
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().slice(0, 10);
-
+  const today = getTodayLocalDate();
   const pastAppointments = rows.filter(
-    (item) => item.appointment_date < todayStr,
+    (item) => item.appointment_date < today,
   );
+  const upcomingAppointments = rows
+    .filter((item) => item.appointment_date >= today)
+    .sort((a, b) =>
+      `${a.appointment_date}${a.start_time}`.localeCompare(
+        `${b.appointment_date}${b.start_time}`,
+      ),
+    );
 
-  const upcomingAppointments = [...rows]
-    .filter((item) => item.appointment_date >= todayStr)
-    .sort((a, b) => {
-      if (a.appointment_date !== b.appointment_date) {
-        return a.appointment_date.localeCompare(b.appointment_date);
-      }
-      return a.start_time.localeCompare(b.start_time);
-    });
+  const completed = rows.filter((item) => item.status === "completed");
+  const cancelled = rows.filter((item) => item.status === "cancelled");
+  const noShow = rows.filter((item) => item.status === "no_show");
+  const scheduled = rows.filter((item) => item.status === "scheduled");
+  const completedDates = [
+    ...new Set(completed.map((item) => item.appointment_date)),
+  ].sort();
+  const lastCompleted = completedDates.at(-1) ?? null;
 
-  let lastAppointment: string | null = null;
-  let nextAppointment: string | null = null;
-
-  for (const item of rows) {
-    if (item.appointment_date <= todayStr) {
-      if (!lastAppointment || item.appointment_date > lastAppointment) {
-        lastAppointment = item.appointment_date;
-      }
-    }
-
-    if (item.appointment_date >= todayStr) {
-      if (!nextAppointment || item.appointment_date < nextAppointment) {
-        nextAppointment = item.appointment_date;
-      }
-    }
+  let averageDaysBetweenVisits: number | null = null;
+  if (completedDates.length > 1) {
+    const gaps = completedDates
+      .slice(1)
+      .map((date, index) => daysBetween(completedDates[index], date));
+    averageDaysBetweenVisits = Math.round(
+      gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length,
+    );
   }
 
-  const completedAppointments = rows.filter(
-    (item) => item.status === "completed",
-  );
-  const cancelledAppointments = rows.filter(
-    (item) => item.status === "cancelled",
-  );
-  const noShowAppointments = rows.filter((item) => item.status === "no_show");
-  const scheduledAppointments = rows.filter(
-    (item) => item.status === "scheduled",
-  );
-
-  const serviceCounter = new Map<string, number>();
-  const employeeCounter = new Map<string, number>();
+  const serviceCounts = new Map<string, number>();
+  const employeeCounts = new Map<string, number>();
 
   for (const appointment of rows) {
-    for (const serviceItem of appointment.appointment_services ?? []) {
-      const serviceName = serviceItem.service?.name?.trim();
-      if (!serviceName) continue;
-
-      serviceCounter.set(
-        serviceName,
-        (serviceCounter.get(serviceName) ?? 0) + 1,
-      );
+    for (const entry of appointment.appointment_services ?? []) {
+      const name = entry.service?.name;
+      if (name) serviceCounts.set(name, (serviceCounts.get(name) ?? 0) + 1);
     }
 
-    const employeeName = appointment.employee?.display_name?.trim();
-    if (employeeName) {
-      employeeCounter.set(
-        employeeName,
-        (employeeCounter.get(employeeName) ?? 0) + 1,
-      );
+    if (appointment.employee?.display_name) {
+      const name = appointment.employee.display_name;
+      employeeCounts.set(name, (employeeCounts.get(name) ?? 0) + 1);
     }
   }
 
   const favoriteService =
-    Array.from(serviceCounter.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-    null;
-
+    [...serviceCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   const favoriteEmployee =
-    Array.from(employeeCounter.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ??
-    null;
-
-  const lastCompletedAppointment =
-    [...completedAppointments].sort((a, b) =>
-      b.appointment_date.localeCompare(a.appointment_date),
-    )[0]?.appointment_date ?? null;
-
-  const completedDates = [
-    ...new Set(completedAppointments.map((item) => item.appointment_date)),
-  ].sort((a, b) => a.localeCompare(b));
-
-  let averageDaysBetweenVisits: number | null = null;
-
-  if (completedDates.length >= 2) {
-    let totalDays = 0;
-    let gaps = 0;
-
-    for (let i = 1; i < completedDates.length; i++) {
-      totalDays += daysBetween(completedDates[i - 1], completedDates[i]);
-      gaps += 1;
-    }
-
-    averageDaysBetweenVisits = gaps > 0 ? Math.round(totalDays / gaps) : null;
-  }
-
-  const noShowRate =
-    rows.length > 0
-      ? Math.round((noShowAppointments.length / rows.length) * 100)
-      : 0;
-
-  const cancellationRate =
-    rows.length > 0
-      ? Math.round((cancelledAppointments.length / rows.length) * 100)
-      : 0;
-
-  const segment = getClientSegment({
-    completedAppointments: completedAppointments.length,
-    cancelledAppointments: cancelledAppointments.length,
-    noShowAppointments: noShowAppointments.length,
-    lastCompletedAppointment,
-    todayStr,
-  });
+    [...employeeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const noShowRate = rows.length
+    ? Math.round((noShow.length / rows.length) * 100)
+    : 0;
+  const cancellationRate = rows.length
+    ? Math.round((cancelled.length / rows.length) * 100)
+    : 0;
 
   const alerts: string[] = [];
-
-  if (noShowAppointments.length >= 2 || noShowRate >= 25) {
+  if (noShow.length >= 2 || noShowRate >= 25) {
     alerts.push("Povišen no-show rizik.");
   }
-
-  if (cancelledAppointments.length >= 2 || cancellationRate >= 25) {
+  if (cancelled.length >= 2 || cancellationRate >= 25) {
     alerts.push("Klijent često otkazuje termine.");
   }
-
-  if (lastCompletedAppointment) {
-    const daysSinceLastVisit = daysBetween(lastCompletedAppointment, todayStr);
-    if (daysSinceLastVisit > 120) {
-      alerts.push(`Klijent nije bio ${daysSinceLastVisit} dana.`);
-    }
+  if (lastCompleted && daysBetween(lastCompleted, today) > 120) {
+    alerts.push(`Klijent nije bio ${daysBetween(lastCompleted, today)} dana.`);
   }
-
   if (favoriteService) {
     alerts.push(`Najčešće rezervira: ${favoriteService}.`);
   }
 
+  const allDates = rows.map((item) => item.appointment_date);
+
   return {
     id: client.id,
-    full_name: client.full_name,
+    full_name: fullName(client.first_name, client.last_name),
     phone: client.phone,
     email: client.email,
-    note: client.note,
-    internal_note: client.internal_note,
+    note: client.notes,
+    internal_note: null,
     appointments_count: rows.length,
-    last_appointment: lastAppointment,
-    next_appointment: nextAppointment,
+    last_appointment:
+      allDates.filter((date) => date <= today).sort().reverse()[0] ?? null,
+    next_appointment: allDates.filter((date) => date >= today).sort()[0] ?? null,
     pastAppointments,
     upcomingAppointments,
     insights: {
       total_appointments: rows.length,
-      completed_appointments: completedAppointments.length,
-      cancelled_appointments: cancelledAppointments.length,
-      no_show_appointments: noShowAppointments.length,
-      scheduled_appointments: scheduledAppointments.length,
+      completed_appointments: completed.length,
+      cancelled_appointments: cancelled.length,
+      no_show_appointments: noShow.length,
+      scheduled_appointments: scheduled.length,
       no_show_rate: noShowRate,
       cancellation_rate: cancellationRate,
       favorite_service: favoriteService,
       favorite_employee: favoriteEmployee,
-      last_completed_appointment: lastCompletedAppointment,
+      last_completed_appointment: lastCompleted,
       average_days_between_visits: averageDaysBetweenVisits,
-      segment,
+      segment: getClientSegment({
+        completed: completed.length,
+        cancelled: cancelled.length,
+        noShow: noShow.length,
+        lastCompleted,
+        today,
+      }),
       alerts,
     },
   };
 }
 
 export async function getClientOptions() {
-  const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) return [];
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
-    .select("id, full_name, phone, email, note, internal_note")
+    .select("id, first_name, last_name, phone, email, notes")
+    .eq("organization_id", permissions.organizationId)
     .eq("is_active", true)
-    .order("full_name", { ascending: true });
+    .order("first_name", { ascending: true })
+    .order("last_name", { ascending: true });
 
-  if (error) {
-    console.error(error);
-    throw new Error("Nije moguće dohvatiti klijente.");
-  }
+  if (error) throw new Error("Nije moguće dohvatiti klijente.");
 
-  return (data ?? []) as {
-    id: string;
-    full_name: string;
-    phone: string | null;
-    email: string | null;
-    note: string | null;
-    internal_note: string | null;
-  }[];
+  return (data ?? []).map((client) => ({
+    id: client.id,
+    full_name: fullName(client.first_name, client.last_name),
+    phone: client.phone,
+    email: client.email,
+    note: client.notes,
+    internal_note: null,
+  }));
 }

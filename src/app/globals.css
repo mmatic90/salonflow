@@ -114,3 +114,49 @@ thead {
     --foreground: #2B2A28;
   }
 }
+
+/* =========================
+   ORGANIZATION THEMES
+========================= */
+
+[data-theme="sand"] {
+  --color-app-bg: #F3EEEA;
+  --color-app-text: #2B2A28;
+  --color-app-soft: #B0A695;
+  --color-app-accent: #776B5D;
+  --color-app-card: #EBE3D5;
+  --color-app-card-alt: #F7F2EC;
+  --color-app-border: #4B4844;
+  --color-app-muted: #5A5753;
+  --color-app-dark: #4B4844;
+  --color-app-dark-2: #5A5753;
+  --color-app-table-head: #E7DED0;
+}
+
+[data-theme="rose"] {
+  --color-app-bg: #FFF7F8;
+  --color-app-text: #33262B;
+  --color-app-soft: #D6AEB9;
+  --color-app-accent: #A85D72;
+  --color-app-card: #F4E2E7;
+  --color-app-card-alt: #FFF0F3;
+  --color-app-border: #6E4A56;
+  --color-app-muted: #735C65;
+  --color-app-dark: #5E3F49;
+  --color-app-dark-2: #735C65;
+  --color-app-table-head: #F0D9E0;
+}
+
+[data-theme="slate"] {
+  --color-app-bg: #F5F7FA;
+  --color-app-text: #1F2937;
+  --color-app-soft: #A7B3C3;
+  --color-app-accent: #475569;
+  --color-app-card: #E8EDF3;
+  --color-app-card-alt: #F0F3F7;
+  --color-app-border: #334155;
+  --color-app-muted: #64748B;
+  --color-app-dark: #334155;
+  --color-app-dark-2: #475569;
+  --color-app-table-head: #E2E8F0;
+}

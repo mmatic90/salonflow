@@ -1,11 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
+
+function detectLocale(): AppLocale {
+  if (typeof navigator === "undefined") return "hr";
+  const language = navigator.language.toLowerCase();
+  if (language.startsWith("it")) return "it";
+  if (language.startsWith("en")) return "en";
+  return "hr";
+}
+
+const subscribeToLocale = () => () => {};
+const getServerLocale = (): AppLocale => "hr";
 
 export default function LoginPage() {
   const supabase = createClient();
+  const locale = useSyncExternalStore(
+    subscribeToLocale,
+    detectLocale,
+    getServerLocale,
+  );
+  const t = getDictionary(locale).auth;
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -18,42 +36,32 @@ export default function LoginPage() {
     setLoading(true);
     setErrorMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      setErrorMessage("Neispravan email ili lozinka.");
+    if (error || !data.user) {
+      setErrorMessage(t.invalidCredentials);
       setLoading(false);
       return;
     }
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setErrorMessage("Došlo je do greške pri prijavi.");
-      setLoading(false);
-      return;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("is_active")
-      .eq("id", user.id)
+    const { data: membership, error: membershipError } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("user_id", data.user.id)
+      .eq("is_active", true)
+      .limit(1)
       .maybeSingle();
 
-    if (profileError || !profile || profile.is_active === false) {
-      await supabase.auth.signOut();
-      setErrorMessage("Vaš račun je deaktiviran. Obratite se administratoru.");
+    if (membershipError) {
+      setErrorMessage(t.salonCheckError);
       setLoading(false);
       return;
     }
 
-    router.push("/dashboard");
+    router.push(membership ? "/dashboard" : "/onboarding");
     router.refresh();
   }
 
@@ -61,20 +69,15 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-app-bg px-4">
       <div className="w-full max-w-md rounded-2xl border border-app-soft bg-app-card p-8 shadow-sm">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-app-text">
-            Body and Soul prijava
-          </h1>
+          <h1 className="text-2xl font-bold text-app-text">{t.loginTitle}</h1>
           <p className="mt-2 text-sm text-app-muted">
-            Prijavite se za pristup administraciji salona.
+            {t.loginDescription}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-app-text"
-            >
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-app-text">
               Email
             </label>
             <input
@@ -88,10 +91,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-app-text"
-            >
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-app-text">
               Lozinka
             </label>
             <input
@@ -115,7 +115,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full rounded-xl bg-app-accent px-4 py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Prijava..." : "Prijavi se"}
+            {loading ? t.signingIn : t.signIn}
           </button>
         </form>
       </div>

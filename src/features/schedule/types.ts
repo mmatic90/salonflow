@@ -34,9 +34,17 @@ export type EmployeeUpcomingScheduleItem = {
   is_override: boolean;
 };
 
+export type SalonScheduleHourItem = {
+  day_of_week: number;
+  opens_at: string;
+  closes_at: string;
+  is_closed: boolean;
+};
+
 export type EmployeeSchedulePageData = {
   employee: EmployeeListItem;
   defaultSchedule: EmployeeDefaultScheduleItem[];
   overrides: EmployeeScheduleOverrideItem[];
   upcomingSchedule: EmployeeUpcomingScheduleItem[];
+  salonHours: SalonScheduleHourItem[];
 };

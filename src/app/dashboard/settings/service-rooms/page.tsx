@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceRoomMappingData } from "@/features/settings/queries";
 import ServiceRoomTable from "./service-room-table";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import EmptyStateCard from "@/components/empty-state-card";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function SettingsServiceRoomsPage() {
-  await requireAdminForSettings();
+  const permissions = await requireAdminForSettings();
+  const t = getDictionary(permissions.organizationLocale).settings;
 
   const { services, rooms, mappings } = await getServiceRoomMappingData();
 
@@ -20,17 +20,15 @@ export default async function SettingsServiceRoomsPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Usluge i sobe</h1>
-              <p className="mt-2 text-neutral-600">
-                Odredi u kojim sobama se pojedina usluga može izvoditi.
-              </p>
+              <h1 className="text-3xl font-bold">{t.serviceRoomsTitle}</h1>
+              <p className="mt-2 text-neutral-600">{t.serviceRoomsDescription}</p>
             </div>
 
             <Link
               href="/dashboard/settings"
               className="rounded-xl border border-neutral-300 px-4 py-2 font-medium"
             >
-              Natrag
+              {t.back}
             </Link>
           </div>
         </div>
@@ -38,11 +36,12 @@ export default async function SettingsServiceRoomsPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           {activeServices.length === 0 || activeRooms.length === 0 ? (
             <EmptyStateCard
-              title="Mapiranje trenutno nije dostupno"
-              description="Potrebno je imati barem jednu aktivnu uslugu i jednu aktivnu sobu kako bi se moglo definirati mapiranje."
+              title={t.mapping.unavailableTitle}
+              description={t.mapping.roomsUnavailable}
             />
           ) : (
             <ServiceRoomTable
+              locale={permissions.organizationLocale}
               services={services}
               rooms={rooms}
               mappings={mappings}

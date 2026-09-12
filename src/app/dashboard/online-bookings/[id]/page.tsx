@@ -9,26 +9,23 @@ import {
   getOnlineBookingAutoSuggestion,
   getOnlineBookingRequestById,
 } from "@/features/online-bookings/queries";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
-function formatDateHr(date: string) {
+function formatDate(date: string, locale: "hr" | "en" | "it") {
   const [year, month, day] = date.split("-");
-  return `${day}.${month}.${year}.`;
+  if (locale === "hr") return day + "." + month + "." + year + ".";
+  return day + "/" + month + "/" + year;
 }
-
-const rejectionReasons = [
-  "Termin je u međuvremenu zauzet.",
-  "Termin više nije dostupan.",
-  "Odabrana usluga nije dostupna u tom terminu.",
-  "Potreban je drugi termin zbog rasporeda djelatnika.",
-  "Odabrani termin nije moguće organizirati zbog zauzetosti sobe.",
-  "Molimo kontaktirajte salon radi dogovora.",
-];
 
 export default async function OnlineBookingDetailsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.onlineBookings;
   const { id } = await params;
 
   const request = await getOnlineBookingRequestById(id);
@@ -80,12 +77,12 @@ export default async function OnlineBookingDetailsPage({
           href="/dashboard/online-bookings"
           className="text-sm font-medium text-app-muted hover:text-app-text"
         >
-          ← Nazad na online rezervacije
+          ← {t.back}
         </Link>
 
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <p className="text-sm font-medium text-app-muted">
-            Online zahtjev za rezervaciju
+            {t.requestLabel}
           </p>
 
           <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -95,14 +92,20 @@ export default async function OnlineBookingDetailsPage({
               </h1>
 
               <p className="mt-2 text-app-muted">
-                {request.services?.name ?? "Nepoznata usluga"} ·{" "}
-                {formatDateHr(request.requested_date)} u{" "}
+                {request.services?.name ?? t.unknownService} ·{" "}
+                {formatDate(request.requested_date, permissions.organizationLocale)} {t.at}{" "}
                 {String(request.start_time).slice(0, 5)}
               </p>
             </div>
 
             <span className="rounded-full border border-amber-200 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-              {request.status === "pending" ? "Na čekanju" : request.status}
+              {request.status === "pending"
+                ? t.pending
+                : request.status === "accepted"
+                  ? t.accepted
+                  : request.status === "rejected"
+                    ? t.rejected
+                    : request.status}
             </span>
           </div>
         </div>
@@ -110,19 +113,19 @@ export default async function OnlineBookingDetailsPage({
         <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
           <section className="rounded-2xl border border-app-soft bg-app-card p-6">
             <h2 className="text-xl font-semibold text-app-text">
-              Podaci zahtjeva
+              {t.requestData}
             </h2>
 
             <div className="mt-5 space-y-4 text-sm">
               <div>
-                <div className="text-app-muted">Klijent</div>
+                <div className="text-app-muted">{t.client}</div>
                 <div className="font-medium text-app-text">
                   {request.client_full_name}
                 </div>
               </div>
 
               <div>
-                <div className="text-app-muted">Telefon</div>
+                <div className="text-app-muted">{t.phone}</div>
                 <div className="font-medium text-app-text">
                   {request.client_phone}
                 </div>
@@ -136,23 +139,23 @@ export default async function OnlineBookingDetailsPage({
               </div>
 
               <div>
-                <div className="text-app-muted">Usluga</div>
+                <div className="text-app-muted">{t.service}</div>
                 <div className="font-medium text-app-text">
                   {request.services?.name ?? "-"}
                 </div>
               </div>
 
               <div>
-                <div className="text-app-muted">Datum i početak</div>
+                <div className="text-app-muted">{t.dateAndStart}</div>
                 <div className="font-medium text-app-text">
-                  {formatDateHr(request.requested_date)} ·{" "}
+                  {formatDate(request.requested_date, permissions.organizationLocale)} ·{" "}
                   {String(request.start_time).slice(0, 5)}
                 </div>
               </div>
 
               {request.client_note ? (
                 <div>
-                  <div className="text-app-muted">Napomena</div>
+                  <div className="text-app-muted">{t.note}</div>
                   <div className="font-medium text-app-text">
                     {request.client_note}
                   </div>
@@ -171,17 +174,14 @@ export default async function OnlineBookingDetailsPage({
                   <input type="hidden" name="request_id" value={request.id} />
 
                   <h2 className="text-xl font-semibold text-app-text">
-                    Prihvati zahtjev
+                    {t.acceptRequest}
                   </h2>
 
-                  <p className="mt-2 text-sm text-app-muted">
-                    Možeš promijeniti samo djelatnika, sobu i trajanje tretmana.
-                    Datum, vrijeme početka, usluga i klijent ostaju fiksni.
-                  </p>
+                  <p className="mt-2 text-sm text-app-muted">{t.acceptHelp}</p>
 
                   {autoSuggestion.suggestion ? (
                     <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                      Sustav predlaže:{" "}
+                      {t.systemSuggests}{" "}
                       <span className="font-semibold">
                         {autoSuggestion.suggestion.employee_name}
                       </span>{" "}
@@ -194,24 +194,21 @@ export default async function OnlineBookingDetailsPage({
                     </div>
                   ) : (
                     <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                      Sustav trenutno ne nalazi automatski prijedlog za ovaj
-                      termin. Možeš ručno odabrati djelatnika, sobu i trajanje.
+                      {t.noAutoSuggestion}
                     </div>
                   )}
 
                   {options.employees.length === 0 ||
                   options.rooms.length === 0 ? (
                     <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                      Za ovaj termin trenutno nema dostupnog djelatnika ili
-                      slobodne sobe. Najbolje je odbiti zahtjev uz razlog da
-                      termin više nije dostupan.
+                      {t.noAvailability}
                     </div>
                   ) : null}
 
                   <div className="mt-5 grid gap-4 md:grid-cols-3">
                     <label className="text-sm">
                       <span className="font-medium text-app-text">
-                        Djelatnik
+                        {t.employee}
                       </span>
                       <select
                         name="employee_id"
@@ -219,8 +216,8 @@ export default async function OnlineBookingDetailsPage({
                         className="mt-2 w-full rounded-xl border border-app-soft bg-white px-3 py-3 outline-none"
                         required
                       >
-                        <option value="">Odaberi</option>
-                        {options.employees.map((employee: any) => (
+                        <option value="">{t.select}</option>
+                        {options.employees.map((employee) => (
                           <option key={employee.id} value={employee.id}>
                             {employee.display_name}
                           </option>
@@ -229,15 +226,15 @@ export default async function OnlineBookingDetailsPage({
                     </label>
 
                     <label className="text-sm">
-                      <span className="font-medium text-app-text">Soba</span>
+                      <span className="font-medium text-app-text">{t.room}</span>
                       <select
                         name="room_id"
                         defaultValue={defaultRoomId}
                         className="mt-2 w-full rounded-xl border border-app-soft bg-white px-3 py-3 outline-none"
                         required
                       >
-                        <option value="">Odaberi</option>
-                        {options.rooms.map((room: any) => (
+                        <option value="">{t.select}</option>
+                        {options.rooms.map((room) => (
                           <option key={room.id} value={room.id}>
                             {room.name}
                           </option>
@@ -247,7 +244,7 @@ export default async function OnlineBookingDetailsPage({
 
                     <label className="text-sm">
                       <span className="font-medium text-app-text">
-                        Trajanje
+                        {t.duration}
                       </span>
                       <input
                         name="duration_minutes"
@@ -268,7 +265,7 @@ export default async function OnlineBookingDetailsPage({
                     }
                     className="mt-6 rounded-xl bg-app-accent px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Prihvati i kreiraj termin
+                    {t.acceptAndCreate}
                   </button>
                 </form>
 
@@ -279,24 +276,22 @@ export default async function OnlineBookingDetailsPage({
                   <input type="hidden" name="request_id" value={request.id} />
 
                   <h2 className="text-xl font-semibold text-red-900">
-                    Odbij zahtjev
+                    {t.rejectRequest}
                   </h2>
 
-                  <p className="mt-2 text-sm text-red-700">
-                    Klijent će dobiti SMS s odabranim razlogom odbijanja.
-                  </p>
+                  <p className="mt-2 text-sm text-red-700">{t.rejectHelp}</p>
 
                   <label className="mt-5 block text-sm">
                     <span className="font-medium text-red-900">
-                      Razlog odbijanja
+                      {t.rejectionReason}
                     </span>
                     <select
                       name="rejection_reason"
                       className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-3 outline-none"
                       required
                     >
-                      <option value="">Odaberi razlog</option>
-                      {rejectionReasons.map((reason) => (
+                      <option value="">{t.selectReason}</option>
+                      {t.rejectionReasons.map((reason) => (
                         <option key={reason} value={reason}>
                           {reason}
                         </option>
@@ -308,13 +303,13 @@ export default async function OnlineBookingDetailsPage({
                     type="submit"
                     className="mt-6 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
                   >
-                    Odbij i pošalji SMS
+                    {t.rejectAndSend}
                   </button>
                 </form>
               </>
             ) : (
               <div className="rounded-2xl border border-app-soft bg-app-card p-6 text-app-muted">
-                Ovaj zahtjev je već obrađen.
+                {t.alreadyProcessed}
               </div>
             )}
           </section>

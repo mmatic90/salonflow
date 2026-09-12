@@ -1,27 +1,24 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import ClientForm from "@/components/client-form";
 import { getClientById } from "@/features/clients/queries";
+import { getClientCareProfile } from "@/features/clients/care-profile-queries";
 import { updateClientAction } from "@/features/clients/actions";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 type Params = Promise<{
   id: string;
 }>;
 
 export default async function EditClientPage({ params }: { params: Params }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
+  const permissions = await requireDashboardUser();
+  const t = getDictionary(permissions.organizationLocale).clients;
 
   const { id } = await params;
-  const client = await getClientById(id);
+  const [client, careProfile] = await Promise.all([
+    getClientById(id),
+    getClientCareProfile(id),
+  ]);
 
   if (!client) {
     notFound();
@@ -33,18 +30,22 @@ export default async function EditClientPage({ params }: { params: Params }) {
     <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <ClientForm
-          title="Uredi klijenta"
-          description="Ažuriraj podatke o klijentu."
+          locale={permissions.organizationLocale}
+          title={t.editTitle}
+          description={t.editDescription}
           action={boundAction}
-          submitLabel="Spremi izmjene"
+          submitLabel={t.saveChanges}
           backHref={`/dashboard/clients/${client.id}`}
-          backLabel="Natrag"
+          backLabel={t.back}
           initialValues={{
             full_name: client.full_name,
             phone: client.phone ?? "",
             email: client.email ?? "",
             note: client.note ?? "",
-            internal_note: client.internal_note ?? "",
+            allergies_sensitivities:
+              careProfile?.allergies_sensitivities ?? "",
+            contraindications: careProfile?.contraindications ?? "",
+            treatment_preferences: careProfile?.treatment_preferences ?? "",
           }}
         />
       </div>
