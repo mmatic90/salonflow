@@ -12,7 +12,6 @@ export type ClientFormValues = {
   phone: string;
   email: string;
   note: string;
-  internal_note: string;
 };
 
 export type ClientActionState = {
@@ -43,7 +42,6 @@ function getFormValues(formData: FormData): ClientFormValues {
     phone: normalizeText(formData.get("phone")),
     email: normalizeText(formData.get("email")),
     note: normalizeText(formData.get("note")),
-    internal_note: normalizeText(formData.get("internal_note")),
   };
 }
 
@@ -79,8 +77,7 @@ export async function createClientAction(
     last_name: lastName,
     phone: normalizeNullableText(formData.get("phone")),
     email: normalizeNullableText(formData.get("email")),
-    notes: normalizeNullableText(formData.get("note")) ??
-      normalizeNullableText(formData.get("internal_note")),
+    notes: normalizeNullableText(formData.get("note")),
     marketing_consent: false,
     is_active: true,
   };
@@ -138,8 +135,7 @@ export async function updateClientAction(
     last_name: lastName,
     phone: normalizeNullableText(formData.get("phone")),
     email: normalizeNullableText(formData.get("email")),
-    notes: normalizeNullableText(formData.get("note")) ??
-      normalizeNullableText(formData.get("internal_note")),
+    notes: normalizeNullableText(formData.get("note")),
   };
 
   const { error } = await supabase
