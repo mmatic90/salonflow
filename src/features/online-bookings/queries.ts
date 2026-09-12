@@ -17,12 +17,6 @@ type BookingEmployeeRelation = {
   is_active?: boolean | null;
 };
 
-type BookingRoomRelation = {
-  id: string;
-  name: string;
-  is_active?: boolean | null;
-};
-
 type NormalizedEmployee = {
   id: string;
   display_name: string;
@@ -320,19 +314,21 @@ export async function getOnlineBookingAcceptOptions(args: {
     })
     .filter((employee): employee is NormalizedEmployee => employee !== null);
 
-  const mappedRooms = (roomMappings ?? [])
-    .map((row) => {
-      const room = Array.isArray(row.rooms)
-        ? row.rooms[0] ?? null
-        : row.rooms ?? null;
-      if (!room?.is_active) return null;
-      return {
+  const mappedRooms: ActiveRoom[] = (roomMappings ?? []).flatMap((row) => {
+    const room = Array.isArray(row.rooms)
+      ? row.rooms[0] ?? null
+      : row.rooms ?? null;
+
+    if (!room?.is_active) return [];
+
+    return [
+      {
         id: String(room.id),
         name: String(room.name),
         is_active: room.is_active,
-      } satisfies ActiveRoom;
-    })
-    .filter((room): room is ActiveRoom => room !== null);
+      },
+    ];
+  });
 
   const employeesWithAvailability = await Promise.all(
     mappedEmployees.map(async (employee) => {
