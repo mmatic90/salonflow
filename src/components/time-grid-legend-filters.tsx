@@ -71,7 +71,6 @@ export default function TimeGridLegendFilters({
   showNoShow,
 }: Props) {
   const dictionary = getDictionary(locale);
-  const t = dictionary.calendar;
   const appointmentT = dictionary.appointments;
   const router = useRouter();
   const pathname = usePathname();
