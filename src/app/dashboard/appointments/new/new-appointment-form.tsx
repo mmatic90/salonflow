@@ -119,18 +119,18 @@ export default function NewAppointmentForm({
       duration_minutes: Number(state.values.duration_minutes || 0),
     },
   ]);
+  const [previousActionValues, setPreviousActionValues] = useState(state.values);
 
   const [workingEmployeeIds, setWorkingEmployeeIds] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState("");
-  const [serviceChangeNotice, setServiceChangeNotice] = useState("");
 
-  useEffect(() => {
+  if (previousActionValues !== state.values) {
+    setPreviousActionValues(state.values);
     setSelectedDate(state.values.appointment_date);
     setSelectedEmployeeId(state.values.employee_id);
     setSelectedRoomId(state.values.room_id);
     setStartTime(state.values.start_time);
-
     setSelectedClientId(state.values.client_id || "");
     setClientName(state.values.client_name);
     setClientPhone(state.values.client_phone);
@@ -139,27 +139,23 @@ export default function NewAppointmentForm({
     setInternalNote(state.values.internal_note);
 
     const restoredItems = parseServicesJson(state.values.services_json);
-
-    if (restoredItems.length > 0) {
-      setServiceItems(restoredItems);
-    } else {
-      setServiceItems([
-        {
-          service_id: state.values.service_id || "",
-          duration_minutes: Number(state.values.duration_minutes || 0),
-        },
-      ]);
-    }
-  }, [state.values]);
+    setServiceItems(
+      restoredItems.length > 0
+        ? restoredItems
+        : [
+            {
+              service_id: state.values.service_id || "",
+              duration_minutes: Number(state.values.duration_minutes || 0),
+            },
+          ],
+    );
+  }
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadAvailability() {
-      if (!selectedDate) {
-        setWorkingEmployeeIds([]);
-        return;
-      }
+      if (!selectedDate) return;
 
       setAvailabilityLoading(true);
       setAvailabilityError("");
@@ -290,8 +286,8 @@ export default function NewAppointmentForm({
   }, [allSelectedServiceIds, employeeServices]);
 
   const workingEmployeeIdSet = useMemo(
-    () => new Set(workingEmployeeIds),
-    [workingEmployeeIds],
+    () => new Set(selectedDate ? workingEmployeeIds : []),
+    [selectedDate, workingEmployeeIds],
   );
 
   const filteredRooms = useMemo(() => {
@@ -314,100 +310,78 @@ export default function NewAppointmentForm({
     workingEmployeeIdSet,
   ]);
 
-  useEffect(() => {
-    if (allSelectedServiceIds.length === 0) {
-      setServiceChangeNotice("");
-      return;
-    }
-
-    const notices: string[] = [];
-
-    let nextEmployeeId = selectedEmployeeId;
-    let employeeWasChanged = false;
-
+  const effectiveEmployeeId = useMemo(() => {
+    if (allSelectedServiceIds.length === 0) return "";
     if (
-      nextEmployeeId &&
-      (!allowedEmployeeIds.has(nextEmployeeId) ||
-        !workingEmployeeIdSet.has(nextEmployeeId))
+      selectedEmployeeId &&
+      allowedEmployeeIds.has(selectedEmployeeId) &&
+      workingEmployeeIdSet.has(selectedEmployeeId)
     ) {
-      nextEmployeeId = "";
-      employeeWasChanged = true;
+      return selectedEmployeeId;
     }
-
-    if (!nextEmployeeId && filteredEmployees.length > 0) {
-      nextEmployeeId = filteredEmployees[0].id;
-      employeeWasChanged = true;
-    }
-
-    if (employeeWasChanged) {
-      setSelectedEmployeeId(nextEmployeeId);
-
-      if (nextEmployeeId) {
-        const employeeName =
-          filteredEmployees.find((employee) => employee.id === nextEmployeeId)
-            ?.display_name ?? "odabranog zaposlenika";
-
-        notices.push(
-          `Zaposlenik je automatski postavljen na "${employeeName}".`,
-        );
-      }
-    }
-
-    let nextRoomId = selectedRoomId;
-    let roomWasChanged = false;
-
-    if (
-      nextRoomId &&
-      allowedRoomIds.size > 0 &&
-      !allowedRoomIds.has(nextRoomId)
-    ) {
-      nextRoomId = "";
-      roomWasChanged = true;
-    }
-
-    if (!nextRoomId && filteredRooms.length > 0) {
-      const priorityRoomName = selectedPrimaryService?.priority_room?.trim();
-
-      if (priorityRoomName) {
-        const matchingPriorityRoom = filteredRooms.find(
-          (room) => room.name === priorityRoomName,
-        );
-
-        if (matchingPriorityRoom) {
-          nextRoomId = matchingPriorityRoom.id;
-          roomWasChanged = true;
-        }
-      }
-
-      if (!nextRoomId) {
-        nextRoomId = filteredRooms[0].id;
-        roomWasChanged = true;
-      }
-    }
-
-    if (roomWasChanged) {
-      setSelectedRoomId(nextRoomId);
-
-      if (nextRoomId) {
-        const roomName =
-          filteredRooms.find((room) => room.id === nextRoomId)?.name ??
-          "odabranu sobu";
-
-        notices.push(`Soba je automatski postavljena na "${roomName}".`);
-      }
-    }
-
-    setServiceChangeNotice(notices.join(" "));
+    return filteredEmployees[0]?.id ?? "";
   }, [
     allSelectedServiceIds,
     selectedEmployeeId,
-    selectedRoomId,
     allowedEmployeeIds,
-    allowedRoomIds,
-    filteredEmployees,
-    filteredRooms,
-    selectedPrimaryService,
     workingEmployeeIdSet,
+    filteredEmployees,
+  ]);
+
+  const effectiveRoomId = useMemo(() => {
+    if (allSelectedServiceIds.length === 0) return "";
+    if (
+      selectedRoomId &&
+      (allowedRoomIds.size === 0 || allowedRoomIds.has(selectedRoomId))
+    ) {
+      return selectedRoomId;
+    }
+
+    const priorityRoomName = selectedPrimaryService?.priority_room?.trim();
+    if (priorityRoomName) {
+      const priorityRoom = filteredRooms.find(
+        (room) => room.name === priorityRoomName,
+      );
+      if (priorityRoom) return priorityRoom.id;
+    }
+
+    return filteredRooms[0]?.id ?? "";
+  }, [
+    allSelectedServiceIds,
+    selectedRoomId,
+    allowedRoomIds,
+    selectedPrimaryService,
+    filteredRooms,
+  ]);
+
+  const serviceChangeNotice = useMemo(() => {
+    if (allSelectedServiceIds.length === 0) return "";
+
+    const notices: string[] = [];
+
+    if (effectiveEmployeeId && effectiveEmployeeId !== selectedEmployeeId) {
+      const employeeName =
+        filteredEmployees.find((employee) => employee.id === effectiveEmployeeId)
+          ?.display_name ?? "odabranog zaposlenika";
+      notices.push(`Zaposlenik je automatski postavljen na "${employeeName}".`);
+    }
+
+    if (effectiveRoomId && effectiveRoomId !== selectedRoomId) {
+      const roomName =
+        filteredRooms.find((room) => room.id === effectiveRoomId)?.name ??
+        "odabranu sobu";
+      notices.push(`Soba je automatski postavljena na "${roomName}".`);
+    }
+
+    return notices.join(" ");
+  }, [
+    allSelectedServiceIds,
+    effectiveEmployeeId,
+    selectedEmployeeId,
+    filteredEmployees,
+    effectiveRoomId,
+    selectedRoomId,
+    filteredRooms,
   ]);
 
   return (
@@ -427,7 +401,11 @@ export default function NewAppointmentForm({
             name="appointment_date"
             type="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(e) => {
+              setSelectedDate(e.target.value);
+              setWorkingEmployeeIds([]);
+              setAvailabilityError("");
+            }}
             className={fieldClass}
             required
           />
@@ -564,7 +542,7 @@ export default function NewAppointmentForm({
             <select
               id="employee_id"
               name="employee_id"
-              value={selectedEmployeeId}
+              value={effectiveEmployeeId}
               onChange={(e) => setSelectedEmployeeId(e.target.value)}
               className={fieldClass}
               required
@@ -599,7 +577,7 @@ export default function NewAppointmentForm({
             <select
               id="room_id"
               name="room_id"
-              value={selectedRoomId}
+              value={effectiveRoomId}
               onChange={(e) => setSelectedRoomId(e.target.value)}
               className={fieldClass}
               required
