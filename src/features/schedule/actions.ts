@@ -43,6 +43,61 @@ function isValidTimeRange(startTime: string, endTime: string) {
   return Boolean(startTime && endTime && endTime > startTime);
 }
 
+async function getSalonHoursByDay(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+) {
+  const { data, error } = await supabase
+    .from("salon_working_hours")
+    .select("day_of_week, opens_at, closes_at, is_closed")
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return new Map(
+    (data ?? []).map((row) => [
+      Number(row.day_of_week),
+      {
+        opens_at: String(row.opens_at).slice(0, 5),
+        closes_at: String(row.closes_at).slice(0, 5),
+        is_closed: Boolean(row.is_closed),
+      },
+    ]),
+  );
+}
+
+function validateEmployeeHoursAgainstSalon(args: {
+  dayOfWeek: number;
+  isWorking: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  salonHours: Map<
+    number,
+    { opens_at: string; closes_at: string; is_closed: boolean }
+  >;
+}) {
+  if (!args.isWorking) return null;
+
+  const salonDay = args.salonHours.get(args.dayOfWeek);
+
+  if (!salonDay || salonDay.is_closed) {
+    return "Zaposlenik ne može raditi dan kada je salon zatvoren.";
+  }
+
+  if (
+    !args.startTime ||
+    !args.endTime ||
+    args.startTime < salonDay.opens_at ||
+    args.endTime > salonDay.closes_at
+  ) {
+    return `Radno vrijeme zaposlenika mora biti unutar radnog vremena salona (${salonDay.opens_at}–${salonDay.closes_at}).`;
+  }
+
+  return null;
+}
+
 async function getScheduleContext(employeeId: string) {
   const permissions = await getCurrentUserPermissions();
   if (!permissions) {
@@ -118,6 +173,25 @@ export async function updateDefaultScheduleAction(
     };
   }
 
+  const salonHours = await getSalonHoursByDay(
+    context.supabase,
+    context.organizationId,
+  );
+
+  for (const item of updates) {
+    const validationError = validateEmployeeHoursAgainstSalon({
+      dayOfWeek: item.day_of_week,
+      isWorking: item.is_working,
+      startTime: item.start_time,
+      endTime: item.end_time,
+      salonHours,
+    });
+
+    if (validationError) {
+      return { error: validationError, success: "" };
+    }
+  }
+
   const { error } = await context.supabase
     .from("employee_default_schedule")
     .upsert(updates, { onConflict: "employee_id,day_of_week" });
@@ -158,6 +232,25 @@ export async function applyDefaultScheduleRangeAction(
     start_time: isWorking ? startTime : null,
     end_time: isWorking ? endTime : null,
   }));
+
+  const salonHours = await getSalonHoursByDay(
+    context.supabase,
+    context.organizationId,
+  );
+
+  for (const item of updates) {
+    const validationError = validateEmployeeHoursAgainstSalon({
+      dayOfWeek: item.day_of_week,
+      isWorking: item.is_working,
+      startTime: item.start_time,
+      endTime: item.end_time,
+      salonHours,
+    });
+
+    if (validationError) {
+      return { error: validationError, success: "" };
+    }
+  }
 
   const { error } = await context.supabase
     .from("employee_default_schedule")
@@ -200,6 +293,28 @@ export async function createScheduleOverrideAction(
   const dates = buildDateRange(dateFrom, dateTo);
   if (dates.length === 0) {
     return { error: "Raspon datuma nije valjan.", success: "" };
+  }
+
+  const salonHours = await getSalonHoursByDay(
+    context.supabase,
+    context.organizationId,
+  );
+
+  if (isWorking) {
+    for (const date of dates) {
+      const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+      const validationError = validateEmployeeHoursAgainstSalon({
+        dayOfWeek,
+        isWorking: true,
+        startTime,
+        endTime,
+        salonHours,
+      });
+
+      if (validationError) {
+        return { error: validationError, success: "" };
+      }
+    }
   }
 
   const reason = isWorking ? note || "custom_hours" : note || overrideType;
