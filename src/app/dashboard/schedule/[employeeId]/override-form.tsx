@@ -6,8 +6,11 @@ import {
   type ScheduleActionState,
 } from "@/features/schedule/actions";
 
+import type { SalonScheduleHourItem } from "@/features/schedule/types";
+
 type Props = {
   employeeId: string;
+  salonHours: SalonScheduleHourItem[];
 };
 
 function getTodayLocalDate() {
@@ -18,7 +21,7 @@ function getTodayLocalDate() {
   return `${year}-${month}-${day}`;
 }
 
-export default function OverrideForm({ employeeId }: Props) {
+export default function OverrideForm({ employeeId, salonHours }: Props) {
   const [overrideType, setOverrideType] = useState("custom_hours");
   const today = useMemo(() => getTodayLocalDate(), []);
 
@@ -35,6 +38,24 @@ export default function OverrideForm({ employeeId }: Props) {
     boundAction,
     initialState,
   );
+
+  const rangeIncludesClosedSalonDay = useMemo(() => {
+    if (!dateFrom || !dateTo) return false;
+
+    const start = new Date(`${dateFrom}T00:00:00`);
+    const end = new Date(`${dateTo}T00:00:00`);
+    const current = new Date(start);
+
+    while (current <= end) {
+      const salonDay = salonHours.find(
+        (item) => item.day_of_week === current.getDay(),
+      );
+      if (!salonDay || salonDay.is_closed) return true;
+      current.setDate(current.getDate() + 1);
+    }
+
+    return false;
+  }, [dateFrom, dateTo, salonHours]);
 
   return (
     <form action={formAction} className="space-y-4">
@@ -96,6 +117,13 @@ export default function OverrideForm({ employeeId }: Props) {
           <option value="sick_leave">Sick leave</option>
         </select>
       </div>
+
+      {overrideType === "custom_hours" && rangeIncludesClosedSalonDay ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Odabrani raspon uključuje dan kada je salon zatvoren. Za zatvoren dan
+          nije moguće postaviti posebno radno vrijeme.
+        </div>
+      ) : null}
 
       {overrideType === "custom_hours" ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -162,7 +190,10 @@ export default function OverrideForm({ employeeId }: Props) {
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={pending}
+          disabled={
+            pending ||
+            (overrideType === "custom_hours" && rangeIncludesClosedSalonDay)
+          }
           className="rounded-xl bg-black px-5 py-3 font-medium text-white disabled:opacity-50"
         >
           {pending ? "Spremanje..." : "Dodaj override raspon"}
