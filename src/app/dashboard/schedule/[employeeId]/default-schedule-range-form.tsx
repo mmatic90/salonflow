@@ -5,11 +5,15 @@ import {
   applyDefaultScheduleRangeAction,
   type ScheduleActionState,
 } from "@/features/schedule/actions";
-import type { EmployeeDefaultScheduleItem } from "@/features/schedule/types";
+import type {
+  EmployeeDefaultScheduleItem,
+  SalonScheduleHourItem,
+} from "@/features/schedule/types";
 
 type Props = {
   employeeId: string;
   defaultSchedule: EmployeeDefaultScheduleItem[];
+  salonHours: SalonScheduleHourItem[];
 };
 
 const dayOptions = [
@@ -25,6 +29,7 @@ const dayOptions = [
 export default function DefaultScheduleRangeForm({
   employeeId,
   defaultSchedule,
+  salonHours,
 }: Props) {
   const initialState: ScheduleActionState = {
     error: "",
@@ -59,8 +64,18 @@ export default function DefaultScheduleRangeForm({
     };
   }, [defaultSchedule]);
 
+  const closedDays = dayOptions.filter((day) => {
+    const salonDay = salonHours.find((item) => item.day_of_week === day.value);
+    return !salonDay || salonDay.is_closed;
+  });
+
   return (
     <form action={formAction} className="space-y-4">
+      {closedDays.length ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Zatvoreni dani salona ne mogu se uključiti u radni raspored zaposlenika.
+        </div>
+      ) : null}
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label htmlFor="day_from" className="mb-1 block text-sm font-medium">
@@ -72,11 +87,18 @@ export default function DefaultScheduleRangeForm({
             defaultValue={String(suggestedRange.dayFrom)}
             className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
           >
-            {dayOptions.map((day) => (
-              <option key={day.value} value={day.value}>
-                {day.label}
-              </option>
-            ))}
+            {dayOptions.map((day) => {
+              const salonDay = salonHours.find(
+                (item) => item.day_of_week === day.value,
+              );
+              const closed = !salonDay || salonDay.is_closed;
+
+              return (
+                <option key={day.value} value={day.value} disabled={closed}>
+                  {day.label}{closed ? " — salon zatvoren" : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -90,11 +112,18 @@ export default function DefaultScheduleRangeForm({
             defaultValue={String(suggestedRange.dayTo)}
             className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
           >
-            {dayOptions.map((day) => (
-              <option key={day.value} value={day.value}>
-                {day.label}
-              </option>
-            ))}
+            {dayOptions.map((day) => {
+              const salonDay = salonHours.find(
+                (item) => item.day_of_week === day.value,
+              );
+              const closed = !salonDay || salonDay.is_closed;
+
+              return (
+                <option key={day.value} value={day.value} disabled={closed}>
+                  {day.label}{closed ? " — salon zatvoren" : ""}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
