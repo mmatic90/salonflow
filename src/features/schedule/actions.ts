@@ -319,6 +319,7 @@ export async function createScheduleOverrideAction(
         isWorking: true,
         startTime,
         endTime,
+        locale: context.locale,
         salonHours,
       });
 
