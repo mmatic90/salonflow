@@ -2,8 +2,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ClientForm from "@/components/client-form";
 import { createClientAction } from "@/features/clients/actions";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function NewClientPage() {
+  const permissions = await requireDashboardUser();
+  const t = getDictionary(permissions.organizationLocale).clients;
   const supabase = await createClient();
 
   const {
@@ -19,12 +23,13 @@ export default async function NewClientPage() {
     <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-3xl">
         <ClientForm
-          title="Novi klijent"
-          description="Dodaj novog klijenta u bazu."
+          locale={permissions.organizationLocale}
+          title={t.newTitle}
+          description={t.newDescription}
           action={createClientAction}
-          submitLabel="Spremi klijenta"
+          submitLabel={t.saveClient}
           backHref="/dashboard/clients"
-          backLabel="Natrag"
+          backLabel={t.back}
           initialValues={{
             full_name: "",
             phone: "",
