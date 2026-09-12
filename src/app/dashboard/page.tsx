@@ -166,7 +166,7 @@ export default async function DashboardPage() {
               <div className="min-w-0">
                 <div className="inline-flex items-center gap-2 rounded-full border border-app-soft bg-white/85 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-app-accent shadow-sm">
                   <Sparkles className="h-3.5 w-3.5" />
-                  {formatDateLabel(today)}
+                  {formatDateLabel(today, permissions.organizationLocale)}
                 </div>
                 <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-app-text md:text-4xl">{t.title}</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-app-muted sm:text-base">
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 font-semibold text-app-text shadow-sm transition hover:-translate-y-0.5 hover:bg-app-card-alt"
                 >
                   <CalendarDays className="h-4 w-4" />
-                  Kalendar
+                  {t.calendar}
                 </Link>
               </div>
             </div>
@@ -235,7 +235,7 @@ export default async function DashboardPage() {
                 <span>{overviewStats.onlineAcceptedThisMonthCount} {t.acceptedOfRequests} {overviewStats.onlineThisMonthCount} {t.requestsThisMonth}</span>
               </div>
               <Link href="/dashboard/online-bookings" className="shrink-0 text-sm font-semibold text-app-accent">
-                Otvori
+                {t.open}
               </Link>
             </div>
           </div>
@@ -348,7 +348,7 @@ export default async function DashboardPage() {
                     </div>
 
                     <span className="w-fit rounded-full border border-app-soft bg-white px-3 py-1 text-xs font-semibold text-app-text shadow-sm">
-                      {statusLabel(appointment.status)}
+                      {statusLabel(appointment.status, permissions.organizationLocale)}
                     </span>
                   </Link>
                 );
