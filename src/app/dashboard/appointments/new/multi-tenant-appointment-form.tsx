@@ -31,6 +31,9 @@ type Props = {
   defaultDate: string;
   defaultClientId?: string;
   defaultServiceId?: string;
+  defaultStartTime?: string;
+  defaultEmployeeId?: string;
+  defaultRoomId?: string;
   clients: ClientOption[];
   employees: AppointmentOption[];
   rooms: AppointmentOption[];
@@ -74,6 +77,9 @@ export default function MultiTenantAppointmentForm({
   defaultDate,
   defaultClientId,
   defaultServiceId,
+  defaultStartTime,
+  defaultEmployeeId,
+  defaultRoomId,
   clients,
   employees,
   services,
@@ -86,6 +92,7 @@ export default function MultiTenantAppointmentForm({
     defaultServiceId && services.some((service) => service.id === defaultServiceId)
       ? defaultServiceId
       : "";
+  const initialStartTime = defaultStartTime?.slice(0, 5) ?? "";
   const ui = {
     step1: locale === "en" ? "Step 1" : locale === "it" ? "Passo 1" : "Korak 1",
     step2: locale === "en" ? "Step 2" : locale === "it" ? "Passo 2" : "Korak 2",
@@ -125,10 +132,10 @@ export default function MultiTenantAppointmentForm({
   const [pending, setPending] = useState(false);
   const [availabilityPending, setAvailabilityPending] = useState(false);
   const [date, setDate] = useState(defaultDate);
-  const [startTime, setStartTime] = useState("");
+  const [startTime, setStartTime] = useState(initialStartTime);
   const [serviceId, setServiceId] = useState(initialServiceId);
-  const [employeeId, setEmployeeId] = useState("");
-  const [roomId, setRoomId] = useState("");
+  const [employeeId, setEmployeeId] = useState(defaultEmployeeId ?? "");
+  const [roomId, setRoomId] = useState(defaultRoomId ?? "");
   const [clientId, setClientId] = useState(defaultClient?.id ?? "");
   const [clientName, setClientName] = useState(defaultClient?.label ?? "");
   const [clientPhone, setClientPhone] = useState(defaultClient?.phone ?? "");
