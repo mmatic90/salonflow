@@ -20,9 +20,27 @@ type Props = {
 export default function ThemePreviewPicker({ themes, initialTheme }: Props) {
   const [selectedTheme, setSelectedTheme] = useState<ThemeValue>(initialTheme);
   const originalTheme = useRef<ThemeValue>(initialTheme);
+  const selectedThemeRef = useRef<ThemeValue>(initialTheme);
+  const savedRef = useRef(false);
 
   useEffect(() => {
+    const input = document.querySelector<HTMLInputElement>(
+      'input[name="theme"]',
+    );
+    const form = input?.closest("form");
+
+    function handleSubmit() {
+      savedRef.current = true;
+      originalTheme.current = selectedThemeRef.current;
+    }
+
+    form?.addEventListener("submit", handleSubmit);
+
     return () => {
+      form?.removeEventListener("submit", handleSubmit);
+
+      if (savedRef.current) return;
+
       const dashboardRoot = document.querySelector<HTMLElement>("[data-theme]");
       if (dashboardRoot) {
         dashboardRoot.dataset.theme = originalTheme.current;
@@ -32,6 +50,7 @@ export default function ThemePreviewPicker({ themes, initialTheme }: Props) {
 
   function previewTheme(theme: ThemeValue) {
     setSelectedTheme(theme);
+    selectedThemeRef.current = theme;
 
     const dashboardRoot = document.querySelector<HTMLElement>("[data-theme]");
     if (dashboardRoot) {
