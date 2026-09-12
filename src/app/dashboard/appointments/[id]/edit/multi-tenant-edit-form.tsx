@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Clock3,
   DoorOpen,
+  FileText,
   Loader2,
   Mail,
   MessageSquareText,
@@ -100,6 +101,30 @@ export default function MultiTenantEditAppointmentForm({
         : locale === "it"
           ? "Mantieni il cliente attuale o selezionane un altro."
           : "Zadrži postojećeg klijenta ili odaberi drugog.",
+    treatmentTitle:
+      locale === "en"
+        ? "Treatment note"
+        : locale === "it"
+          ? "Nota del trattamento"
+          : "Tretmanska bilješka",
+    treatmentHelp:
+      locale === "en"
+        ? "Internal record of the treatment, products, settings, reactions or recommendations."
+        : locale === "it"
+          ? "Registro interno del trattamento, prodotti, impostazioni, reazioni o raccomandazioni."
+          : "Interna evidencija tretmana, proizvoda, postavki, reakcija ili preporuka.",
+    treatmentSaved:
+      locale === "en"
+        ? "Note saved"
+        : locale === "it"
+          ? "Nota salvata"
+          : "Bilješka spremljena",
+    treatmentPlaceholder:
+      locale === "en"
+        ? "Example: Treatment performed, products or device settings used, client reaction and recommendation for next visit..."
+        : locale === "it"
+          ? "Esempio: trattamento eseguito, prodotti o impostazioni usate, reazione del cliente e raccomandazione per la prossima visita..."
+          : "Primjer: što je odrađeno, korišteni proizvodi ili postavke uređaja, reakcija klijenta i preporuka za sljedeći dolazak...",
     moreOptions:
       locale === "en"
         ? "More options"
@@ -108,10 +133,16 @@ export default function MultiTenantEditAppointmentForm({
           : "Više opcija",
     moreOptionsHelp:
       locale === "en"
-        ? "Contact details, status and notes"
+        ? "Contact details, status and booking note"
         : locale === "it"
-          ? "Contatti, stato e note"
-          : "Kontakt, status i napomena",
+          ? "Contatti, stato e nota della prenotazione"
+          : "Kontakt, status i napomena termina",
+    bookingNote:
+      locale === "en"
+        ? "Appointment note"
+        : locale === "it"
+          ? "Nota dell'appuntamento"
+          : "Napomena termina",
     selectedClient:
       locale === "en"
         ? "Selected client"
@@ -468,6 +499,41 @@ export default function MultiTenantEditAppointmentForm({
       <details className="group rounded-2xl border border-app-soft bg-white shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 md:px-6">
           <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent">
+              <FileText className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-semibold text-app-text">{ui.treatmentTitle}</p>
+                {appointment.internal_note ? (
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                    {ui.treatmentSaved}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-0.5 text-xs text-app-muted">{ui.treatmentHelp}</p>
+            </div>
+          </div>
+          <ChevronDown className="h-4 w-4 text-app-muted transition group-open:rotate-180" />
+        </summary>
+
+        <div className="border-t border-app-soft px-5 py-5 md:px-6">
+          <label className="block space-y-2 text-sm font-medium text-app-text">
+            <span>{ui.treatmentTitle}</span>
+            <textarea
+              className={fieldClass}
+              name="internal_notes"
+              rows={5}
+              defaultValue={appointment.internal_note ?? ""}
+              placeholder={ui.treatmentPlaceholder}
+            />
+          </label>
+        </div>
+      </details>
+
+      <details className="group rounded-2xl border border-app-soft bg-white shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 md:px-6">
+          <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-app-bg text-app-muted">
               <MessageSquareText className="h-4 w-4" />
             </div>
@@ -552,14 +618,12 @@ export default function MultiTenantEditAppointmentForm({
           </label>
 
           <label className="block space-y-2 text-sm font-medium text-app-text">
-            <span>{t.note}</span>
+            <span>{ui.bookingNote}</span>
             <textarea
               className={fieldClass}
               name="notes"
               rows={4}
-              defaultValue={
-                appointment.client_note ?? appointment.internal_note ?? ""
-              }
+              defaultValue={appointment.client_note ?? ""}
             />
           </label>
         </div>
