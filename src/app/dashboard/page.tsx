@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { Calendar, CalendarDays, BellRing, Plus, ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
+import {
+  Calendar,
+  CalendarDays,
+  BellRing,
+  Plus,
+  ArrowRight,
+  CheckCircle2,
+  Sparkles,
+  ListPlus,
+} from "lucide-react";
 import { requireDashboardUser } from "@/lib/page-guards";
 import OverdueAppointmentsPanel from "@/components/overdue-appointments-panel";
 import { getOverdueScheduledAppointments } from "@/features/appointments/overdue-queries";
@@ -7,6 +16,7 @@ import DashboardOverviewWidget from "@/components/dashboard-overview-widget";
 import { getDashboardOverviewStats } from "@/features/dashboard/overview-queries";
 import { getAppointmentsByDate } from "@/features/appointments/queries";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
+import { getWaitingWaitlistCount } from "@/features/waitlist/queries";
 import {
   formatDateLabel,
   formatTime,
@@ -32,14 +42,21 @@ export default async function DashboardPage() {
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.dashboard;
   const today = getTodayLocalDate();
+  const waitlistLabel =
+    permissions.organizationLocale === "en"
+      ? "Waitlist"
+      : permissions.organizationLocale === "it"
+        ? "Lista d'attesa"
+        : "Lista čekanja";
 
-  const [overdueAppointments, overviewStats, todayAppointments] =
+  const [overdueAppointments, overviewStats, todayAppointments, waitlistCount] =
     await Promise.all([
       getOverdueScheduledAppointments(permissions.organizationId).catch(() => []),
       getDashboardOverviewStats(permissions.organizationId).catch(
         () => EMPTY_OVERVIEW,
       ),
       getAppointmentsByDate(today).catch(() => []),
+      getWaitingWaitlistCount(permissions.organizationId).catch(() => 0),
     ]);
 
   const visibleTodayAppointments = todayAppointments
@@ -85,6 +102,18 @@ export default async function DashboardPage() {
                 >
                   <CalendarDays className="h-4 w-4" />
                   {t.calendar}
+                </Link>
+                <Link
+                  href="/dashboard/waitlist"
+                  className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 font-semibold text-app-text shadow-sm transition hover:-translate-y-0.5 hover:bg-app-card-alt sm:col-span-1"
+                >
+                  <ListPlus className="h-4 w-4" />
+                  {waitlistLabel}
+                  {waitlistCount > 0 ? (
+                    <span className="rounded-full bg-app-accent/10 px-2 py-0.5 text-xs font-bold text-app-accent">
+                      {waitlistCount}
+                    </span>
+                  ) : null}
                 </Link>
               </div>
             </div>
