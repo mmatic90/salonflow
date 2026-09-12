@@ -51,7 +51,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </Link>
       )}
 
-      {!hideFeedbackTools && <FeedbackWidget />}
+      {!hideFeedbackTools && <FeedbackWidget locale={permissions.organizationLocale} />}
     </div>
   );
 }
