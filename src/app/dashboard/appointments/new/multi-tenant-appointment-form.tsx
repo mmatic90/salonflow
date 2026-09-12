@@ -82,14 +82,15 @@ export default function MultiTenantAppointmentForm({ locale = "hr", defaultDate,
   const selectedEmployee = useMemo(() => availableEmployees.find((employee) => employee.id === employeeId), [availableEmployees, employeeId]);
   const selectedRoom = useMemo(() => availableRooms.find((room) => room.id === roomId), [availableRooms, roomId]);
 
+  function resetAvailabilitySelection() {
+    setAvailableEmployees([]);
+    setAvailableRooms([]);
+    setEmployeeId("");
+    setRoomId("");
+  }
+
   useEffect(() => {
-    if (!availabilityReady) {
-      setAvailableEmployees([]);
-      setAvailableRooms([]);
-      setEmployeeId("");
-      setRoomId("");
-      return;
-    }
+    if (!availabilityReady) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -194,17 +195,17 @@ export default function MultiTenantAppointmentForm({ locale = "hr", defaultDate,
         <div className="grid gap-5 md:grid-cols-2">
           <label className="space-y-2 text-sm font-medium text-app-text">
             <span className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-app-muted" />{t.date}</span>
-            <input className={fieldClass} type="date" name="appointment_date" value={date} onChange={(event) => setDate(event.target.value)} required />
+            <input className={fieldClass} type="date" name="appointment_date" value={date} onChange={(event) => { setDate(event.target.value); resetAvailabilitySelection(); }} required />
           </label>
           <label className="space-y-2 text-sm font-medium text-app-text">
             <span className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-app-muted" />{t.startTime}</span>
-            <input className={fieldClass} type="time" name="start_time" value={startTime} onChange={(event) => setStartTime(event.target.value)} required />
+            <input className={fieldClass} type="time" name="start_time" value={startTime} onChange={(event) => { setStartTime(event.target.value); resetAvailabilitySelection(); }} required />
           </label>
         </div>
 
         <label className="mt-5 block space-y-2 text-sm font-medium text-app-text">
           <span className="flex items-center gap-2"><Shapes className="h-4 w-4 text-app-muted" />{t.service}</span>
-          <select className={fieldClass} name="service_id" required value={serviceId} onChange={(event) => setServiceId(event.target.value)}>
+          <select className={fieldClass} name="service_id" required value={serviceId} onChange={(event) => { setServiceId(event.target.value); resetAvailabilitySelection(); }}>
             <option value="" disabled>{t.selectService}</option>
             {services.map((service) => <option key={service.id} value={service.id}>{service.label} · {service.durationMinutes} min</option>)}
           </select>
