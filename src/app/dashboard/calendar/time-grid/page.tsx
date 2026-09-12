@@ -854,11 +854,12 @@ export default async function TimeGridCalendarPage({
 
                         return (
                           <AppointmentBlock
-                            key={appointment.id}
-                            appointment={appointment}
-                            top={top}
-                            height={height}
-                          />
+                              key={appointment.id}
+                              appointment={appointment}
+                              top={top}
+                              height={height}
+                              locale={permissions.organizationLocale}
+                            />
                         );
                       })}
                     </>
@@ -910,11 +911,12 @@ export default async function TimeGridCalendarPage({
 
                         return (
                           <AppointmentBlock
-                            key={appointment.id}
-                            appointment={appointment}
-                            top={top}
-                            height={height}
-                          />
+                              key={appointment.id}
+                              appointment={appointment}
+                              top={top}
+                              height={height}
+                              locale={permissions.organizationLocale}
+                            />
                         );
                       })}
                     </>
