@@ -24,8 +24,12 @@ function slugify(value: string) {
 }
 
 export default function OnboardingPage() {
-  const locale = detectLocale();
+  const [locale, setLocale] = useState<AppLocale>("hr");
   const t = getDictionary(locale).onboarding;
+
+  useEffect(() => {
+    setLocale(detectLocale());
+  }, []);
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [salonName, setSalonName] = useState("");
