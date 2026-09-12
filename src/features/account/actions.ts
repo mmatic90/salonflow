@@ -92,6 +92,6 @@ export async function updateAccountProfileAction(
 
   return {
     error: "",
-    success: t.saveChanges,
+    success: t.saved,
   };
 }
