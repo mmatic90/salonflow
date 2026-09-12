@@ -243,7 +243,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       appointmentId: appointment.id,
-      redirectTo: `/dashboard/appointments?date=${appointmentDate}`,
+      redirectTo: `/dashboard/calendar?date=${appointmentDate}`,
     });
   } catch (error) {
     console.error("Greška pri stvaranju termina:", error);
