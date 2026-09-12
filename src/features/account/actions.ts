@@ -88,6 +88,6 @@ export async function updateAccountProfileAction(
 
   return {
     error: "",
-    success: "Podaci računa su spremljeni.",
+    success: t.saveChanges,
   };
 }
