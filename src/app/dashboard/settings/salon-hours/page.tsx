@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getSalonWorkingHours } from "@/features/settings/queries";
 import SalonHoursTable from "./salon-hours-table";
 import { requireAdminForSettings } from "@/lib/page-guards";
