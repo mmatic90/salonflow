@@ -23,7 +23,6 @@ export default async function NewClientPage() {
             phone: "",
             email: "",
             note: "",
-            internal_note: "",
           }}
         />
       </div>
