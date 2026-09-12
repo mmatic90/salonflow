@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
@@ -15,8 +15,12 @@ function detectLocale(): AppLocale {
 
 export default function LoginPage() {
   const supabase = createClient();
-  const locale = detectLocale();
+  const [locale, setLocale] = useState<AppLocale>("hr");
   const t = getDictionary(locale).auth;
+
+  useEffect(() => {
+    setLocale(detectLocale());
+  }, []);
   const router = useRouter();
 
   const [email, setEmail] = useState("");
