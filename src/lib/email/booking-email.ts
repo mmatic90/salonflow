@@ -258,6 +258,7 @@ export async function sendAppointmentReminderEmail(args: {
 }) {
   const lang = args.lang ?? "en";
   const isHr = lang === "hr";
+  const isIt = lang === "it";
   const serviceName = args.serviceName?.trim();
 
   const content = isHr
@@ -273,6 +274,21 @@ export async function sendAppointmentReminderEmail(args: {
       </div>
       <p style="margin:0;font-size:15px;line-height:1.7;color:#6f5a50;">
         Ako niste u mogućnosti doći, molimo vas da kontaktirate salon na vrijeme.
+      </p>
+    `
+    : isIt
+      ? `
+      <h1 style="margin:0 0 14px;font-size:28px;line-height:1.25;color:#2f2723;">Promemoria appuntamento</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.7;color:#6f5a50;">
+        Ciao ${escapeHtml(args.clientName)}, ti ricordiamo il tuo appuntamento presso ${escapeHtml(args.salonName?.trim() || "Salon")}.
+      </p>
+      <div style="margin:24px 0;padding:22px;border-radius:20px;background:#f8f3ef;border:1px solid #eadbd2;">
+        ${serviceName ? `<p style="margin:0 0 10px;"><strong>Servizio:</strong> ${escapeHtml(serviceName)}</p>` : ""}
+        <p style="margin:0 0 10px;"><strong>Data:</strong> ${escapeHtml(args.date)}</p>
+        <p style="margin:0;"><strong>Ora:</strong> ${escapeHtml(args.time)}</p>
+      </div>
+      <p style="margin:0;font-size:15px;line-height:1.7;color:#6f5a50;">
+        Se non puoi presentarti, contatta il salone in anticipo.
       </p>
     `
     : `
@@ -295,7 +311,9 @@ export async function sendAppointmentReminderEmail(args: {
     to: [args.to],
     subject: isHr
       ? `${args.salonName?.trim() || "Salon"} — Podsjetnik za termin`
-      : `${args.salonName?.trim() || "Salon"} — Appointment reminder`,
+      : isIt
+        ? `${args.salonName?.trim() || "Salon"} — Promemoria appuntamento`
+        : `${args.salonName?.trim() || "Salon"} — Appointment reminder`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
@@ -320,6 +338,7 @@ export async function sendGoogleReviewRequestEmail(args: {
 }) {
   const lang = args.lang ?? "hr";
   const isHr = lang === "hr";
+  const isIt = lang === "it";
 
   const content = isHr
     ? `
@@ -334,6 +353,21 @@ export async function sendGoogleReviewRequestEmail(args: {
 
       <a href="${escapeHtml(args.reviewUrl)}" style="display:inline-block;background:#2f2723;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:14px;font-weight:700;">
         Ostavi Google recenziju
+      </a>
+    `
+    : isIt
+      ? `
+      <h1 style="margin:0 0 14px;font-size:28px;line-height:1.25;color:#2f2723;">Grazie per la visita ✨</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.7;color:#6f5a50;">
+        Ciao ${escapeHtml(args.clientName)}, grazie per aver visitato ${escapeHtml(args.salonName?.trim() || "Salon")}.
+      </p>
+
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.7;color:#6f5a50;">
+        Se sei soddisfatto del trattamento, ci farebbe molto piacere ricevere una breve recensione su Google.
+      </p>
+
+      <a href="${escapeHtml(args.reviewUrl)}" style="display:inline-block;background:#2f2723;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:14px;font-weight:700;">
+        Lascia una recensione Google
       </a>
     `
     : `
@@ -356,7 +390,9 @@ export async function sendGoogleReviewRequestEmail(args: {
     to: [args.to],
     subject: isHr
       ? `${args.salonName?.trim() || "Salon"} — Hvala na dolasku`
-      : `${args.salonName?.trim() || "Salon"} — Thank you for your visit`,
+      : isIt
+        ? `${args.salonName?.trim() || "Salon"} — Grazie per la visita`
+        : `${args.salonName?.trim() || "Salon"} — Thank you for your visit`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
