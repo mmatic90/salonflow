@@ -1394,6 +1394,7 @@ export async function updateAppointmentAction(
 
   if (shouldSendUpdatedSms) {
     await sendUpdatedSmsIfPossible({
+      salonName: permissions.organizationName,
       appointmentId,
       clientPhone,
       clientName: values.client_name,
