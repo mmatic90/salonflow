@@ -7,6 +7,7 @@ import { getCurrentUserPermissions } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import AdminFooter from "@/components/admin-footer";
 import FeedbackWidget from "@/features/feedback/components/feedback-widget";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const permissions = await getCurrentUserPermissions();
@@ -17,6 +18,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     const { data: { user } } = await supabase.auth.getUser();
     redirect(user ? "/onboarding" : "/login");
   }
+
+  const dictionary = getDictionary(permissions.organizationLocale);
 
   return (
     <div
@@ -34,17 +37,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
         <main className="flex min-w-0 flex-1 flex-col transition-all duration-200">
           <div className="border-b border-app-soft bg-white px-4 py-2 text-xs text-app-muted sm:px-6">
-            Aktivni salon: <span className="font-semibold text-app-text">{permissions.organizationName}</span>
+            {dictionary.activeSalon}: <span className="font-semibold text-app-text">{permissions.organizationName}</span>
           </div>
           <div className="flex-1">{children}</div>
-          <AdminFooter organizationName={permissions.organizationName} />
+          <AdminFooter organizationName={permissions.organizationName} locale={permissions.organizationLocale} />
         </main>
       </div>
 
       {!hideFeedbackTools && permissions.isSystemDeveloper && (
-        <Link href="/dashboard/feedback" className="fixed bottom-20 right-5 z-40 flex items-center gap-2 rounded-full border border-app-soft bg-white px-4 py-3 text-sm font-semibold text-app-text shadow-lg transition hover:-translate-y-0.5 hover:bg-app-bg hover:shadow-xl" title="Pregled feedbacka">
+        <Link href="/dashboard/feedback" className="fixed bottom-20 right-5 z-40 flex items-center gap-2 rounded-full border border-app-soft bg-white px-4 py-3 text-sm font-semibold text-app-text shadow-lg transition hover:-translate-y-0.5 hover:bg-app-bg hover:shadow-xl" title={dictionary.feedbackReview}>
           <ClipboardList className="h-5 w-5" />
-          <span className="hidden sm:inline">Pregled feedbacka</span>
+          <span className="hidden sm:inline">{dictionary.feedbackReview}</span>
         </Link>
       )}
 
