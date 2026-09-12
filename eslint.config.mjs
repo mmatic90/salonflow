@@ -13,6 +13,19 @@ const eslintConfig = defineConfig([
       "@next/next/no-img-element": "off",
     },
   },
+  // The shared appointment validator returns totalDuration for both create and update flows.
+  // The create flow only consumes the derived endTime, while the update flow records duration in audit details.
+  {
+    files: ["src/features/appointments/actions.ts"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          varsIgnorePattern: "^totalDuration$",
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
