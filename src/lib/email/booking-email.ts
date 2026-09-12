@@ -26,7 +26,7 @@ function escapeHtml(value: string) {
 
 function layout(
   content: string,
-  lang: "hr" | "en",
+  lang: "hr" | "en" | "it",
   branding?: {
     salonName?: string;
     phone?: string | null;
@@ -42,7 +42,9 @@ function layout(
   const footerText =
     lang === "en"
       ? "If you have any questions, please contact the salon directly."
-      : "Za sva pitanja kontaktirajte salon direktno.";
+      : lang === "it"
+        ? "Per qualsiasi domanda, contatta direttamente il salone."
+        : "Za sva pitanja kontaktirajte salon direktno.";
 
   return `
   <div style="margin:0;padding:0;background:#f8f3ef;font-family:Arial,Helvetica,sans-serif;color:#2f2723;">
@@ -87,10 +89,11 @@ export async function sendBookingAcceptedEmail(args: {
   serviceName: string;
   date: string;
   time: string;
-  lang?: "hr" | "en";
+  lang?: "hr" | "en" | "it";
 }) {
   const lang = args.lang ?? "en";
   const isHr = lang === "hr";
+  const isIt = lang === "it";
 
   const content = isHr
     ? `
@@ -105,6 +108,21 @@ export async function sendBookingAcceptedEmail(args: {
       </div>
       <p style="margin:0;font-size:15px;line-height:1.7;color:#6f5a50;">
         Ako niste u mogućnosti doći, molimo vas da kontaktirate salon na vrijeme.
+      </p>
+    `
+    : isIt
+      ? `
+      <h1 style="margin:0 0 14px;font-size:28px;line-height:1.25;color:#2f2723;">Il tuo appuntamento è confermato ✨</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.7;color:#6f5a50;">
+        Grazie per la prenotazione. Il tuo appuntamento presso ${escapeHtml(args.salonName?.trim() || "Salon")} è stato confermato.
+      </p>
+      <div style="margin:24px 0;padding:22px;border-radius:20px;background:#f8f3ef;border:1px solid #eadbd2;">
+        <p style="margin:0 0 10px;"><strong>Servizio:</strong> ${escapeHtml(args.serviceName)}</p>
+        <p style="margin:0 0 10px;"><strong>Data:</strong> ${escapeHtml(args.date)}</p>
+        <p style="margin:0;"><strong>Ora:</strong> ${escapeHtml(args.time)}</p>
+      </div>
+      <p style="margin:0;font-size:15px;line-height:1.7;color:#6f5a50;">
+        Se non puoi presentarti, contatta il salone in anticipo.
       </p>
     `
     : `
@@ -127,7 +145,9 @@ export async function sendBookingAcceptedEmail(args: {
     to: [args.to],
     subject: isHr
       ? `${args.salonName?.trim() || "Salon"} — Termin potvrđen`
-      : `${args.salonName?.trim() || "Salon"} — Appointment confirmed`,
+      : isIt
+        ? `${args.salonName?.trim() || "Salon"} — Appuntamento confermato`
+        : `${args.salonName?.trim() || "Salon"} — Appointment confirmed`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
@@ -150,10 +170,11 @@ export async function sendBookingRejectedEmail(args: {
   date: string;
   time: string;
   reason: string;
-  lang?: "hr" | "en";
+  lang?: "hr" | "en" | "it";
 }) {
   const lang = args.lang ?? "en";
   const isHr = lang === "hr";
+  const isIt = lang === "it";
 
   const content = isHr
     ? `
@@ -169,6 +190,22 @@ export async function sendBookingRejectedEmail(args: {
       </div>
       <p style="margin:0;font-size:15px;line-height:1.7;color:#6f5a50;">
         Za dogovor novog termina kontaktirajte salon direktno.
+      </p>
+    `
+    : isIt
+      ? `
+      <h1 style="margin:0 0 14px;font-size:28px;line-height:1.25;color:#2f2723;">La richiesta di prenotazione è stata rifiutata</h1>
+      <p style="margin:0 0 22px;font-size:16px;line-height:1.7;color:#6f5a50;">
+        Purtroppo non è stato possibile confermare la tua richiesta di appuntamento.
+      </p>
+      <div style="margin:24px 0;padding:22px;border-radius:20px;background:#f8f3ef;border:1px solid #eadbd2;">
+        <p style="margin:0 0 10px;"><strong>Servizio:</strong> ${escapeHtml(args.serviceName)}</p>
+        <p style="margin:0 0 10px;"><strong>Data:</strong> ${escapeHtml(args.date)}</p>
+        <p style="margin:0 0 10px;"><strong>Ora:</strong> ${escapeHtml(args.time)}</p>
+        <p style="margin:0;"><strong>Motivo:</strong> ${escapeHtml(args.reason)}</p>
+      </div>
+      <p style="margin:0;font-size:15px;line-height:1.7;color:#6f5a50;">
+        Contatta direttamente il salone per concordare un altro appuntamento.
       </p>
     `
     : `
@@ -192,7 +229,9 @@ export async function sendBookingRejectedEmail(args: {
     to: [args.to],
     subject: isHr
       ? `${args.salonName?.trim() || "Salon"} — Zahtjev za termin`
-      : `${args.salonName?.trim() || "Salon"} — Booking request update`,
+      : isIt
+        ? `${args.salonName?.trim() || "Salon"} — Aggiornamento prenotazione`
+        : `${args.salonName?.trim() || "Salon"} — Booking request update`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
@@ -215,7 +254,7 @@ export async function sendAppointmentReminderEmail(args: {
   date: string;
   time: string;
   serviceName?: string | null;
-  lang?: "hr" | "en";
+  lang?: "hr" | "en" | "it";
 }) {
   const lang = args.lang ?? "en";
   const isHr = lang === "hr";
@@ -277,7 +316,7 @@ export async function sendGoogleReviewRequestEmail(args: {
   to: string;
   clientName: string;
   reviewUrl: string;
-  lang?: "hr" | "en";
+  lang?: "hr" | "en" | "it";
 }) {
   const lang = args.lang ?? "hr";
   const isHr = lang === "hr";
