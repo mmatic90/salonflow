@@ -2,7 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { getCalendarWeekDataByEmployees } from "@/features/calendar/queries";
+import {
+  getCalendarWeekDataByEmployees,
+  type CalendarAppointmentItem,
+} from "@/features/calendar/queries";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
 import { formatTime, getTodayLocalDate, statusLabel } from "@/lib/utils";
 import { requireDashboardUser } from "@/lib/page-guards";
@@ -66,14 +69,14 @@ function WeekAppointmentCard({
   locale,
   roomLabel,
 }: {
-  appointment: any;
+  appointment: CalendarAppointmentItem;
   locale: "hr" | "en" | "it";
   roomLabel: string;
 }) {
   const serviceLabel = formatAppointmentServicesLabel(
     appointment.appointment_services
       ?.slice()
-      .sort((a: any, b: any) => a.sort_order - b.sort_order),
+      .sort((a, b) => a.sort_order - b.sort_order),
   );
 
   return (
@@ -247,8 +250,7 @@ export default async function CalendarWeekPage({
               <div className="grid min-w-[980px] grid-cols-6">
                 {weekDays.map((day) => {
                   const dayAppointments = employee.appointments.filter(
-                    (appointment: any) =>
-                      appointment.appointment_date === day.value,
+                    (appointment) => appointment.appointment_date === day.value,
                   );
 
                   return (
@@ -271,7 +273,7 @@ export default async function CalendarWeekPage({
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          {dayAppointments.map((appointment: any) => (
+                          {dayAppointments.map((appointment) => (
                             <WeekAppointmentCard
                               key={appointment.id}
                               appointment={appointment}
