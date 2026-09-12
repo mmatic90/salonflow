@@ -7,9 +7,12 @@ import ServicesTable from "./services-table";
 import ServiceCreateForm from "./service-create-form";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import EmptyStateCard from "@/components/empty-state-card";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function SettingsServicesPage() {
-  await requireAdminForSettings();
+  const permissions = await requireAdminForSettings();
+  const settings = getDictionary(permissions.organizationLocale).settings;
+  const t = settings.services;
 
   const services = await getServices();
 
@@ -19,9 +22,9 @@ export default async function SettingsServicesPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Usluge</h1>
+              <h1 className="text-3xl font-bold">{t.title}</h1>
               <p className="mt-2 text-neutral-600">
-                Dodaj i upravljaj uslugama.
+                {t.intro}
               </p>
             </div>
 
@@ -29,28 +32,28 @@ export default async function SettingsServicesPage() {
               href="/dashboard/settings"
               className="rounded-xl border border-neutral-300 px-4 py-2 font-medium"
             >
-              Natrag
+              {settings.back}
             </Link>
           </div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-md">
-          <h2 className="text-xl font-semibold">Nova usluga</h2>
+          <h2 className="text-xl font-semibold">{t.newTitle}</h2>
           <div className="mt-4">
-            <ServiceCreateForm />
+            <ServiceCreateForm locale={permissions.organizationLocale} />
           </div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-md">
-          <h2 className="text-xl font-semibold">Popis usluga</h2>
+          <h2 className="text-xl font-semibold">{t.listTitle}</h2>
           <div className="mt-4">
             {services.length === 0 ? (
               <EmptyStateCard
-                title="Nema usluga"
-                description="Dodaj prvu uslugu kako bi se pojavila u popisu i mogla koristiti u terminima."
+                title={t.emptyTitle}
+                description={t.emptyDescription}
               />
             ) : (
-              <ServicesTable services={services} />
+              <ServicesTable locale={permissions.organizationLocale} services={services} />
             )}
           </div>
         </div>
