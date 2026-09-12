@@ -8,6 +8,8 @@ import { getDictionary } from "@/lib/i18n";
 
 type SearchParams = Promise<{
   date?: string;
+  clientId?: string;
+  serviceId?: string;
 }>;
 
 type ClientRow = Record<string, unknown> & {
@@ -157,6 +159,8 @@ export default async function NewAppointmentPage({
             rooms={rooms}
             clients={clients}
             defaultDate={defaultDate}
+            defaultClientId={resolvedSearchParams.clientId}
+            defaultServiceId={resolvedSearchParams.serviceId}
           />
         </div>
       </div>
