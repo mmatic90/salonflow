@@ -1374,7 +1374,7 @@ export async function updateAppointmentAction(
   }
 
   await scheduleReminderIfPossible({
-    salonName,
+    salonName: permissions.organizationName,
     appointmentId,
     clientPhone,
     clientName: values.client_name,
