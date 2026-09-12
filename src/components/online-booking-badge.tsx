@@ -1,13 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-export default function OnlineBookingBadge() {
-  const [count, setCount] = useState(0);
-  const previousCountRef = useRef<number | null>(null);
+type Listener = (count: number) => void;
 
-  async function loadCount() {
+let sharedCount = 0;
+let previousCount: number | null = null;
+let pollInterval: number | null = null;
+let requestInFlight: Promise<void> | null = null;
+let subscriberCount = 0;
+const listeners = new Set<Listener>();
+
+function notifyListeners() {
+  for (const listener of listeners) {
+    listener(sharedCount);
+  }
+}
+
+async function loadSharedCount() {
+  if (requestInFlight) return requestInFlight;
+
+  requestInFlight = (async () => {
     try {
       const res = await fetch("/api/online-bookings/pending-count", {
         cache: "no-store",
@@ -17,8 +31,6 @@ export default function OnlineBookingBadge() {
 
       const data = await res.json();
       const nextCount = Number(data.count ?? 0);
-
-      const previousCount = previousCountRef.current;
 
       if (previousCount !== null && nextCount > previousCount) {
         const diff = nextCount - previousCount;
@@ -39,21 +51,49 @@ export default function OnlineBookingBadge() {
         );
       }
 
-      previousCountRef.current = nextCount;
-      setCount(nextCount);
+      previousCount = nextCount;
+      sharedCount = nextCount;
+      notifyListeners();
     } catch (error) {
       console.error("Greška pri dohvaćanju broja online rezervacija:", error);
+    } finally {
+      requestInFlight = null;
     }
-  }
+  })();
+
+  return requestInFlight;
+}
+
+function startPolling() {
+  if (pollInterval !== null) return;
+
+  void loadSharedCount();
+  pollInterval = window.setInterval(() => {
+    void loadSharedCount();
+  }, 20000);
+}
+
+function stopPollingIfUnused() {
+  if (subscriberCount > 0 || pollInterval === null) return;
+
+  window.clearInterval(pollInterval);
+  pollInterval = null;
+}
+
+export default function OnlineBookingBadge() {
+  const [count, setCount] = useState(sharedCount);
 
   useEffect(() => {
-    loadCount();
+    subscriberCount += 1;
+    listeners.add(setCount);
+    setCount(sharedCount);
+    startPolling();
 
-    const interval = window.setInterval(() => {
-      loadCount();
-    }, 20000);
-
-    return () => window.clearInterval(interval);
+    return () => {
+      listeners.delete(setCount);
+      subscriberCount = Math.max(0, subscriberCount - 1);
+      stopPollingIfUnused();
+    };
   }, []);
 
   if (count <= 0) return null;
