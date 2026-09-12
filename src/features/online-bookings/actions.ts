@@ -266,7 +266,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
     throw new Error(existingError.message);
   }
 
-  const conflict = (existingAppointments ?? []).some((appointment: any) => {
+  const conflict = (existingAppointments ?? []).some((appointment) => {
     const appointmentStart = timeToMinutes(appointment.start_time);
     const appointmentEnd = timeToMinutes(appointment.end_time);
 
@@ -280,9 +280,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   });
 
   if (conflict) {
-    throw new Error(
-      t.conflict,
-    );
+    throw new Error(t.conflict);
   }
 
   const notificationLang: NotificationLang =
