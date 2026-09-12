@@ -64,6 +64,15 @@ export default function ServiceCreateForm() {
         className="rounded-xl border border-app-soft bg-white px-4 py-3 outline-none md:col-span-2"
       />
 
+      <label className="flex items-center gap-3 rounded-xl border border-app-soft bg-app-bg/50 px-4 py-3 text-sm font-medium text-app-text">
+        <input
+          type="checkbox"
+          name="is_online_bookable"
+          className="h-4 w-4 rounded border-app-soft accent-app-accent"
+        />
+        Dostupno za online rezervaciju
+      </label>
+
       <div className="md:col-span-2 xl:col-span-3 flex justify-end">
         <button
           type="submit"
