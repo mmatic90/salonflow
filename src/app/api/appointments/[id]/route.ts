@@ -237,7 +237,7 @@ export async function PATCH(
 
     return NextResponse.json({
       ok: true,
-      redirectTo: `/dashboard/appointments?date=${appointmentDate}`,
+      redirectTo: `/dashboard/calendar?date=${appointmentDate}`,
     });
   } catch (error) {
     console.error("Greška pri uređivanju termina:", error);
