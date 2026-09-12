@@ -1228,6 +1228,8 @@ export async function updateAppointmentAction(
   }
 
   const organizationId = permissions.organizationId;
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).appointments.actionMessages;
 
   const clientPhone = normalizeNullableText(formData.get("client_phone"));
   const clientEmail = normalizeNullableText(formData.get("client_email"));
