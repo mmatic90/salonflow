@@ -10,6 +10,30 @@ export type OnlineBookingStatus =
   | "accepted"
   | "rejected";
 
+type BookingEmployeeRelation = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  is_active?: boolean | null;
+};
+
+type BookingRoomRelation = {
+  id: string;
+  name: string;
+  is_active?: boolean | null;
+};
+
+type NormalizedEmployee = {
+  id: string;
+  display_name: string;
+};
+
+type ActiveRoom = {
+  id: string;
+  name: string;
+  is_active?: boolean | null;
+};
+
 const onlineBookingSelect = `
   *,
   services (
@@ -37,7 +61,9 @@ const onlineBookingSelect = `
   )
 `;
 
-function normalizeEmployee(value: any) {
+function normalizeEmployee(
+  value: BookingEmployeeRelation | BookingEmployeeRelation[] | null | undefined,
+): NormalizedEmployee | null {
   const employee = Array.isArray(value) ? value[0] ?? null : value ?? null;
   if (!employee) return null;
   return {
@@ -48,7 +74,12 @@ function normalizeEmployee(value: any) {
   };
 }
 
-function normalizeBookingRow(row: any) {
+function normalizeBookingRow<
+  T extends {
+    suggested_employee?: BookingEmployeeRelation | BookingEmployeeRelation[] | null;
+    final_employee?: BookingEmployeeRelation | BookingEmployeeRelation[] | null;
+  },
+>(row: T) {
   return {
     ...row,
     suggested_employee: normalizeEmployee(row.suggested_employee),
@@ -271,34 +302,40 @@ export async function getOnlineBookingAcceptOptions(args: {
   if (roomMappingsError) throw new Error(roomMappingsError.message);
   if (appointmentsError) throw new Error(appointmentsError.message);
 
-  const mappedEmployees =
-    employeeMappings
-      ?.map((row: any) => {
-        const employee = Array.isArray(row.employees)
-          ? row.employees[0] ?? null
-          : row.employees ?? null;
+  const mappedEmployees = (employeeMappings ?? [])
+    .map((row) => {
+      const employee = Array.isArray(row.employees)
+        ? row.employees[0] ?? null
+        : row.employees ?? null;
 
-        if (!employee?.is_active) return null;
+      if (!employee?.is_active) return null;
 
-        return {
-          id: employee.id,
-          display_name:
-            [employee.first_name, employee.last_name]
-              .filter(Boolean)
-              .join(" ") || "Zaposlenik",
-        };
-      })
-      .filter(Boolean) ?? [];
+      return {
+        id: String(employee.id),
+        display_name:
+          [employee.first_name, employee.last_name]
+            .filter(Boolean)
+            .join(" ") || "Zaposlenik",
+      };
+    })
+    .filter((employee): employee is NormalizedEmployee => employee !== null);
 
-  const mappedRooms =
-    roomMappings
-      ?.map((row: any) =>
-        Array.isArray(row.rooms) ? row.rooms[0] ?? null : row.rooms ?? null,
-      )
-      .filter((room: any) => room?.is_active) ?? [];
+  const mappedRooms = (roomMappings ?? [])
+    .map((row) => {
+      const room = Array.isArray(row.rooms)
+        ? row.rooms[0] ?? null
+        : row.rooms ?? null;
+      if (!room?.is_active) return null;
+      return {
+        id: String(room.id),
+        name: String(room.name),
+        is_active: room.is_active,
+      } satisfies ActiveRoom;
+    })
+    .filter((room): room is ActiveRoom => room !== null);
 
   const employeesWithAvailability = await Promise.all(
-    mappedEmployees.map(async (employee: any) => {
+    mappedEmployees.map(async (employee) => {
       const { data: scheduleRows, error: scheduleError } = await supabase.rpc(
         "get_employee_effective_schedule",
         {
@@ -326,29 +363,8 @@ export async function getOnlineBookingAcceptOptions(args: {
         return null;
       }
 
-      const hasConflict = (existingAppointments ?? []).some(
-        (appointment: any) => {
-          if (appointment.employee_id !== employee.id) return false;
-
-          return overlaps(
-            startMinutes,
-            endMinutes,
-            timeToMinutes(appointment.start_time),
-            timeToMinutes(appointment.end_time),
-          );
-        },
-      );
-
-      return hasConflict ? null : employee;
-    }),
-  );
-
-  const availableEmployees = employeesWithAvailability.filter(Boolean);
-
-  const availableRooms = mappedRooms.filter((room: any) => {
-    const hasConflict = (existingAppointments ?? []).some(
-      (appointment: any) => {
-        if (appointment.room_id !== room.id) return false;
+      const hasConflict = (existingAppointments ?? []).some((appointment) => {
+        if (appointment.employee_id !== employee.id) return false;
 
         return overlaps(
           startMinutes,
@@ -356,8 +372,27 @@ export async function getOnlineBookingAcceptOptions(args: {
           timeToMinutes(appointment.start_time),
           timeToMinutes(appointment.end_time),
         );
-      },
-    );
+      });
+
+      return hasConflict ? null : employee;
+    }),
+  );
+
+  const availableEmployees = employeesWithAvailability.filter(
+    (employee): employee is NormalizedEmployee => employee !== null,
+  );
+
+  const availableRooms = mappedRooms.filter((room) => {
+    const hasConflict = (existingAppointments ?? []).some((appointment) => {
+      if (appointment.room_id !== room.id) return false;
+
+      return overlaps(
+        startMinutes,
+        endMinutes,
+        timeToMinutes(appointment.start_time),
+        timeToMinutes(appointment.end_time),
+      );
+    });
 
     return !hasConflict;
   });
