@@ -46,14 +46,7 @@ function ServiceSearchSelect({
 
   const selectedService =
     services.find((service) => service.id === value) ?? null;
-
-  useEffect(() => {
-    if (selectedService) {
-      setSearch(selectedService.name);
-    } else {
-      setSearch("");
-    }
-  }, [selectedService]);
+  const displayedSearch = open ? search : (selectedService?.name ?? "");
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -61,18 +54,12 @@ function ServiceSearchSelect({
       if (!wrapperRef.current.contains(event.target as Node)) {
         setOpen(false);
         setActiveIndex(-1);
-
-        if (selectedService) {
-          setSearch(selectedService.name);
-        } else {
-          setSearch("");
-        }
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [selectedService]);
+  }, []);
 
   const groupedServices = useMemo<GroupedServices[]>(() => {
     const query = search.trim().toLowerCase();
@@ -112,20 +99,6 @@ function ServiceSearchSelect({
   }, [groupedServices]);
 
   useEffect(() => {
-    if (!open) {
-      setActiveIndex(-1);
-      return;
-    }
-
-    if (flatOptions.length === 0) {
-      setActiveIndex(-1);
-      return;
-    }
-
-    setActiveIndex(0);
-  }, [open, search, flatOptions.length]);
-
-  useEffect(() => {
     if (!open || activeIndex < 0 || !listRef.current) return;
 
     const element = listRef.current.querySelector<HTMLElement>(
@@ -137,6 +110,12 @@ function ServiceSearchSelect({
     });
   }, [activeIndex, open]);
 
+  function openSearch() {
+    setSearch(selectedService?.name ?? "");
+    setOpen(true);
+    setActiveIndex(0);
+  }
+
   function handleSelect(service: AppointmentFormService) {
     onSelect(service.id);
     setSearch(service.name);
@@ -146,7 +125,7 @@ function ServiceSearchSelect({
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (!open && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
-      setOpen(true);
+      openSearch();
       return;
     }
 
@@ -180,12 +159,6 @@ function ServiceSearchSelect({
       event.preventDefault();
       setOpen(false);
       setActiveIndex(-1);
-
-      if (selectedService) {
-        setSearch(selectedService.name);
-      } else {
-        setSearch("");
-      }
     }
   }
 
@@ -193,13 +166,14 @@ function ServiceSearchSelect({
     <div ref={wrapperRef} className="relative">
       <input
         type="text"
-        value={search}
+        value={displayedSearch}
         placeholder={placeholder}
-        onFocus={() => setOpen(true)}
+        onFocus={openSearch}
         onKeyDown={handleKeyDown}
         onChange={(e) => {
           setSearch(e.target.value);
           setOpen(true);
+          setActiveIndex(0);
         }}
         className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none"
       />
