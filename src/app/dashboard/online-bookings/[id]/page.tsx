@@ -217,7 +217,7 @@ export default async function OnlineBookingDetailsPage({
                         required
                       >
                         <option value="">{t.select}</option>
-                        {options.employees.map((employee: any) => (
+                        {options.employees.map((employee) => (
                           <option key={employee.id} value={employee.id}>
                             {employee.display_name}
                           </option>
@@ -234,7 +234,7 @@ export default async function OnlineBookingDetailsPage({
                         required
                       >
                         <option value="">{t.select}</option>
-                        {options.rooms.map((room: any) => (
+                        {options.rooms.map((room) => (
                           <option key={room.id} value={room.id}>
                             {room.name}
                           </option>
