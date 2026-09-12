@@ -89,36 +89,68 @@ function getClientSegment(args: {
 
 export async function getClientsList(search?: string): Promise<ClientListItem[]> {
   const supabase = await createClient();
-  let query = supabase
+
+  let clientsQuery = supabase
     .from("clients")
-    .select(`
-      id, first_name, last_name, phone, email, notes,
-      appointments:appointments!appointments_client_id_fkey (id, appointment_date)
-    `)
+    .select("id, first_name, last_name, phone, email, notes")
     .eq("is_active", true);
 
   if (search?.trim()) {
     const q = search.trim().replace(/[(),]/g, " ");
-    query = query.or(
+    clientsQuery = clientsQuery.or(
       `first_name.ilike.%${q}%,last_name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`,
     );
   }
 
-  const { data, error } = await query
+  const { data: clients, error: clientsError } = await clientsQuery
     .order("first_name", { ascending: true })
     .order("last_name", { ascending: true });
 
-  if (error) {
-    console.error("getClientsList failed:", error.message);
+  if (clientsError) {
+    console.error("getClientsList clients query failed:", clientsError.message);
     throw new Error("Nije moguće dohvatiti klijente.");
   }
 
+  const clientIds = (clients ?? []).map((client: any) => client.id);
+
+  if (clientIds.length === 0) return [];
+
+  const { data: appointments, error: appointmentsError } = await supabase
+    .from("appointments")
+    .select("client_id, appointment_date")
+    .in("client_id", clientIds);
+
+  if (appointmentsError) {
+    console.error(
+      "getClientsList appointments summary failed:",
+      appointmentsError.message,
+    );
+    throw new Error("Nije moguće dohvatiti termine klijenata.");
+  }
+
   const today = new Date().toISOString().slice(0, 10);
-  return (data ?? []).map((client: any) => {
-    const appointments = (client.appointments ?? []) as Array<{ appointment_date: string }>;
-    const dates = appointments.map((item) => item.appointment_date).filter(Boolean);
+  const appointmentsByClient = new Map<
+    string,
+    Array<{ appointment_date: string }>
+  >();
+
+  for (const appointment of appointments ?? []) {
+    if (!appointment.client_id || !appointment.appointment_date) continue;
+
+    const current = appointmentsByClient.get(appointment.client_id) ?? [];
+    current.push({ appointment_date: appointment.appointment_date });
+    appointmentsByClient.set(appointment.client_id, current);
+  }
+
+  return (clients ?? []).map((client: any) => {
+    const clientAppointments = appointmentsByClient.get(client.id) ?? [];
+    const dates = clientAppointments
+      .map((item) => item.appointment_date)
+      .filter(Boolean);
+
     const past = dates.filter((date) => date <= today).sort().reverse();
     const future = dates.filter((date) => date >= today).sort();
+
     return {
       id: client.id,
       full_name: fullName(client.first_name, client.last_name),
@@ -126,7 +158,7 @@ export async function getClientsList(search?: string): Promise<ClientListItem[]>
       email: client.email,
       note: client.notes,
       internal_note: null,
-      appointments_count: appointments.length,
+      appointments_count: clientAppointments.length,
       last_appointment: past[0] ?? null,
       next_appointment: future[0] ?? null,
     };
