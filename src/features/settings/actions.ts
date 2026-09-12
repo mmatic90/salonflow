@@ -51,10 +51,11 @@ export async function createServiceAction(
   _prevState: SettingsActionState,
   formData: FormData,
 ): Promise<SettingsActionState> {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const name = String(formData.get("name") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
@@ -115,10 +116,11 @@ export async function createRoomAction(
   _prevState: SettingsActionState,
   formData: FormData,
 ): Promise<SettingsActionState> {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const name = String(formData.get("name") ?? "").trim();
 
@@ -166,10 +168,11 @@ export async function createEquipmentAction(
   _prevState: SettingsActionState,
   formData: FormData,
 ): Promise<SettingsActionState> {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const name = String(formData.get("name") ?? "").trim();
     const quantity = Number(formData.get("quantity_total") ?? 0);
@@ -220,8 +223,11 @@ export async function createEquipmentAction(
 }
 
 export async function deleteServiceAction(serviceId: string) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const { data: beforeItem } = await supabase
       .from("services")
@@ -268,8 +274,11 @@ export async function deleteServiceAction(serviceId: string) {
 }
 
 export async function deleteRoomAction(roomId: string) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const { data: beforeItem } = await supabase
       .from("rooms")
@@ -313,8 +322,11 @@ export async function deleteRoomAction(roomId: string) {
 }
 
 export async function deleteEquipmentAction(equipmentId: string) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
+    const permissions = await requireAdminForSettings();
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const { data: beforeItem } = await supabase
       .from("equipment")
@@ -373,10 +385,11 @@ export async function bulkUpdateServicesAction(
     is_online_bookable: boolean;
   }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.name.trim()) {
@@ -439,10 +452,11 @@ export async function bulkUpdateServicesAction(
 export async function bulkUpdateRoomsAction(
   items: Array<{ id: string; name: string; is_active: boolean }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.name.trim()) {
@@ -497,10 +511,11 @@ export async function bulkUpdateEquipmentAction(
     is_active: boolean;
   }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.name.trim()) {
@@ -555,10 +570,11 @@ export async function bulkUpdateEquipmentAction(
 export async function bulkUpdateServiceRoomsAction(
   items: Array<{ service_id: string; room_ids: string[] }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const serviceIds = items
       .map((item) => item.service_id)
@@ -619,10 +635,11 @@ export async function bulkUpdateServiceRoomsAction(
 export async function bulkUpdateEmployeeServicesAction(
   items: Array<{ employee_id: string; service_ids: string[] }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const employeeIds = items
       .map((item) => item.employee_id)
@@ -684,10 +701,11 @@ export async function bulkUpdateEmployeeServicesAction(
 export async function bulkUpdateServiceEquipmentAction(
   items: Array<{ service_id: string; equipment_ids: string[] }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const serviceIds = items
       .map((item) => item.service_id)
@@ -753,10 +771,11 @@ export async function bulkUpdateSalonWorkingHoursAction(
     is_closed: boolean;
   }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.is_closed && (!item.opens_at || !item.closes_at)) {
@@ -982,10 +1001,11 @@ export async function bulkUpdateEmployeesAction(
     is_active: boolean;
   }>,
 ) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.display_name.trim()) {
@@ -1075,10 +1095,11 @@ export async function bulkUpdateEmployeesAction(
 
 
 export async function deactivateEmployeeAction(employeeId: string) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const { data: beforeEmployee, error: fetchError } = await supabase
       .from("employees")
@@ -1156,10 +1177,11 @@ export async function deactivateEmployeeAction(employeeId: string) {
 
 
 export async function resetEmployeePasswordAction(employeeId: string) {
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const { data: employee, error: employeeError } = await supabase
       .from("employees")
@@ -1232,10 +1254,11 @@ export async function createEmployeeAction(
     password: String(formData.get("password") ?? "1234").trim(),
   };
 
+  let t = getDictionary("hr").settings.actionMessages;
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
-    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
+    t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     if (!values.display_name) {
       return { error: "Ime djelatnika je obavezno.", success: "", values };
