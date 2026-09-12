@@ -5,6 +5,7 @@ import { RotateCcw } from "lucide-react";
 import { bulkUpdateServiceEquipmentAction } from "@/features/settings/actions";
 import type { ServiceEquipmentMappingRow } from "@/features/settings/queries";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type ServiceItem = {
   id: string;
@@ -19,6 +20,7 @@ type EquipmentItem = {
 };
 
 type Props = {
+  locale?: AppLocale;
   services: ServiceItem[];
   equipment: EquipmentItem[];
   mappings: ServiceEquipmentMappingRow[];
@@ -30,10 +32,12 @@ type EditableMapping = {
 };
 
 export default function ServiceEquipmentTable({
+  locale = "hr",
   services,
   equipment,
   mappings,
 }: Props) {
+  const t = getDictionary(locale).settings;
   const activeServices = useMemo(
     () => services.filter((service) => service.is_active),
     [services],
@@ -122,8 +126,8 @@ export default function ServiceEquipmentTable({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-neutral-600">
-          Označi opremu potrebnu za uslugu pa klikni{" "}
-          <span className="font-medium">Spremi izmjene</span>.
+          {t.mapping.equipmentHint}{" "}
+          <span className="font-medium">{t.saveChanges}</span>.
         </div>
 
         <div className="flex gap-2">
@@ -134,7 +138,7 @@ export default function ServiceEquipmentTable({
             className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 px-4 py-2 text-sm font-medium disabled:opacity-50"
           >
             <RotateCcw className="h-4 w-4" />
-            Poništi
+            {t.reset}
           </button>
 
           <button
@@ -143,7 +147,7 @@ export default function ServiceEquipmentTable({
             disabled={pending || !hasChanges}
             className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
-            {pending ? "Spremanje..." : "Spremi izmjene"}
+            {pending ? t.saving : t.saveChanges}
           </button>
         </div>
       </div>
@@ -152,7 +156,7 @@ export default function ServiceEquipmentTable({
         <table className="min-w-full border-collapse">
           <thead className="bg-neutral-50">
             <tr className="text-left text-sm text-neutral-600">
-              <th className="px-4 py-3 font-semibold">Usluga</th>
+              <th className="px-4 py-3 font-semibold">{t.mapping.service}</th>
               {activeEquipment.map((item) => (
                 <th
                   key={item.id}
