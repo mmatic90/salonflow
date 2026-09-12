@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Lang = "hr" | "en" | "it";
@@ -163,18 +163,10 @@ function formatPrice(price: number | null | undefined, currency: string) {
   }).format(price);
 }
 
-function formatDateInputValue(date: unknown) {
+function formatDateInputValue(date: Date | string) {
   if (!date) return "";
 
-  let d: Date;
-
-  if (date instanceof Date) {
-    d = date;
-  } else if (typeof date === "string") {
-    d = new Date(`${date}T00:00:00`);
-  } else {
-    d = new Date(date as any);
-  }
+  const d = date instanceof Date ? date : new Date(`${date}T00:00:00`);
 
   if (Number.isNaN(d.getTime())) {
     console.error("Invalid date passed:", date);
@@ -258,7 +250,7 @@ export default function BookingClient({
         ),
       ),
     );
-  }, [services, lang, t.otherCategory]);
+  }, [services, t.otherCategory]);
 
   const filteredServices = useMemo(() => {
     if (!selectedGroup) return [];
@@ -267,7 +259,7 @@ export default function BookingClient({
       (service) =>
         (getServiceGroup(service) || t.otherCategory) === selectedGroup,
     );
-  }, [services, selectedGroup, lang, t.otherCategory]);
+  }, [services, selectedGroup, t.otherCategory]);
 
   async function loadAvailability(service: Service, date: string) {
     setLoading(true);
@@ -308,13 +300,6 @@ export default function BookingClient({
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (selectedService && selectedDate) {
-      loadAvailability(selectedService, selectedDate);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedService]);
 
   async function submitBooking() {
     if (submitting) return;
@@ -483,6 +468,7 @@ export default function BookingClient({
                         setSelectedService(service);
                         setSelectedDate(today);
                         setCalendarStartDate(today);
+                        void loadAvailability(service, today);
                       }}
                       className="group rounded-2xl border border-[#eadbd2] bg-[#f8f3ef] p-5 text-left transition hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
                     >
