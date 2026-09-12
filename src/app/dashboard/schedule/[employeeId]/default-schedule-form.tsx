@@ -40,14 +40,14 @@ export default function DefaultScheduleForm({
   );
 
   const initialWorkingMap = useMemo(() => {
-    return dayRows.reduce<Record<number, boolean>>((acc, row) => {
+    return dayValues.reduce<Record<number, boolean>>((acc, value) => {
       const item = defaultSchedule.find(
-        (schedule) => schedule.day_of_week === row.value,
+        (schedule) => schedule.day_of_week === value,
       );
       const salonDay = salonHours.find(
-        (salonHour) => salonHour.day_of_week === row.value,
+        (salonHour) => salonHour.day_of_week === value,
       );
-      acc[row.value] =
+      acc[value] =
         salonDay?.is_closed || !salonDay ? false : (item?.is_working ?? false);
       return acc;
     }, {});
