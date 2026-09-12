@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit/write-audit-log";
 import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 export type ClientFormValues = {
   full_name: string;
@@ -64,10 +65,11 @@ export async function createClientAction(
 ): Promise<ClientActionState> {
   const permissions = await requireDashboardUser();
   const supabase = await createClient();
+  const t = getDictionary(permissions.organizationLocale).clients.actionMessages;
   const values = getFormValues(formData);
 
   if (!values.full_name) {
-    return { error: "Ime klijenta je obavezno.", values };
+    return { error: t.nameRequired, values };
   }
 
   const { firstName, lastName } = splitFullName(values.full_name);
@@ -90,7 +92,7 @@ export async function createClientAction(
     .single();
 
   if (error || !client) {
-    return { error: error?.message || "Nije moguće spremiti klijenta.", values };
+    return { error: error?.message || t.saveError, values };
   }
 
   await writeAuditLog({
@@ -112,10 +114,11 @@ export async function updateClientAction(
 ): Promise<ClientActionState> {
   const permissions = await requireDashboardUser();
   const supabase = await createClient();
+  const t = getDictionary(permissions.organizationLocale).clients.actionMessages;
   const values = getFormValues(formData);
 
   if (!values.full_name) {
-    return { error: "Ime klijenta je obavezno.", values };
+    return { error: t.nameRequired, values };
   }
 
   const { data: beforeClient, error: beforeError } = await supabase
@@ -164,6 +167,7 @@ export async function updateClientAction(
 export async function deleteClientAction(clientId: string) {
   const permissions = await requireDashboardUser();
   const supabase = await createClient();
+  const t = getDictionary(permissions.organizationLocale).clients.actionMessages;
 
   const { data: clientBefore, error: beforeError } = await supabase
     .from("clients")
@@ -203,5 +207,5 @@ export async function deleteClientAction(clientId: string) {
   });
 
   revalidateClientPaths(clientId);
-  return { ok: true, message: "Klijent je uklonjen s liste." };
+  return { ok: true, message: t.removed };
 }
