@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUserPermissions } from "@/lib/permissions";
 
 type AppointmentStatus =
   | "scheduled"
@@ -57,10 +56,7 @@ function safeRate(part: number, total: number) {
   return Math.round((part / total) * 100);
 }
 
-export async function getReportsDashboardData() {
-  const permissions = await getCurrentUserPermissions();
-  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
-
+export async function getReportsDashboardData(organizationId: string) {
   const supabase = await createClient();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -99,14 +95,14 @@ export async function getReportsDashboardData() {
         sort_order
       )
     `)
-    .eq("organization_id", permissions.organizationId)
+    .eq("organization_id", organizationId)
     .gte("appointment_date", last14StartStr)
     .lte("appointment_date", monthEndStr)
     .order("appointment_date", { ascending: true }),
     supabase
       .from("online_booking_requests")
       .select("id, status, created_at")
-      .eq("organization_id", permissions.organizationId)
+      .eq("organization_id", organizationId)
       .gte("created_at", monthStartIso)
       .lt("created_at", nextMonthStartIso),
   ]);
