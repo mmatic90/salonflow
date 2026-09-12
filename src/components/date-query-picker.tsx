@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useOptimistic, useTransition } from "react";
 
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 
@@ -24,16 +24,10 @@ export default function DateQueryPicker({
   const resolvedLabel = label ?? dictionary.appointments.selectDate;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [localValue, setLocalValue] = useState(value);
+  const [optimisticValue, setOptimisticValue] = useOptimistic(value);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-
   function handleChange(nextDate: string) {
-    setLocalValue(nextDate);
-
     const params = new URLSearchParams(searchParams.toString());
     params.set("date", nextDate);
 
@@ -42,6 +36,7 @@ export default function DateQueryPicker({
     });
 
     startTransition(() => {
+      setOptimisticValue(nextDate);
       router.replace(`${basePath}?${params.toString()}`);
     });
   }
@@ -57,7 +52,7 @@ export default function DateQueryPicker({
           id="date"
           name="date"
           type="date"
-          value={localValue}
+          value={optimisticValue}
           onChange={(e) => handleChange(e.target.value)}
           className="rounded-xl border border-app-soft bg-white px-4 py-2 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
         />
