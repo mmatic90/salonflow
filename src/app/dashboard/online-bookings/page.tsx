@@ -105,14 +105,11 @@ export default async function OnlineBookingsPage({
                 {t.title}
               </h1>
 
-              <p className="mt-2 text-app-muted">
-                Pregledaj nove, prihvaćene i odbijene zahtjeve za online
-                rezervaciju.
-              </p>
+              <p className="mt-2 text-app-muted">{t.intro}</p>
             </div>
 
             <div className="rounded-2xl border border-app-soft bg-app-card-alt px-5 py-3 text-sm text-app-muted">
-              Danas:{" "}
+              {t.today}:{" "}
               <span className="font-bold text-app-text">{counts.today}</span>
             </div>
           </div>
@@ -239,7 +236,7 @@ export default async function OnlineBookingsPage({
                             <input
                               type="hidden"
                               name="rejection_reason"
-                              value="Termin je u međuvremenu zauzet."
+                              value={t.rejectionReasons[0]}
                             />
 
                             <button
