@@ -3,8 +3,6 @@ import { getClientsList } from "@/features/clients/queries";
 import { deleteClientAction } from "@/features/clients/actions";
 import EmptyStateCard from "@/components/empty-state-card";
 import PageShell from "@/components/page-shell";
-import PageHeader from "@/components/page-header";
-import PageSection from "@/components/page-section";
 import SettingsDeleteButton from "@/components/settings-delete-button";
 import {
   CalendarClock,
@@ -12,13 +10,12 @@ import {
   Phone,
   Plus,
   Search,
-  UserRound,
   Users,
 } from "lucide-react";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { getDictionary } from "@/lib/i18n";
 
- type SearchParams = Promise<{
+type SearchParams = Promise<{
   q?: string;
 }>;
 
