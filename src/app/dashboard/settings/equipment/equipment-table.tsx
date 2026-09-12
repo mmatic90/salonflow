@@ -162,6 +162,7 @@ export default function EquipmentTable({ locale = "hr", equipment }: Props) {
                     </span>
 
                     <SettingsDeleteButton
+                      locale={locale}
                       label={item.name}
                       onDelete={deleteEquipmentAction.bind(null, item.id)}
                     />
