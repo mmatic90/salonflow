@@ -81,7 +81,7 @@ export async function getEmployeeSchedulePageData(
   const supabase = await createClient();
   const organizationId = permissions.organizationId;
 
-  const [employeeResult, defaultResult, overrideResult] = await Promise.all([
+  const [employeeResult, defaultResult, overrideResult, salonHoursResult] = await Promise.all([
     supabase
       .from("employees")
       .select("id, first_name, last_name, color")
@@ -101,6 +101,11 @@ export async function getEmployeeSchedulePageData(
       .eq("organization_id", organizationId)
       .eq("employee_id", employeeId)
       .order("schedule_date", { ascending: true }),
+    supabase
+      .from("salon_working_hours")
+      .select("day_of_week, opens_at, closes_at, is_closed")
+      .eq("organization_id", organizationId)
+      .order("day_of_week", { ascending: true }),
   ]);
 
   if (employeeResult.error) {
@@ -116,6 +121,10 @@ export async function getEmployeeSchedulePageData(
   if (overrideResult.error) {
     console.error("Schedule override query failed", overrideResult.error);
     throw new Error("Nije moguće dohvatiti iznimke rasporeda.");
+  }
+  if (salonHoursResult.error) {
+    console.error("Salon hours query failed", salonHoursResult.error);
+    throw new Error("Nije moguće dohvatiti radno vrijeme salona.");
   }
 
   const defaultRows = (defaultResult.data ?? []).map((row) => ({
@@ -142,6 +151,13 @@ export async function getEmployeeSchedulePageData(
     };
   });
 
+  const salonHours = (salonHoursResult.data ?? []).map((row) => ({
+    day_of_week: Number(row.day_of_week),
+    opens_at: String(row.opens_at ?? "").slice(0, 5),
+    closes_at: String(row.closes_at ?? "").slice(0, 5),
+    is_closed: Boolean(row.is_closed),
+  }));
+
   const upcomingSchedule: EmployeeUpcomingScheduleItem[] = Array.from(
     { length: 5 },
     (_, index) => {
@@ -149,6 +165,23 @@ export async function getEmployeeSchedulePageData(
       currentDate.setHours(0, 0, 0, 0);
       currentDate.setDate(currentDate.getDate() + index);
       const dateString = formatDateOnly(currentDate);
+      const salonDay = salonHours.find(
+        (row) => row.day_of_week === currentDate.getDay(),
+      );
+
+      if (!salonDay || salonDay.is_closed) {
+        return {
+          date: formatDateDisplay(currentDate),
+          day_label: dayLabelHr(currentDate),
+          is_working: false,
+          start_time: null,
+          end_time: null,
+          status_label: "Salon zatvoren",
+          reason_label: "Salon je zatvoren",
+          is_override: false,
+        };
+      }
+
       const override = overrideRows.find((row) => row.override_date === dateString);
 
       if (override) {
@@ -209,5 +242,6 @@ export async function getEmployeeSchedulePageData(
     defaultSchedule: defaultRows,
     overrides: overrideRows,
     upcomingSchedule,
+    salonHours,
   };
 }
