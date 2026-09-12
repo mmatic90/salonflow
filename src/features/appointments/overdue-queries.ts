@@ -49,8 +49,8 @@ export async function getOverdueScheduledAppointments(organizationId: string) {
     .eq("organization_id", organizationId)
     .eq("status", "scheduled")
     .lte("appointment_date", todayStr)
-    .order("appointment_date", { ascending: true })
-    .order("end_time", { ascending: true });
+    .order("appointment_date", { ascending: false })
+    .order("end_time", { ascending: false });
 
   if (error) {
     console.error("Unable to load overdue appointments", error);
