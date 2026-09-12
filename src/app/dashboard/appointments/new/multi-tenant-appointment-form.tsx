@@ -101,12 +101,24 @@ export default function MultiTenantAppointmentForm({
         : locale === "it"
           ? "Email e nota dell'appuntamento"
           : "Email i napomena termina",
+    appointmentNoteOnly:
+      locale === "en"
+        ? "Appointment note"
+        : locale === "it"
+          ? "Nota dell'appuntamento"
+          : "Napomena termina",
     selectedClient:
       locale === "en"
         ? "Selected client"
         : locale === "it"
           ? "Cliente selezionato"
           : "Odabrani klijent",
+    changeClient:
+      locale === "en"
+        ? "Change client"
+        : locale === "it"
+          ? "Cambia cliente"
+          : "Promijeni klijenta",
   };
 
   const [error, setError] = useState("");
@@ -123,6 +135,7 @@ export default function MultiTenantAppointmentForm({
   const [clientEmail, setClientEmail] = useState(defaultClient?.email ?? "");
   const [clientSearch, setClientSearch] = useState(defaultClient?.label ?? "");
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
+  const [additionalDetailsOpen, setAdditionalDetailsOpen] = useState(false);
   const [availableEmployees, setAvailableEmployees] = useState<
     AppointmentOption[]
   >([]);
@@ -477,118 +490,124 @@ export default function MultiTenantAppointmentForm({
           description={t.clientDataDescription}
         />
 
-        <div className="relative">
-          <label className="space-y-2 text-sm font-medium text-app-text">
-            <span className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-app-muted" />
-              {t.findExistingClient}
-            </span>
-            <div className="relative">
-              <input
-                className={`${fieldClass} pr-11`}
-                value={clientSearch}
-                onFocus={() => setClientSearchOpen(true)}
-                onBlur={() =>
-                  window.setTimeout(() => setClientSearchOpen(false), 120)
-                }
-                onChange={(event) => {
-                  setClientSearch(event.target.value);
-                  setClientSearchOpen(true);
-                  if (clientId) {
-                    setClientId("");
-                    setClientName("");
-                    setClientPhone("");
-                    setClientEmail("");
+        {!clientId ? (
+          <div className="relative">
+            <label className="space-y-2 text-sm font-medium text-app-text">
+              <span className="flex items-center gap-2">
+                <Search className="h-4 w-4 text-app-muted" />
+                {t.findExistingClient}
+              </span>
+              <div className="relative">
+                <input
+                  className={`${fieldClass} pr-11`}
+                  value={clientSearch}
+                  onFocus={() => setClientSearchOpen(true)}
+                  onBlur={() =>
+                    window.setTimeout(() => setClientSearchOpen(false), 120)
                   }
-                }}
-                placeholder={t.searchClientPlaceholder}
-                autoComplete="off"
-              />
-              {clientSearch ? (
+                  onChange={(event) => {
+                    setClientSearch(event.target.value);
+                    setClientSearchOpen(true);
+                  }}
+                  placeholder={t.searchClientPlaceholder}
+                  autoComplete="off"
+                />
+                {clientSearch ? (
+                  <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => resetClient(true)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-app-muted transition hover:bg-app-bg hover:text-app-text"
+                    aria-label={t.clearClient}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            </label>
+
+            {clientSearchOpen ? (
+              <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-app-soft bg-white p-2 shadow-xl">
                 <button
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => resetClient(true)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 text-app-muted transition hover:bg-app-bg hover:text-app-text"
-                  aria-label={t.clearClient}
+                  onClick={() => resetClient(false)}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-app-bg"
                 >
-                  <X className="h-4 w-4" />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent">
+                    <UserRound className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-app-text">
+                      {t.newClient}
+                    </p>
+                    <p className="text-xs text-app-muted">{t.enterBelow}</p>
+                  </div>
                 </button>
-              ) : null}
-            </div>
-          </label>
 
-          {clientSearchOpen ? (
-            <div className="absolute z-20 mt-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-app-soft bg-white p-2 shadow-xl">
-              <button
-                type="button"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => resetClient(false)}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-app-bg"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent">
-                  <UserRound className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-app-text">
-                    {t.newClient}
+                {filteredClients.length > 0 ? (
+                  filteredClients.map((client) => (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectClient(client)}
+                      className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-app-bg"
+                    >
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-app-bg text-app-muted">
+                        <UserRound className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-app-text">
+                          {client.label}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-app-muted">
+                          {[client.phone, client.email]
+                            .filter(Boolean)
+                            .join(" · ") || t.noContact}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                ) : clientSearch.trim() ? (
+                  <p className="px-3 py-4 text-sm text-app-muted">
+                    {t.noMatchingClient}
                   </p>
-                  <p className="text-xs text-app-muted">{t.enterBelow}</p>
-                </div>
-              </button>
-
-              {filteredClients.length > 0 ? (
-                filteredClients.map((client) => (
-                  <button
-                    key={client.id}
-                    type="button"
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => selectClient(client)}
-                    className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-app-bg"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-app-bg text-app-muted">
-                      <UserRound className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-app-text">
-                        {client.label}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-app-muted">
-                        {[client.phone, client.email].filter(Boolean).join(" · ") ||
-                          t.noContact}
-                      </p>
-                    </div>
-                  </button>
-                ))
-              ) : clientSearch.trim() ? (
-                <p className="px-3 py-4 text-sm text-app-muted">
-                  {t.noMatchingClient}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {clientId ? (
           <>
             <input type="hidden" name="client_name" value={clientName} />
             <input type="hidden" name="client_phone" value={clientPhone} />
             <input type="hidden" name="client_email" value={clientEmail} />
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-700">
-                    {ui.selectedClient}
-                  </p>
-                  <p className="mt-1 font-semibold text-emerald-950">
-                    {clientName}
-                  </p>
-                  <p className="mt-1 text-sm text-emerald-800">
-                    {[clientPhone, clientEmail].filter(Boolean).join(" · ") ||
-                      t.noContact}
-                  </p>
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.1em] text-emerald-700">
+                      {ui.selectedClient}
+                    </p>
+                    <p className="mt-0.5 truncate font-semibold text-emerald-950">
+                      {clientName}
+                    </p>
+                    <p className="mt-0.5 truncate text-sm text-emerald-800">
+                      {[clientPhone, clientEmail].filter(Boolean).join(" · ") ||
+                        t.noContact}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => resetClient(true)}
+                  className="inline-flex shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                >
+                  {ui.changeClient}
+                </button>
               </div>
             </div>
           </>
@@ -624,7 +643,11 @@ export default function MultiTenantAppointmentForm({
         )}
       </section>
 
-      <details className="group rounded-2xl border border-app-soft bg-white shadow-sm">
+      <details
+        open={additionalDetailsOpen}
+        onToggle={(event) => setAdditionalDetailsOpen(event.currentTarget.open)}
+        className="group rounded-2xl border border-app-soft bg-white shadow-sm"
+      >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 md:px-6">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-app-bg text-app-muted">
@@ -633,7 +656,7 @@ export default function MultiTenantAppointmentForm({
             <div>
               <p className="font-semibold text-app-text">{ui.optionalDetails}</p>
               <p className="mt-0.5 text-xs text-app-muted">
-                {ui.optionalDetailsHelp}
+                {clientId ? ui.appointmentNoteOnly : ui.optionalDetailsHelp}
               </p>
             </div>
           </div>
