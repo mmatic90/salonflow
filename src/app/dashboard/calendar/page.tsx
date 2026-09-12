@@ -403,7 +403,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {roomGroups.map((group) => (
                 <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" />
+                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" t={t} />
                   <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} metaLabel={appointment.employee ? t.employee + ": " + appointment.employee.display_name : t.noEmployee} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum nema rezervacija u ovoj sobi." />}</div>
                 </section>
               ))}
@@ -422,7 +422,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {employeeGroups.map((group) => (
                 <section key={group.employeeId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <EmployeeColumnHeader group={group} stickyTop="top-4" />
+                  <EmployeeColumnHeader group={group} stickyTop="top-4" t={t} />
                   <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} colorHex={group.colorHex} metaLabel={appointment.room ? `Soba: ${appointment.room.name}` : "Bez sobe"} />)}</div> : <EmptyStateCard title="Nema termina" description="Za odabrani datum ovaj zaposlenik nema rezerviranih termina." />}</div>
                 </section>
               ))}
