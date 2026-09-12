@@ -141,10 +141,10 @@ export default async function NewAppointmentPage({
             </div>
 
             <Link
-              href={`/dashboard/appointments?date=${defaultDate}`}
+              href={`/dashboard/calendar?date=${defaultDate}`}
               className="inline-flex items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
             >
-              {t.backToAppointments}
+              {dictionary.nav.calendar}
             </Link>
           </div>
         </div>
