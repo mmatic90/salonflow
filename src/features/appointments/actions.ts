@@ -150,30 +150,33 @@ function formatSmsTime(time: string) {
 }
 
 function buildAppointmentCreatedSms(args: {
+  salonName: string;
   clientName: string;
   serviceName: string;
   date: string;
   startTime: string;
 }) {
-  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" uspješno je rezerviran za ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. Body & Soul`;
+  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" uspješno je rezerviran za ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. ${args.salonName}`;
 }
 
 function buildAppointmentReminderSms(args: {
+  salonName: string;
   clientName: string;
   serviceName: string;
   date: string;
   startTime: string;
 }) {
-  return `Podsjetnik: sutra imate termin za "${args.serviceName}" u ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). Body & Soul`;
+  return `Podsjetnik: sutra imate termin za "${args.serviceName}" u ${formatSmsTime(args.startTime)} (${formatSmsDate(args.date)}). ${args.salonName}`;
 }
 
 function buildAppointmentUpdatedSms(args: {
+  salonName: string;
   clientName: string;
   serviceName: string;
   date: string;
   startTime: string;
 }) {
-  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" je izmijenjen. Novi termin je ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. Body & Soul`;
+  return `Bok ${args.clientName}, vaš termin za "${args.serviceName}" je izmijenjen. Novi termin je ${formatSmsDate(args.date)} u ${formatSmsTime(args.startTime)}. ${args.salonName}`;
 }
 
 function didAppointmentDateOrTimeChange(
@@ -256,6 +259,7 @@ function isWithinAllowedSendHours(date: Date) {
 }
 
 async function sendOrScheduleCreatedSms(args: {
+  salonName: string;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -267,6 +271,7 @@ async function sendOrScheduleCreatedSms(args: {
   const supabase = await createClient();
 
   const {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -277,6 +282,7 @@ async function sendOrScheduleCreatedSms(args: {
   } = args;
 
   console.log("[SMS] sendOrScheduleCreatedSms args:", {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -303,6 +309,7 @@ async function sendOrScheduleCreatedSms(args: {
       const createdSms = await sendInstantSms({
         to: clientPhone,
         message: buildAppointmentCreatedSms({
+          salonName,
           clientName,
           serviceName,
           date: appointmentDate,
@@ -363,6 +370,7 @@ async function sendOrScheduleCreatedSms(args: {
 }
 
 async function sendUpdatedSmsIfPossible(args: {
+  salonName: string;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -374,6 +382,7 @@ async function sendUpdatedSmsIfPossible(args: {
   const supabase = await createClient();
 
   const {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -384,6 +393,7 @@ async function sendUpdatedSmsIfPossible(args: {
   } = args;
 
   console.log("[SMS] sendUpdatedSmsIfPossible args:", {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -400,6 +410,7 @@ async function sendUpdatedSmsIfPossible(args: {
     const sms = await sendInstantSms({
       to: clientPhone,
       message: buildAppointmentUpdatedSms({
+        salonName,
         clientName,
         serviceName,
         date: appointmentDate,
@@ -426,6 +437,7 @@ async function sendUpdatedSmsIfPossible(args: {
 }
 
 async function scheduleReminderIfPossible(args: {
+  salonName: string;
   appointmentId: string;
   clientPhone: string | null;
   clientName: string;
@@ -437,6 +449,7 @@ async function scheduleReminderIfPossible(args: {
   const supabase = await createClient();
 
   const {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -447,6 +460,7 @@ async function scheduleReminderIfPossible(args: {
   } = args;
 
   console.log("[SMS] scheduleReminderIfPossible args:", {
+    salonName,
     appointmentId,
     clientPhone,
     clientName,
@@ -491,6 +505,7 @@ async function scheduleReminderIfPossible(args: {
     const reminderSms = await scheduleSms({
       to: clientPhone,
       message: buildAppointmentReminderSms({
+        salonName,
         clientName,
         serviceName,
         date: appointmentDate,
@@ -1096,6 +1111,7 @@ export async function createAppointmentAction(
   }
 
   await sendOrScheduleCreatedSms({
+    salonName: permissions.organizationName,
     appointmentId: appointment.id,
     clientPhone,
     clientName: values.client_name,
@@ -1106,6 +1122,7 @@ export async function createAppointmentAction(
   });
 
   await scheduleReminderIfPossible({
+    salonName: permissions.organizationName,
     appointmentId: appointment.id,
     clientPhone,
     clientName: values.client_name,
@@ -1356,6 +1373,7 @@ export async function updateAppointmentAction(
   }
 
   await scheduleReminderIfPossible({
+    salonName,
     appointmentId,
     clientPhone,
     clientName: values.client_name,
