@@ -124,7 +124,7 @@ export default function DashboardSidebar({ role, displayName, organizationName, 
           <div className="text-sm text-app-muted">{dictionary.loggedInAs}: <span className="font-medium text-app-text">{displayName}</span></div>
           <div className="flex items-center gap-2">
             <Link href="/dashboard/account" className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg">{dictionary.myAccount}</Link>
-            <LogoutButton />
+            <LogoutButton locale={locale} />
           </div>
         </div>
 
@@ -182,13 +182,13 @@ export default function DashboardSidebar({ role, displayName, organizationName, 
                 <div className="text-sm text-app-muted">{dictionary.loggedInAs}: <span className="font-medium text-app-text">{displayName}</span></div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Link href="/dashboard/account" className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg">{dictionary.myAccount}</Link>
-                  <LogoutButton />
+                  <LogoutButton locale={locale} />
                 </div>
               </>
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <Link href="/dashboard/account" title={dictionary.myAccount} className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg"><UserCircle2 className="h-4 w-4" /></Link>
-                <LogoutButton />
+                <LogoutButton locale={locale} />
               </div>
             )}
           </div>
