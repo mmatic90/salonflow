@@ -338,7 +338,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-xl font-bold capitalize tracking-tight text-app-text sm:text-2xl md:text-3xl">{formatDateTitle(selectedDate, permissions.organizationLocale)}</h1>
-                  <CalendarCurrentTime selectedDate={selectedDate} today={today} />
+                  <CalendarCurrentTime
+                    selectedDate={selectedDate}
+                    today={today}
+                    locale={permissions.organizationLocale}
+                    nowLabel={t.now}
+                  />
                 </div>
 
                 <div className="mt-4 w-full max-w-xs">
