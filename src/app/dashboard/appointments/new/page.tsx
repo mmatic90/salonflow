@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getTodayLocalDate } from "@/lib/utils";
 import { getCurrentUserPermissions } from "@/lib/permissions";
 import MultiTenantAppointmentForm from "./multi-tenant-appointment-form";
+import { getDictionary } from "@/lib/i18n";
 
 type SearchParams = Promise<{
   date?: string;
@@ -55,6 +56,8 @@ export default async function NewAppointmentPage({
     redirect("/login");
   }
 
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.appointments;
   const supabase = await createClient();
   const organizationId = permissions.organizationId;
 
@@ -92,7 +95,7 @@ export default async function NewAppointmentPage({
     clientsResult.error;
 
   if (firstError) {
-    throw new Error(firstError.message || "Nije moguće pripremiti formu termina.");
+    throw new Error(firstError.message || t.formPreparationError);
   }
 
   const resolvedSearchParams = await searchParams;
@@ -108,7 +111,7 @@ export default async function NewAppointmentPage({
     id: employee.id,
     label:
       [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
-      "Zaposlenik",
+      t.genericEmployee,
   }));
 
   const rooms = (roomsResult.data ?? []).map((room) => ({
@@ -131,9 +134,9 @@ export default async function NewAppointmentPage({
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-app-text">Novi termin</h1>
+              <h1 className="text-3xl font-bold text-app-text">{t.newTitle}</h1>
               <p className="mt-2 text-app-muted">
-                Dodajte termin za salon {permissions.organizationName}.
+                {t.newSubtitlePrefix} {permissions.organizationName}.
               </p>
             </div>
 
@@ -141,13 +144,14 @@ export default async function NewAppointmentPage({
               href={`/dashboard/appointments?date=${defaultDate}`}
               className="inline-flex items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
             >
-              Natrag na termine
+              {t.backToAppointments}
             </Link>
           </div>
         </div>
 
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <MultiTenantAppointmentForm
+            locale={permissions.organizationLocale}
             services={services}
             employees={employees}
             rooms={rooms}
