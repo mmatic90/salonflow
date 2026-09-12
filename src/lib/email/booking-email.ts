@@ -126,8 +126,8 @@ export async function sendBookingAcceptedEmail(args: {
     from: fromEmail,
     to: [args.to],
     subject: isHr
-      ? "${args.salonName?.trim() || "Salon"} — Termin potvrđen"
-      : "${args.salonName?.trim() || "Salon"} — Appointment confirmed",
+      ? `${args.salonName?.trim() || "Salon"} — Termin potvrđen`
+      : `${args.salonName?.trim() || "Salon"} — Appointment confirmed`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
@@ -191,8 +191,8 @@ export async function sendBookingRejectedEmail(args: {
     from: fromEmail,
     to: [args.to],
     subject: isHr
-      ? "${args.salonName?.trim() || "Salon"} — Zahtjev za termin"
-      : "${args.salonName?.trim() || "Salon"} — Booking request update",
+      ? `${args.salonName?.trim() || "Salon"} — Zahtjev za termin`
+      : `${args.salonName?.trim() || "Salon"} — Booking request update`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
@@ -255,8 +255,8 @@ export async function sendAppointmentReminderEmail(args: {
     from: fromEmail,
     to: [args.to],
     subject: isHr
-      ? "${args.salonName?.trim() || "Salon"} — Podsjetnik za termin"
-      : "${args.salonName?.trim() || "Salon"} — Appointment reminder",
+      ? `${args.salonName?.trim() || "Salon"} — Podsjetnik za termin`
+      : `${args.salonName?.trim() || "Salon"} — Appointment reminder`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
@@ -316,8 +316,8 @@ export async function sendGoogleReviewRequestEmail(args: {
     from: fromEmail,
     to: [args.to],
     subject: isHr
-      ? "${args.salonName?.trim() || "Salon"} — Hvala na dolasku"
-      : "${args.salonName?.trim() || "Salon"} — Thank you for your visit",
+      ? `${args.salonName?.trim() || "Salon"} — Hvala na dolasku`
+      : `${args.salonName?.trim() || "Salon"} — Thank you for your visit`,
     html: layout(content, lang, {
       salonName: args.salonName,
       phone: args.salonPhone,
