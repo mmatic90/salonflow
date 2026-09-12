@@ -38,13 +38,16 @@ export default async function ClientsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const permissions = await requireDashboardUser();
-  const dictionary = getDictionary(permissions.organizationLocale);
-  const t = dictionary.clients;
-
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams.q || "";
-  const clients = await getClientsList(query);
+
+  const [permissions, clients] = await Promise.all([
+    requireDashboardUser(),
+    getClientsList(query),
+  ]);
+
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.clients;
   const clientsWithUpcoming = clients.filter((client) => client.next_appointment).length;
   const totalAppointments = clients.reduce((sum, client) => sum + client.appointments_count, 0);
   const averageAppointments = clients.length ? Math.round(totalAppointments / clients.length) : 0;
@@ -108,7 +111,7 @@ export default async function ClientsPage({
             />
           </div>
           <button type="submit" className="rounded-xl bg-app-card-alt px-5 py-3 text-sm font-semibold text-app-text transition hover:bg-app-bg">
-            Pretraži
+            {t.search}
           </button>
           {query ? (
             <Link href="/dashboard/clients" className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-app-muted transition hover:bg-app-bg hover:text-app-text">
@@ -141,7 +144,7 @@ export default async function ClientsPage({
                       </div>
                     </div>
                     <span className="rounded-full bg-app-bg px-2.5 py-1 text-xs font-semibold text-app-text">
-                      {client.next_appointment ? t.active : "Bez budućeg {t.appointments}"}
+                      {client.next_appointment ? t.active : t.noUpcoming}
                     </span>
                   </div>
 
@@ -192,7 +195,7 @@ export default async function ClientsPage({
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-app-accent/10 font-extrabold text-app-accent">
                             {client.full_name.split(" ").map((part) => part[0]).slice(0,2).join("").toUpperCase()}
                           </div>
-                          <div><p className="font-bold text-app-text">{client.full_name}</p><p className="mt-1 text-xs text-app-muted">{client.next_appointment ? t.hasUpcoming : "Bez budućeg {t.appointments}"}</p></div>
+                          <div><p className="font-bold text-app-text">{client.full_name}</p><p className="mt-1 text-xs text-app-muted">{client.next_appointment ? t.hasUpcoming : t.noUpcoming}</p></div>
                         </Link>
                       </td>
                       <td className="px-5 py-4">
