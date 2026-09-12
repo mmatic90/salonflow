@@ -378,10 +378,32 @@ export default function BookingClient({
         }),
       });
 
-      const data = await res.json();
+      const rawResponse = await res.text();
+
+      let data: {
+        ok?: boolean;
+        requestId?: string;
+        error?: string;
+      } = {};
+
+      if (rawResponse) {
+        try {
+          data = JSON.parse(rawResponse);
+        } catch {
+          console.error("Public booking returned a non-JSON response:", rawResponse);
+        }
+      }
 
       if (!res.ok) {
-        alert(data.error || t.alerts.bookingError);
+        alert(
+          data.error ||
+            `${t.alerts.bookingError} (${res.status})`,
+        );
+        return;
+      }
+
+      if (!data.requestId) {
+        alert(t.alerts.bookingError);
         return;
       }
 
