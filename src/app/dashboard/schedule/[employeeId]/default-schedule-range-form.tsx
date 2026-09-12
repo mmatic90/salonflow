@@ -9,28 +9,26 @@ import type {
   EmployeeDefaultScheduleItem,
   SalonScheduleHourItem,
 } from "@/features/schedule/types";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   employeeId: string;
   defaultSchedule: EmployeeDefaultScheduleItem[];
   salonHours: SalonScheduleHourItem[];
 };
 
-const dayOptions = [
-  { value: 1, label: "Ponedjeljak" },
-  { value: 2, label: "Utorak" },
-  { value: 3, label: "Srijeda" },
-  { value: 4, label: "Četvrtak" },
-  { value: 5, label: "Petak" },
-  { value: 6, label: "Subota" },
-  { value: 0, label: "Nedjelja" },
-];
+const dayValues = [1, 2, 3, 4, 5, 6, 0];
 
 export default function DefaultScheduleRangeForm({
+  locale = "hr",
   employeeId,
   defaultSchedule,
   salonHours,
 }: Props) {
+  const t = getDictionary(locale).schedule;
+  const dayOptions = dayValues.map((value) => ({ value, label: t.days[value] }));
+
   const initialState: ScheduleActionState = {
     error: "",
     success: "",
@@ -73,13 +71,13 @@ export default function DefaultScheduleRangeForm({
     <form action={formAction} className="space-y-4">
       {closedDays.length ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Zatvoreni dani salona ne mogu se uključiti u radni raspored zaposlenika.
+          {t.closedDaysNotice}
         </div>
       ) : null}
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label htmlFor="day_from" className="mb-1 block text-sm font-medium">
-            Od dana
+            {t.fromDay}
           </label>
           <select
             id="day_from"
@@ -95,7 +93,7 @@ export default function DefaultScheduleRangeForm({
 
               return (
                 <option key={day.value} value={day.value} disabled={closed}>
-                  {day.label}{closed ? " — salon zatvoren" : ""}
+                  {day.label}{closed ? " — " + t.salonClosedSuffix : ""}
                 </option>
               );
             })}
@@ -104,7 +102,7 @@ export default function DefaultScheduleRangeForm({
 
         <div>
           <label htmlFor="day_to" className="mb-1 block text-sm font-medium">
-            Do dana
+            {t.toDay}
           </label>
           <select
             id="day_to"
@@ -120,7 +118,7 @@ export default function DefaultScheduleRangeForm({
 
               return (
                 <option key={day.value} value={day.value} disabled={closed}>
-                  {day.label}{closed ? " — salon zatvoren" : ""}
+                  {day.label}{closed ? " — " + t.salonClosedSuffix : ""}
                 </option>
               );
             })}
@@ -134,7 +132,7 @@ export default function DefaultScheduleRangeForm({
           name="range_is_working"
           defaultChecked={suggestedRange.isWorking}
         />
-        Radi u ovom rasponu dana
+        {t.worksInRange}
       </label>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -143,7 +141,7 @@ export default function DefaultScheduleRangeForm({
             htmlFor="range_start_time"
             className="mb-1 block text-sm font-medium"
           >
-            Početak
+            {t.start}
           </label>
           <input
             id="range_start_time"
@@ -159,7 +157,7 @@ export default function DefaultScheduleRangeForm({
             htmlFor="range_end_time"
             className="mb-1 block text-sm font-medium"
           >
-            Kraj
+            {t.end}
           </label>
           <input
             id="range_end_time"
@@ -189,7 +187,7 @@ export default function DefaultScheduleRangeForm({
           disabled={pending}
           className="rounded-xl bg-black px-5 py-3 font-medium text-white disabled:opacity-50"
         >
-          {pending ? "Primjenjujem..." : "Primijeni na raspon dana"}
+          {pending ? t.applying : t.applyRange}
         </button>
       </div>
     </form>
