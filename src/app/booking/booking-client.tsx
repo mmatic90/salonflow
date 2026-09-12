@@ -101,7 +101,7 @@ const text = {
       availabilityError: "Error loading available times.",
       bookingError: "Error sending booking request.",
     },
-  },,
+  },
   it: {
     min: "min",
     back: "← Torna ai servizi",
