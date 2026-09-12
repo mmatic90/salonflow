@@ -9,28 +9,25 @@ import type {
   EmployeeDefaultScheduleItem,
   SalonScheduleHourItem,
 } from "@/features/schedule/types";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   employeeId: string;
   defaultSchedule: EmployeeDefaultScheduleItem[];
   salonHours: SalonScheduleHourItem[];
 };
 
-const dayRows = [
-  { value: 1, label: "Ponedjeljak" },
-  { value: 2, label: "Utorak" },
-  { value: 3, label: "Srijeda" },
-  { value: 4, label: "Četvrtak" },
-  { value: 5, label: "Petak" },
-  { value: 6, label: "Subota" },
-  { value: 0, label: "Nedjelja" },
-];
+const dayValues = [1,2,3,4,5,6,0];
 
 export default function DefaultScheduleForm({
+  locale = "hr",
   employeeId,
   defaultSchedule,
   salonHours,
 }: Props) {
+  const t = getDictionary(locale).schedule;
+  const dayRows = dayValues.map((value) => ({ value, label: t.days[value] }));
   const initialState: ScheduleActionState = {
     error: "",
     success: "",
@@ -65,10 +62,10 @@ export default function DefaultScheduleForm({
         <table className="min-w-full border-collapse">
           <thead className="bg-app-table-head">
             <tr className="text-left text-sm text-app-muted">
-              <th className="px-4 py-3 font-semibold">Dan</th>
-              <th className="px-4 py-3 font-semibold">Radi</th>
-              <th className="px-4 py-3 font-semibold">Početak</th>
-              <th className="px-4 py-3 font-semibold">Kraj</th>
+              <th className="px-4 py-3 font-semibold">{t.day}</th>
+              <th className="px-4 py-3 font-semibold">{t.works}</th>
+              <th className="px-4 py-3 font-semibold">{t.start}</th>
+              <th className="px-4 py-3 font-semibold">{t.end}</th>
             </tr>
           </thead>
 
@@ -109,7 +106,7 @@ export default function DefaultScheduleForm({
                       />
                       {salonClosed ? (
                         <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                          Salon je zatvoren
+                          {t.salonClosed}
                         </span>
                       ) : null}
                     </div>
@@ -163,7 +160,7 @@ export default function DefaultScheduleForm({
           disabled={pending}
           className="rounded-xl bg-app-accent px-5 py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
         >
-          {pending ? "Spremanje..." : "Spremi default raspored"}
+          {pending ? getDictionary(locale).settings.saving : t.saveDefault}
         </button>
       </div>
     </form>
