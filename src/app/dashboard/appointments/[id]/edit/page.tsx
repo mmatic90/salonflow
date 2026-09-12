@@ -46,7 +46,8 @@ function ErrorCard({
   id: string;
   locale: AppLocale;
 }) {
-  const t = getDictionary(locale).appointments;
+  const dictionary = getDictionary(locale);
+  const t = dictionary.appointments;
   return (
     <main className="min-h-screen bg-app-bg p-6 md:p-8">
       <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
@@ -54,10 +55,10 @@ function ErrorCard({
         <p className="mt-3 whitespace-pre-wrap text-sm">{message}</p>
         <p className="mt-3 text-xs text-red-700">{t.appointmentId}: {id}</p>
         <Link
-          href="/dashboard/appointments"
+          href="/dashboard/calendar"
           className="mt-5 inline-flex rounded-xl border border-red-300 bg-white px-4 py-2 font-medium"
         >
-          {t.backToAppointments}
+          {dictionary.nav.calendar}
         </Link>
       </div>
     </main>
@@ -217,10 +218,10 @@ export default async function EditAppointmentPage({ params }: { params: Params }
               <p className="mt-2 text-app-muted">{t.editSubtitle}</p>
             </div>
             <Link
-              href={`/dashboard/appointments?date=${appointment.appointment_date}`}
+              href={`/dashboard/calendar?date=${appointment.appointment_date}`}
               className="inline-flex items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
             >
-              {t.backToAppointments}
+              {dictionary.nav.calendar}
             </Link>
           </div>
         </div>
