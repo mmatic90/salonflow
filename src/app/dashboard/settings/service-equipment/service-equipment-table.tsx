@@ -81,32 +81,6 @@ export default function ServiceEquipmentTable({
     );
   }
 
-  function selectAllEquipment(serviceId: string) {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.service_id === serviceId
-          ? {
-              ...item,
-              equipment_ids: activeEquipment.map((e) => e.id),
-            }
-          : item,
-      ),
-    );
-  }
-
-  function clearAllEquipment(serviceId: string) {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.service_id === serviceId
-          ? {
-              ...item,
-              equipment_ids: [],
-            }
-          : item,
-      ),
-    );
-  }
-
   function resetChanges() {
     setItems(initialItems);
   }
