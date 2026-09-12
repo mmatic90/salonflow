@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
+import { getTodayLocalDate } from "@/lib/utils";
 
 type Props = {
   locale: AppLocale;
@@ -15,6 +16,12 @@ type Props = {
   completedThisMonthCount: number;
   noShowThisMonthCount: number;
 };
+
+function shiftDate(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 export default function DashboardOverviewWidget({
   locale,
@@ -25,20 +32,22 @@ export default function DashboardOverviewWidget({
 }: Props) {
   const dictionary = getDictionary(locale);
   const t = dictionary.dashboard.overview;
+  const today = getTodayLocalDate();
+  const tomorrow = shiftDate(today, 1);
 
   const cards = [
     {
       title: t.todayTitle,
       value: todayAppointmentsCount,
       description: t.todayDescription,
-      href: "/dashboard/calendar/time-grid",
+      href: `/dashboard/calendar?date=${today}`,
       icon: CalendarCheck,
     },
     {
       title: t.tomorrowTitle,
       value: tomorrowAppointmentsCount,
       description: t.tomorrowDescription,
-      href: "/dashboard/appointments",
+      href: `/dashboard/calendar?date=${tomorrow}`,
       icon: CalendarDays,
     },
     {
