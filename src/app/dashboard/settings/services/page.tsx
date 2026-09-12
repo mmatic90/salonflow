@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getServices } from "@/features/settings/queries";
-import { createServiceAction } from "@/features/settings/actions";
 import ServicesTable from "./services-table";
 import ServiceCreateForm from "./service-create-form";
 import { requireAdminForSettings } from "@/lib/page-guards";
