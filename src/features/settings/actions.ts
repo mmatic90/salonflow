@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { writeAuditLog } from "@/lib/audit/write-audit-log";
 import { requireAdminForSettings } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 export type SettingsActionState = {
   error: string;
@@ -40,7 +41,7 @@ async function requireUser() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    throw new Error("Niste prijavljeni.");
+    throw new Error(getDictionary("hr").settings.actionMessages.notSignedIn);
   }
 
   return supabase;
@@ -53,6 +54,7 @@ export async function createServiceAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const name = String(formData.get("name") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
@@ -62,12 +64,12 @@ export async function createServiceAction(
     const category = String(formData.get("category") ?? "").trim();
     const isOnlineBookable = formData.get("is_online_bookable") === "on";
 
-    if (!name) return { error: "Naziv usluge je obavezan.", success: "" };
+    if (!name) return { error: t.serviceNameRequired, success: "" };
     if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-      return { error: "Trajanje mora biti veće od 0.", success: "" };
+      return { error: t.durationPositive, success: "" };
     }
     if (price !== null && (!Number.isFinite(price) || price < 0)) {
-      return { error: "Cijena nije ispravna.", success: "" };
+      return { error: t.invalidPrice, success: "" };
     }
 
     const payload = {
@@ -100,10 +102,10 @@ export async function createServiceAction(
 
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/services");
-    return { error: "", success: "Usluga je dodana." };
+    return { error: "", success: t.serviceAdded };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : "Došlo je do greške.",
+      error: error instanceof Error ? error.message : t.genericError,
       success: "",
     };
   }
@@ -116,11 +118,12 @@ export async function createRoomAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const name = String(formData.get("name") ?? "").trim();
 
     if (!name) {
-      return { error: "Naziv sobe je obavezan.", success: "" };
+      return { error: t.roomNameRequired, success: "" };
     }
 
     const payload = {
@@ -150,10 +153,10 @@ export async function createRoomAction(
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/rooms");
 
-    return { error: "", success: "Soba je dodana." };
+    return { error: "", success: t.roomAdded };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : "Došlo je do greške.",
+      error: error instanceof Error ? error.message : t.genericError,
       success: "",
     };
   }
@@ -166,16 +169,17 @@ export async function createEquipmentAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const name = String(formData.get("name") ?? "").trim();
     const quantity = Number(formData.get("quantity_total") ?? 0);
 
     if (!name) {
-      return { error: "Naziv opreme je obavezan.", success: "" };
+      return { error: t.equipmentNameRequired, success: "" };
     }
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
-      return { error: "Količina mora biti veća od 0.", success: "" };
+      return { error: t.quantityPositive, success: "" };
     }
 
     const payload = {
@@ -206,10 +210,10 @@ export async function createEquipmentAction(
     revalidatePath("/dashboard/settings");
     revalidatePath("/dashboard/settings/equipment");
 
-    return { error: "", success: "Oprema je dodana." };
+    return { error: "", success: t.equipmentAdded };
   } catch (error) {
     return {
-      error: error instanceof Error ? error.message : "Došlo je do greške.",
+      error: error instanceof Error ? error.message : t.genericError,
       success: "",
     };
   }
@@ -234,7 +238,7 @@ export async function deleteServiceAction(serviceId: string) {
       return {
         ok: false,
         message:
-          "Uslugu nije moguće obrisati jer je već povezana s drugim podacima ili se koristi u sustavu.",
+          t.serviceDeleteBlocked,
       };
     }
 
@@ -253,12 +257,12 @@ export async function deleteServiceAction(serviceId: string) {
 
     return {
       ok: true,
-      message: "Usluga je obrisana.",
+      message: t.serviceDeleted,
     };
   } catch {
     return {
       ok: false,
-      message: "Došlo je do greške prilikom brisanja usluge.",
+      message: t.serviceDeleteError,
     };
   }
 }
@@ -279,7 +283,7 @@ export async function deleteRoomAction(roomId: string) {
       return {
         ok: false,
         message:
-          "Sobu nije moguće obrisati jer je već povezana s drugim podacima ili se koristi u sustavu.",
+          t.roomDeleteBlocked,
       };
     }
 
@@ -298,12 +302,12 @@ export async function deleteRoomAction(roomId: string) {
 
     return {
       ok: true,
-      message: "Soba je obrisana.",
+      message: t.roomDeleted,
     };
   } catch {
     return {
       ok: false,
-      message: "Došlo je do greške prilikom brisanja sobe.",
+      message: t.roomDeleteError,
     };
   }
 }
@@ -327,7 +331,7 @@ export async function deleteEquipmentAction(equipmentId: string) {
       return {
         ok: false,
         message:
-          "Opremu nije moguće obrisati jer je već povezana s drugim podacima ili se koristi u sustavu.",
+          t.equipmentDeleteBlocked,
       };
     }
 
@@ -346,12 +350,12 @@ export async function deleteEquipmentAction(equipmentId: string) {
 
     return {
       ok: true,
-      message: "Oprema je obrisana.",
+      message: t.equipmentDeleted,
     };
   } catch {
     return {
       ok: false,
-      message: "Došlo je do greške prilikom brisanja opreme.",
+      message: t.equipmentDeleteError,
     };
   }
 }
@@ -372,6 +376,7 @@ export async function bulkUpdateServicesAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.name.trim()) {
@@ -437,6 +442,7 @@ export async function bulkUpdateRoomsAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.name.trim()) {
@@ -494,6 +500,7 @@ export async function bulkUpdateEquipmentAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.name.trim()) {
@@ -551,6 +558,7 @@ export async function bulkUpdateServiceRoomsAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const serviceIds = items
       .map((item) => item.service_id)
@@ -614,6 +622,7 @@ export async function bulkUpdateEmployeeServicesAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const employeeIds = items
       .map((item) => item.employee_id)
@@ -678,6 +687,7 @@ export async function bulkUpdateServiceEquipmentAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const serviceIds = items
       .map((item) => item.service_id)
@@ -746,6 +756,7 @@ export async function bulkUpdateSalonWorkingHoursAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.is_closed && (!item.opens_at || !item.closes_at)) {
@@ -974,6 +985,7 @@ export async function bulkUpdateEmployeesAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     for (const item of items) {
       if (!item.display_name.trim()) {
@@ -1066,6 +1078,7 @@ export async function deactivateEmployeeAction(employeeId: string) {
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const { data: beforeEmployee, error: fetchError } = await supabase
       .from("employees")
@@ -1146,6 +1159,7 @@ export async function resetEmployeePasswordAction(employeeId: string) {
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     const { data: employee, error: employeeError } = await supabase
       .from("employees")
@@ -1221,6 +1235,7 @@ export async function createEmployeeAction(
   try {
     const supabase = await requireUser();
     const permissions = await requireAdminForSettings();
+    const t = getDictionary(permissions.organizationLocale).settings.actionMessages;
 
     if (!values.display_name) {
       return { error: "Ime djelatnika je obavezno.", success: "", values };
