@@ -32,7 +32,7 @@ export default async function FeedbackPage() {
             {t.intro}
           </p>
         </div>
-        <FeedbackCleanupControls candidateCount={stats.cleanupCandidates} />
+        <FeedbackCleanupControls locale={permissions.organizationLocale} candidateCount={stats.cleanupCandidates} />
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
