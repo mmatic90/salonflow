@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getClientsList } from "@/features/clients/queries";
 import { deleteClientAction } from "@/features/clients/actions";
 import EmptyStateCard from "@/components/empty-state-card";
@@ -43,16 +41,6 @@ export default async function ClientsPage({
   const permissions = await requireDashboardUser();
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.clients;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
 
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams.q || "";
