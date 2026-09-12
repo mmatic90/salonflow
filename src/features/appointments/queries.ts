@@ -71,13 +71,13 @@ export async function getAppointmentsByDate(
     throw new Error("Nije moguće dohvatiti termine.");
   }
 
-  return (data ?? []).map((item: any) => {
+  return (data ?? []).map((item) => {
     const room = Array.isArray(item.room) ? item.room[0] ?? null : item.room ?? null;
     const employee = Array.isArray(item.employee)
       ? item.employee[0] ?? null
       : item.employee ?? null;
 
-    const appointmentServices = (item.appointment_services ?? []).map((entry: any) => {
+    const appointmentServices = (item.appointment_services ?? []).map((entry) => {
       const service = Array.isArray(entry.service)
         ? entry.service[0] ?? null
         : entry.service ?? null;
@@ -260,7 +260,7 @@ export async function getAppointmentFormData() {
   if (employeeServicesError) throw new Error("Nije moguće dohvatiti mapiranja zaposlenika i usluga.");
 
   return {
-    services: (services ?? []).map((service: any) => ({
+    services: (services ?? []).map((service) => ({
       id: String(service.id),
       name: String(service.name),
       duration_minutes: Number(service.duration_minutes),
@@ -269,17 +269,17 @@ export async function getAppointmentFormData() {
       priority_room: null,
       is_active: service.is_active,
     })) as AppointmentFormService[],
-    employees: (employees ?? []).map((employee: any) => ({
+    employees: (employees ?? []).map((employee) => ({
       id: String(employee.id),
       display_name: [employee.first_name, employee.last_name].filter(Boolean).join(" "),
       color_hex: employee.color ?? null,
     })) as AppointmentFormEmployee[],
     rooms: (rooms ?? []) as AppointmentFormRoom[],
-    serviceRooms: (serviceRooms ?? []).map((row: any) => ({
+    serviceRooms: (serviceRooms ?? []).map((row) => ({
       service_id: String(row.service_id),
       room_id: String(row.room_id),
     })) as AppointmentFormServiceRoom[],
-    employeeServices: (employeeServices ?? []).map((row: any) => ({
+    employeeServices: (employeeServices ?? []).map((row) => ({
       service_id: String(row.service_id),
       employee_id: String(row.employee_id),
     })) as AppointmentFormEmployeeService[],
@@ -334,7 +334,7 @@ export async function getAppointmentById(
     return null;
   }
 
-  const services = (data.appointment_services ?? []).map((entry: any) => {
+  const services = (data.appointment_services ?? []).map((entry) => {
     const service = Array.isArray(entry.service)
       ? entry.service[0] ?? null
       : entry.service ?? null;
