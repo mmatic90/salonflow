@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getEmployeeServiceMappingData } from "@/features/settings/queries";
 import EmployeeServiceTable from "./employee-service-table";
 import { requireAdminForSettings } from "@/lib/page-guards";
