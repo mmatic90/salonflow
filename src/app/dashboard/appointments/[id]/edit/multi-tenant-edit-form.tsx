@@ -52,13 +52,11 @@ export default function MultiTenantEditAppointmentForm({
   const [availableEmployees, setAvailableEmployees] = useState<AvailabilityOption[]>([]);
   const [availableRooms, setAvailableRooms] = useState<AvailabilityOption[]>([]);
   const availabilityReady = Boolean(date && startTime && serviceId);
+  const displayedEmployees = availabilityReady ? availableEmployees : [];
+  const displayedRooms = availabilityReady ? availableRooms : [];
 
   useEffect(() => {
-    if (!availabilityReady) {
-      setAvailableEmployees([]);
-      setAvailableRooms([]);
-      return;
-    }
+    if (!availabilityReady) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -212,9 +210,9 @@ export default function MultiTenantEditAppointmentForm({
           <span>{t.employee}</span>
           <select className={fieldClass} name="employee_id" value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} required disabled={availabilityPending || !availabilityReady}>
             <option value="">{availabilityPending ? t.checkingAvailability : t.selectFreeEmployee}</option>
-            {availableEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.label}</option>)}
+            {displayedEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.label}</option>)}
           </select>
-          {availabilityReady && !availabilityPending && availableEmployees.length === 0 ? <span className="block text-xs text-amber-700">{t.noEmployees}</span> : null}
+          {availabilityReady && !availabilityPending && displayedEmployees.length === 0 ? <span className="block text-xs text-amber-700">{t.noEmployees}</span> : null}
         </label>
       </div>
 
@@ -223,7 +221,7 @@ export default function MultiTenantEditAppointmentForm({
           <span>{t.room}</span>
           <select className={fieldClass} name="room_id" value={roomId} onChange={(event) => setRoomId(event.target.value)} disabled={availabilityPending || !availabilityReady}>
             <option value="">{availabilityPending ? t.checkingAvailability : t.noRoom}</option>
-            {availableRooms.map((room) => <option key={room.id} value={room.id}>{room.label}</option>)}
+            {displayedRooms.map((room) => <option key={room.id} value={room.id}>{room.label}</option>)}
           </select>
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
