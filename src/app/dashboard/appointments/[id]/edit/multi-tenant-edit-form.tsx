@@ -247,7 +247,7 @@ export default function MultiTenantEditAppointmentForm({
       };
 
       if (!response.ok) throw new Error(result.error || t.editError);
-      router.push(result.redirectTo || "/dashboard/appointments");
+      router.push(`/dashboard/calendar?date=${encodeURIComponent(date)}`);
       router.refresh();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : t.editError);
