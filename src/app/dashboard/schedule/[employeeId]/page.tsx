@@ -124,6 +124,7 @@ export default async function EmployeeSchedulePage({
               <DefaultScheduleForm
                 employeeId={data.employee.id}
                 defaultSchedule={data.defaultSchedule}
+                salonHours={data.salonHours}
               />
             </div>
           </div>
@@ -140,6 +141,7 @@ export default async function EmployeeSchedulePage({
               <DefaultScheduleRangeForm
                 employeeId={data.employee.id}
                 defaultSchedule={data.defaultSchedule}
+                salonHours={data.salonHours}
               />
             </div>
           </div>
@@ -155,7 +157,10 @@ export default async function EmployeeSchedulePage({
             </p>
 
             <div className="mt-6">
-              <OverrideForm employeeId={data.employee.id} />
+              <OverrideForm
+                employeeId={data.employee.id}
+                salonHours={data.salonHours}
+              />
             </div>
           </div>
 
