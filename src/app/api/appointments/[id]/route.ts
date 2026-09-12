@@ -52,6 +52,7 @@ export async function PATCH(
     const roomId = value(body.room_id) || null;
     const serviceId = value(body.service_id);
     const notes = value(body.notes) || null;
+    const internalNotes = value(body.internal_notes) || null;
     const status = value(body.status) || "scheduled";
 
     if (!appointmentDate || !startTime || !clientName || !employeeId || !serviceId) {
@@ -199,6 +200,7 @@ export async function PATCH(
         client_phone: clientPhone,
         client_email: clientEmail,
         notes,
+        internal_notes: internalNotes,
         total_price: price,
       })
       .eq("id", id)
