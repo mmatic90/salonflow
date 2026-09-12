@@ -39,7 +39,7 @@ export default function SalonHoursTable({ locale = "hr", hours }: Props) {
   const t = getDictionary(locale).settings;
   const dayRows = dayValues.map((value) => ({ value, label: t.salonHours.days[value] }));
   const initialItems = useMemo(
-    () => dayRows.map((day) => toEditable(hours, day.value)),
+    () => dayValues.map((day) => toEditable(hours, day)),
     [hours],
   );
 
