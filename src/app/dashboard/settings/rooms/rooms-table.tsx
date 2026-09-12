@@ -143,6 +143,7 @@ export default function RoomsTable({ locale = "hr", rooms }: Props) {
                 <td className="px-4 py-4">
                   <div className="flex items-center gap-2">
                     <SettingsDeleteButton
+                      locale={locale}
                       label={room.name}
                       onDelete={deleteRoomAction.bind(null, room.id)}
                     />
