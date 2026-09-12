@@ -198,6 +198,14 @@ const dictionaries = {
         unavailableDescription: "Potrebno je imati barem jednog aktivnog zaposlenika i jednu aktivnu uslugu kako bi se moglo definirati mapiranje.",
         editHint: "Označi usluge koje zaposlenik može raditi pa klikni"
       },
+      mapping: {
+        service: "Usluga",
+        roomsHint: "Označi sobe u kojima se usluga može izvoditi pa klikni",
+        equipmentHint: "Označi opremu potrebnu za uslugu pa klikni",
+        unavailableTitle: "Mapiranje trenutno nije dostupno",
+        roomsUnavailable: "Potrebno je imati barem jednu aktivnu uslugu i jednu aktivnu sobu kako bi se moglo definirati mapiranje.",
+        equipmentUnavailable: "Potrebno je imati barem jednu aktivnu uslugu i jednu aktivnu opremu kako bi se moglo definirati mapiranje."
+      },
       serviceRoomsTitle: "Usluge i sobe",
       serviceRoomsDescription: "Odredi u kojim sobama se pojedina usluga može izvoditi.",
       serviceEquipmentTitle: "Usluge i oprema",
@@ -726,6 +734,14 @@ const dictionaries = {
         unavailableDescription: "At least one active employee and one active service are required before mappings can be defined.",
         editHint: "Select the services an employee can perform and then click"
       },
+      mapping: {
+        service: "Service",
+        roomsHint: "Select the rooms where the service can be performed and then click",
+        equipmentHint: "Select the equipment required for the service and then click",
+        unavailableTitle: "Mapping is currently unavailable",
+        roomsUnavailable: "At least one active service and one active room are required before mappings can be defined.",
+        equipmentUnavailable: "At least one active service and one active equipment item are required before mappings can be defined."
+      },
       serviceRoomsTitle: "Services and rooms",
       serviceRoomsDescription: "Choose which rooms each service can be performed in.",
       serviceEquipmentTitle: "Services and equipment",
@@ -1253,6 +1269,14 @@ const dictionaries = {
         unavailableTitle: "La mappatura non è disponibile",
         unavailableDescription: "È necessario avere almeno un dipendente attivo e un servizio attivo per definire le associazioni.",
         editHint: "Seleziona i servizi che il dipendente può eseguire e poi fai clic su"
+      },
+      mapping: {
+        service: "Servizio",
+        roomsHint: "Seleziona le stanze in cui può essere eseguito il servizio e poi fai clic su",
+        equipmentHint: "Seleziona l'attrezzatura necessaria per il servizio e poi fai clic su",
+        unavailableTitle: "La mappatura non è disponibile",
+        roomsUnavailable: "È necessario avere almeno un servizio attivo e una stanza attiva per definire le associazioni.",
+        equipmentUnavailable: "È necessario avere almeno un servizio attivo e un elemento di attrezzatura attivo per definire le associazioni."
       },
       serviceRoomsTitle: "Servizi e stanze",
       serviceRoomsDescription: "Scegli in quali stanze può essere eseguito ogni servizio.",
