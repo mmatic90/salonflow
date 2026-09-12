@@ -2,6 +2,45 @@ import { createClient } from "@/lib/supabase/server";
 
 type AppointmentStatus = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
 
+type RawEmployeeRelation = {
+  id: string;
+  display_name: string | null;
+};
+
+type RawRoomRelation = {
+  id: string;
+  name: string | null;
+};
+
+type RawServiceRelation = {
+  id: string;
+  name: string | null;
+  service_group: string | null;
+};
+
+type RawAppointmentService = {
+  id: string;
+  service_id: string;
+  duration_minutes: number | null;
+  sort_order: number | null;
+  service: RawServiceRelation | RawServiceRelation[] | null;
+};
+
+type RawClientAppointment = {
+  id: string;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  status: AppointmentStatus;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  internal_note: string | null;
+  appointment_services: RawAppointmentService[] | null;
+  employee: RawEmployeeRelation | RawEmployeeRelation[] | null;
+  room: RawRoomRelation | RawRoomRelation[] | null;
+};
+
 export type ClientListItem = {
   id: string;
   full_name: string;
@@ -111,7 +150,7 @@ export async function getClientsList(search?: string): Promise<ClientListItem[]>
     throw new Error("Nije moguće dohvatiti klijente.");
   }
 
-  const clientIds = (clients ?? []).map((client: any) => client.id);
+  const clientIds = (clients ?? []).map((client) => client.id);
 
   if (clientIds.length === 0) return [];
 
@@ -142,7 +181,7 @@ export async function getClientsList(search?: string): Promise<ClientListItem[]>
     appointmentsByClient.set(appointment.client_id, current);
   }
 
-  const result = (clients ?? []).map((client: any) => {
+  const result = (clients ?? []).map((client) => {
     const clientAppointments = appointmentsByClient.get(client.id) ?? [];
     const dates = clientAppointments
       .map((item) => item.appointment_date)
@@ -196,35 +235,35 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
 
   if (appointmentsError) throw new Error("Nije moguće dohvatiti detalje klijenta.");
 
-  const rows: ClientAppointmentRow[] = (appointments ?? []).map((item: any) => {
-    const employee = getSingleRelation<any>(item.employee);
-    const room = getSingleRelation<any>(item.room);
+  const rows: ClientAppointmentRow[] = ((appointments ?? []) as RawClientAppointment[]).map((item) => {
+    const employee = getSingleRelation(item.employee);
+    const room = getSingleRelation(item.room);
     return {
       id: String(item.id),
       appointment_date: String(item.appointment_date),
       start_time: String(item.start_time),
       end_time: String(item.end_time),
-      status: item.status as AppointmentStatus,
+      status: item.status,
       client_name: String(item.client_name ?? ""),
       client_phone: item.client_phone ?? null,
       client_email: item.client_email ?? null,
       internal_note: item.internal_note ?? null,
       appointment_services: Array.isArray(item.appointment_services)
-        ? item.appointment_services.map((entry: any) => {
-            const service = getSingleRelation<any>(entry.service);
+        ? item.appointment_services.map((entry) => {
+            const service = getSingleRelation(entry.service);
             return {
               id: String(entry.id),
               service_id: String(entry.service_id),
               duration_minutes: Number(entry.duration_minutes ?? 0),
               sort_order: Number(entry.sort_order ?? 0),
               service: service
-                ? { id: String(service.id), name: String(service.name), service_group: service.service_group ?? null }
+                ? { id: String(service.id), name: String(service.name ?? ""), service_group: service.service_group ?? null }
                 : null,
             };
           })
         : [],
-      employee: employee ? { id: String(employee.id), display_name: String(employee.display_name) } : null,
-      room: room ? { id: String(room.id), name: String(room.name) } : null,
+      employee: employee ? { id: String(employee.id), display_name: String(employee.display_name ?? "") } : null,
+      room: room ? { id: String(room.id), name: String(room.name ?? "") } : null,
     };
   });
 
@@ -312,7 +351,7 @@ export async function getClientOptions() {
     .order("last_name", { ascending: true });
 
   if (error) throw new Error("Nije moguće dohvatiti klijente.");
-  return (data ?? []).map((client: any) => ({
+  return (data ?? []).map((client) => ({
     id: client.id,
     full_name: fullName(client.first_name, client.last_name),
     phone: client.phone,
