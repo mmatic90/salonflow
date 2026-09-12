@@ -2,7 +2,7 @@ import { Languages, Palette } from "lucide-react";
 import ThemePreviewPicker from "@/components/theme-preview-picker";
 import PageShell from "@/components/page-shell";
 import { requireAdminForSettings } from "@/lib/page-guards";
-import { localeLabels } from "@/lib/i18n";
+import { getDictionary, localeLabels } from "@/lib/i18n";
 import { updateOrganizationPreferencesAction } from "./actions";
 
 const themes = [
@@ -28,6 +28,16 @@ const themes = [
 
 export default async function AppearanceSettingsPage() {
   const permissions = await requireAdminForSettings();
+  const t = getDictionary(permissions.organizationLocale).settings.appearance;
+  const localizedThemes = themes.map((theme) => ({
+    ...theme,
+    description:
+      theme.value === "sand"
+        ? t.sandDescription
+        : theme.value === "rose"
+          ? t.roseDescription
+          : t.slateDescription,
+  }));
 
   return (
     <PageShell maxWidth="max-w-5xl">
@@ -38,15 +48,14 @@ export default async function AppearanceSettingsPage() {
               <Palette className="h-5 w-5" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-app-muted">Personalizacija</p>
+              <p className="text-sm font-semibold text-app-muted">{t.personalization}</p>
               <h1 className="text-3xl font-extrabold tracking-tight text-app-text">
-                Izgled i jezik
+                {t.title}
               </h1>
             </div>
           </div>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-app-muted sm:text-base">
-            Odaberi vizualnu temu i glavni jezik za ovaj salon. Postavke se
-            spremaju na razini organizacije i vrijede za sve korisnike salona.
+            {t.intro}
           </p>
         </div>
       </section>
@@ -56,15 +65,15 @@ export default async function AppearanceSettingsPage() {
           <div className="flex items-center gap-3">
             <Palette className="h-5 w-5 text-app-accent" />
             <div>
-              <h2 className="text-xl font-bold text-app-text">Tema</h2>
+              <h2 className="text-xl font-bold text-app-text">{t.theme}</h2>
               <p className="mt-1 text-sm text-app-muted">
-                Odaberi osnovni vizualni stil aplikacije.
+                {t.themeDescription}
               </p>
             </div>
           </div>
 
           <ThemePreviewPicker
-            themes={themes}
+            themes={localizedThemes}
             initialTheme={permissions.organizationTheme}
           />
         </section>
@@ -73,9 +82,9 @@ export default async function AppearanceSettingsPage() {
           <div className="flex items-center gap-3">
             <Languages className="h-5 w-5 text-app-accent" />
             <div>
-              <h2 className="text-xl font-bold text-app-text">Jezik aplikacije</h2>
+              <h2 className="text-xl font-bold text-app-text">{t.language}</h2>
               <p className="mt-1 text-sm text-app-muted">
-                Temelj za prijevod cijelog dashboarda i javnog booking sučelja.
+                {t.languageDescription}
               </p>
             </div>
           </div>
@@ -106,7 +115,7 @@ export default async function AppearanceSettingsPage() {
             type="submit"
             className="inline-flex min-h-12 items-center justify-center rounded-xl bg-app-accent px-6 py-3 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           >
-            Spremi postavke
+            {t.save}
           </button>
         </div>
       </form>
