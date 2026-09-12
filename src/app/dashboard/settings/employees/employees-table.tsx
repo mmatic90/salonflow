@@ -9,8 +9,10 @@ import {
   resetEmployeePasswordAction,
 } from "@/features/settings/actions";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   employees: EmployeeItem[];
 };
 
@@ -34,7 +36,8 @@ function toEditable(employee: EmployeeItem): EditableEmployee {
   };
 }
 
-export default function EmployeesTable({ employees }: Props) {
+export default function EmployeesTable({ locale = "hr", employees }: Props) {
+  const t = getDictionary(locale).settings;
   const initialItems = useMemo(() => employees.map(toEditable), [employees]);
 
   const [items, setItems] = useState<EditableEmployee[]>(initialItems);
@@ -117,8 +120,8 @@ export default function EmployeesTable({ employees }: Props) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-app-muted">
-          Uredi djelatnike pa klikni{" "}
-          <span className="font-medium text-app-text">Spremi izmjene</span>.
+          {t.employees.editHint}{" "}
+          <span className="font-medium text-app-text">{t.saveChanges}</span>.
         </div>
 
         <div className="flex gap-2">
@@ -129,7 +132,7 @@ export default function EmployeesTable({ employees }: Props) {
             className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
           >
             <RotateCcw className="h-4 w-4" />
-            Poništi
+            {t.reset}
           </button>
 
           <button
@@ -138,7 +141,7 @@ export default function EmployeesTable({ employees }: Props) {
             disabled={pending || !hasChanges}
             className="rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {pending ? "Spremanje..." : "Spremi izmjene"}
+            {pending ? t.saving : t.saveChanges}
           </button>
         </div>
       </div>
@@ -147,12 +150,12 @@ export default function EmployeesTable({ employees }: Props) {
         <table className="min-w-full border-collapse">
           <thead className="bg-app-table-head">
             <tr className="text-left text-sm text-app-muted">
-              <th className="px-4 py-3 font-semibold">Ime</th>
-              <th className="px-4 py-3 font-semibold">Email</th>
-              <th className="px-4 py-3 font-semibold">Telefon</th>
-              <th className="px-4 py-3 font-semibold">Boja</th>
-              <th className="px-4 py-3 font-semibold">Aktivno</th>
-              <th className="px-4 py-3 font-semibold">Akcije</th>
+              <th className="px-4 py-3 font-semibold">{t.employees.fullName}</th>
+              <th className="px-4 py-3 font-semibold">{t.email}</th>
+              <th className="px-4 py-3 font-semibold">{t.phone}</th>
+              <th className="px-4 py-3 font-semibold">{t.color}</th>
+              <th className="px-4 py-3 font-semibold">{t.active}</th>
+              <th className="px-4 py-3 font-semibold">{t.actions}</th>
             </tr>
           </thead>
 
@@ -238,7 +241,7 @@ export default function EmployeesTable({ employees }: Props) {
                       className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
                     >
                       <KeyRound className="h-4 w-4" />
-                      Reset lozinke
+                      {t.employees.resetPassword}
                     </button>
 
                     <button
@@ -252,7 +255,7 @@ export default function EmployeesTable({ employees }: Props) {
                       className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
                     >
                       <UserX className="h-4 w-4" />
-                      Deaktiviraj
+                      {t.employees.deactivate}
                     </button>
                   </div>
                 </td>
