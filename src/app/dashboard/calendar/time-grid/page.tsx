@@ -427,6 +427,7 @@ export default async function TimeGridCalendarPage({
             </div>
 
             <TimeGridLegendFilters
+              locale={permissions.organizationLocale}
               showScheduled={showScheduled}
               showCompleted={showCompleted}
               showCancelled={showCancelled}
