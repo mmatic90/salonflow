@@ -12,8 +12,6 @@ import { requireDashboardUser } from "@/lib/page-guards";
 
 type NotificationLang = "hr" | "en";
 
-const SALON_PHONE = "+385 99 328 4199";
-
 function formatDateHr(date: string) {
   const [year, month, day] = date.split("-");
   return `${day}.${month}.${year}.`;
@@ -61,13 +59,15 @@ function isCroatianPhone(phone: string | null | undefined) {
 }
 
 function buildAcceptedSms(args: {
+  salonName: string;
+  salonPhone?: string | null;
   serviceName: string;
   date: string;
   startTime: string;
   lang: NotificationLang;
 }) {
   if (args.lang === "en") {
-    return `Body & Soul
+    return `${args.salonName}
 
 Your appointment has been confirmed.
 
@@ -75,12 +75,12 @@ Service: ${args.serviceName}
 Date: ${formatDateHr(args.date)}
 Time: ${args.startTime}
 
-If you cannot attend, please contact the salon at ${SALON_PHONE}.
+If you cannot attend, please contact the salon${args.salonPhone ? ` at ${args.salonPhone}` : ""}.
 
 See you soon!`;
   }
 
-  return `Body & Soul
+  return `${args.salonName}
 
 Vaš termin je potvrđen.
 
@@ -88,12 +88,14 @@ Usluga: ${args.serviceName}
 Datum: ${formatDateHr(args.date)}
 Vrijeme: ${args.startTime}
 
-Ako ne možete doći, molimo javite salonu na ${SALON_PHONE}.
+Ako ne možete doći, molimo javite salonu${args.salonPhone ? ` na ${args.salonPhone}` : ""}.
 
 Vidimo se!`;
 }
 
 function buildRejectedSms(args: {
+  salonName: string;
+  salonPhone?: string | null;
   serviceName: string;
   date: string;
   startTime: string;
@@ -101,7 +103,7 @@ function buildRejectedSms(args: {
   lang: NotificationLang;
 }) {
   if (args.lang === "en") {
-    return `Body & Soul
+    return `${args.salonName}
 
 Your booking request could not be confirmed.
 
@@ -111,10 +113,10 @@ Time: ${args.startTime}
 
 Reason: ${args.reason}
 
-Please contact the salon at ${SALON_PHONE} to arrange another appointment.`;
+Please contact the salon${args.salonPhone ? ` at ${args.salonPhone}` : ""} to arrange another appointment.`;
   }
 
-  return `Body & Soul
+  return `${args.salonName}
 
 Vaš zahtjev za termin nije moguće potvrditi.
 
@@ -124,7 +126,7 @@ Vrijeme: ${args.startTime}
 
 Razlog: ${args.reason}
 
-Za dogovor novog termina kontaktirajte salon na ${SALON_PHONE}.`;
+Za dogovor novog termina kontaktirajte salon${args.salonPhone ? ` na ${args.salonPhone}` : ""}.`;
 }
 
 async function getCurrentUserId() {
@@ -146,6 +148,24 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const supabase = await createClient();
   const userId = await getCurrentUserId();
   const permissions = await requireDashboardUser();
+
+  const { data: organization, error: organizationError } = await supabase
+    .from("organizations")
+    .select("name, phone, address_line_1, address_line_2, city, postal_code, logo_url")
+    .eq("id", permissions.organizationId)
+    .maybeSingle();
+
+  if (organizationError || !organization) {
+    throw new Error(organizationError?.message || "Nije moguće dohvatiti podatke salona.");
+  }
+
+  const salonAddress = [
+    organization.address_line_1,
+    organization.address_line_2,
+    [organization.postal_code, organization.city].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const requestId = String(formData.get("request_id") ?? "").trim();
   const employeeId = String(formData.get("employee_id") ?? "").trim();
@@ -322,6 +342,8 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
       await sendInstantSms({
         to: request.client_phone,
         message: buildAcceptedSms({
+          salonName: organization.name,
+          salonPhone: organization.phone,
           serviceName,
           date: request.requested_date,
           startTime,
@@ -335,6 +357,10 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
         try {
           await sendBookingAcceptedEmail({
             to: request.client_email,
+            salonName: organization.name,
+            salonPhone: organization.phone,
+            salonAddress,
+            salonLogoUrl: organization.logo_url,
             serviceName,
             date: formatDateHr(request.requested_date),
             time: startTime,
@@ -373,6 +399,24 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
   const supabase = await createClient();
   const userId = await getCurrentUserId();
   const permissions = await requireDashboardUser();
+
+  const { data: organization, error: organizationError } = await supabase
+    .from("organizations")
+    .select("name, phone, address_line_1, address_line_2, city, postal_code, logo_url")
+    .eq("id", permissions.organizationId)
+    .maybeSingle();
+
+  if (organizationError || !organization) {
+    throw new Error(organizationError?.message || "Nije moguće dohvatiti podatke salona.");
+  }
+
+  const salonAddress = [
+    organization.address_line_1,
+    organization.address_line_2,
+    [organization.postal_code, organization.city].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const requestId = String(formData.get("request_id") ?? "").trim();
   const rejectionReason = String(formData.get("rejection_reason") ?? "").trim();
@@ -414,6 +458,8 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
     request.language === "en" ? "en" : "hr";
 
   const smsMessage = buildRejectedSms({
+    salonName: organization.name,
+    salonPhone: organization.phone,
     serviceName,
     date: request.requested_date,
     startTime,
@@ -450,6 +496,10 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
         try {
           await sendBookingRejectedEmail({
             to: request.client_email,
+            salonName: organization.name,
+            salonPhone: organization.phone,
+            salonAddress,
+            salonLogoUrl: organization.logo_url,
             serviceName,
             date: formatDateHr(request.requested_date),
             time: startTime,
