@@ -1,5 +1,4 @@
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import ClientForm from "@/components/client-form";
 import { getClientById } from "@/features/clients/queries";
 import { updateClientAction } from "@/features/clients/actions";
@@ -13,16 +12,6 @@ type Params = Promise<{
 export default async function EditClientPage({ params }: { params: Params }) {
   const permissions = await requireDashboardUser();
   const t = getDictionary(permissions.organizationLocale).clients;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
 
   const { id } = await params;
   const client = await getClientById(id);
