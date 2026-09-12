@@ -1,20 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClientById } from "@/features/clients/queries";
+import { getClientCareProfile } from "@/features/clients/care-profile-queries";
 import { formatTime, statusLabel } from "@/lib/utils";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 import EmptyStateCard from "@/components/empty-state-card";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
 import {
+  AlertTriangle,
   ArrowLeft,
-  CalendarPlus,
   CalendarDays,
+  CalendarPlus,
   Clock3,
   Mail,
   Phone,
+  ShieldCheck,
   Sparkles,
-  AlertTriangle,
 } from "lucide-react";
 
 type Params = Promise<{
@@ -72,13 +74,7 @@ function segmentClasses(segment: string) {
   }
 }
 
-function InsightCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function InsightCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-[0_6px_18px_rgba(15,23,42,0.04)] sm:p-5">
       <div className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
@@ -91,18 +87,17 @@ function InsightCard({
   );
 }
 
-export default async function ClientDetailsPage({
-  params,
-}: {
-  params: Params;
-}) {
+export default async function ClientDetailsPage({ params }: { params: Params }) {
   const permissions = await requireDashboardUser();
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.clients;
   const locale = permissions.organizationLocale;
 
   const { id } = await params;
-  const client = await getClientById(id);
+  const [client, careProfile] = await Promise.all([
+    getClientById(id),
+    getClientCareProfile(id),
+  ]);
 
   if (!client) {
     notFound();
@@ -128,11 +123,23 @@ export default async function ClientDetailsPage({
         : "Ponovi termin";
   const attendanceUi = {
     title:
-      locale === "en" ? "Attendance" : locale === "it" ? "Presenze" : "Dolaznost",
+      locale === "en"
+        ? "Attendance"
+        : locale === "it"
+          ? "Presenze"
+          : "Dolaznost",
     completed:
-      locale === "en" ? "Completed" : locale === "it" ? "Completati" : "Odrađeno",
+      locale === "en"
+        ? "Completed"
+        : locale === "it"
+          ? "Completati"
+          : "Odrađeno",
     cancelled:
-      locale === "en" ? "Cancelled" : locale === "it" ? "Annullati" : "Otkazano",
+      locale === "en"
+        ? "Cancelled"
+        : locale === "it"
+          ? "Annullati"
+          : "Otkazano",
     noShow: "No-show",
     salonNote:
       locale === "en"
@@ -153,6 +160,37 @@ export default async function ClientDetailsPage({
           ? "tasso annullamenti"
           : "stopa otkazivanja",
   };
+  const careUi = {
+    title:
+      locale === "en"
+        ? "Care and safety"
+        : locale === "it"
+          ? "Cura e sicurezza"
+          : "Njega i sigurnost",
+    allergies:
+      locale === "en"
+        ? "Allergies and sensitivities"
+        : locale === "it"
+          ? "Allergie e sensibilità"
+          : "Alergije i osjetljivosti",
+    contraindications:
+      locale === "en"
+        ? "Contraindications"
+        : locale === "it"
+          ? "Controindicazioni"
+          : "Kontraindikacije",
+    preferences:
+      locale === "en"
+        ? "Treatment preferences"
+        : locale === "it"
+          ? "Preferenze di trattamento"
+          : "Preferencije tretmana",
+  };
+  const hasCareProfile = Boolean(
+    careProfile?.allergies_sensitivities ||
+      careProfile?.contraindications ||
+      careProfile?.treatment_preferences,
+  );
 
   return (
     <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
@@ -225,20 +263,11 @@ export default async function ClientDetailsPage({
         </section>
 
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <InsightCard
-            label={t.totalAppointments}
-            value={client.appointments_count}
-          />
-          <InsightCard
-            label={t.completed}
-            value={client.insights.completed_appointments}
-          />
+          <InsightCard label={t.totalAppointments} value={client.appointments_count} />
+          <InsightCard label={t.completed} value={client.insights.completed_appointments} />
           <InsightCard
             label={t.lastVisit}
-            value={formatDate(
-              client.insights.last_completed_appointment,
-              locale,
-            )}
+            value={formatDate(client.insights.last_completed_appointment, locale)}
           />
           <InsightCard
             label={t.nextAppointment}
@@ -331,26 +360,71 @@ export default async function ClientDetailsPage({
             </div>
           </div>
 
-          <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600" />
-              <h2 className="text-xl font-bold text-app-text">{t.crmSignals}</h2>
-            </div>
-            <div className="mt-5 space-y-3">
-              {client.insights.alerts.length ? (
-                client.insights.alerts.map((alert, index) => (
-                  <div
-                    key={`${alert}-${index}`}
-                    className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
-                  >
-                    {alert}
+          <div className="space-y-5">
+            {hasCareProfile ? (
+              <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent">
+                    <ShieldCheck className="h-5 w-5" />
                   </div>
-                ))
-              ) : (
-                <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-                  {t.noWarnings}
+                  <h2 className="text-xl font-bold text-app-text">{careUi.title}</h2>
                 </div>
-              )}
+                <div className="mt-5 space-y-3">
+                  {careProfile?.allergies_sensitivities ? (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.1em] text-amber-800">
+                        {careUi.allergies}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-amber-950">
+                        {careProfile.allergies_sensitivities}
+                      </p>
+                    </div>
+                  ) : null}
+                  {careProfile?.contraindications ? (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.1em] text-red-700">
+                        {careUi.contraindications}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-red-950">
+                        {careProfile.contraindications}
+                      </p>
+                    </div>
+                  ) : null}
+                  {careProfile?.treatment_preferences ? (
+                    <div className="rounded-2xl border border-app-soft bg-app-bg/55 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.1em] text-app-muted">
+                        {careUi.preferences}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-app-text">
+                        {careProfile.treatment_preferences}
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <h2 className="text-xl font-bold text-app-text">{t.crmSignals}</h2>
+              </div>
+              <div className="mt-5 space-y-3">
+                {client.insights.alerts.length ? (
+                  client.insights.alerts.map((alert, index) => (
+                    <div
+                      key={`${alert}-${index}`}
+                      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+                    >
+                      {alert}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                    {t.noWarnings}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </section>
