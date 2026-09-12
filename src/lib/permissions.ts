@@ -21,17 +21,20 @@ export type CurrentUserPermissions = {
 };
 
 export async function getCurrentUserPermissions(): Promise<CurrentUserPermissions | null> {
+  const startedAt = performance.now();
   const supabase = await createClient();
 
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
+  console.log("[permissions] auth.getUser ms:", Math.round(performance.now() - startedAt));
 
   if (userError || !user) {
     return null;
   }
 
+  const membershipStartedAt = performance.now();
   const { data: membership, error: membershipError } = await supabase
     .from("organization_members")
     .select("organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active)")
@@ -39,6 +42,10 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     .eq("is_active", true)
     .limit(1)
     .maybeSingle();
+  console.log(
+    "[permissions] membership query ms:",
+    Math.round(performance.now() - membershipStartedAt),
+  );
 
   if (membershipError || !membership) {
     return null;
@@ -52,12 +59,21 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     return null;
   }
 
+  const employeeStartedAt = performance.now();
   const { data: employee } = await supabase
     .from("employees")
     .select("id, color, is_active, first_name, last_name")
     .eq("organization_id", membership.organization_id)
     .eq("user_id", user.id)
     .maybeSingle();
+  console.log(
+    "[permissions] employee query ms:",
+    Math.round(performance.now() - employeeStartedAt),
+  );
+  console.log(
+    "[permissions] total ms:",
+    Math.round(performance.now() - startedAt),
+  );
 
   if (employee && employee.is_active === false) {
     return null;
