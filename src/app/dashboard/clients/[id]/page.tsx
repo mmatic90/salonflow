@@ -13,6 +13,7 @@ import {
   CalendarDays,
   CalendarPlus,
   Clock3,
+  FileText,
   Mail,
   Phone,
   ShieldCheck,
@@ -121,6 +122,12 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
       : locale === "it"
         ? "Ripeti appuntamento"
         : "Ponovi termin";
+  const treatmentNoteLabel =
+    locale === "en"
+      ? "Treatment note"
+      : locale === "it"
+        ? "Nota del trattamento"
+        : "Tretmanska bilješka";
   const attendanceUi = {
     title:
       locale === "en"
@@ -523,6 +530,17 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
                     <p className="mt-1 text-sm text-app-muted">
                       {appointment.employee?.display_name || "-"} · {appointment.room?.name || "-"}
                     </p>
+                    {appointment.internal_note ? (
+                      <div className="mt-3 rounded-xl border border-app-soft bg-app-bg/55 p-3">
+                        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-app-muted">
+                          <FileText className="h-3.5 w-3.5" />
+                          {treatmentNoteLabel}
+                        </p>
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm leading-5 text-app-text">
+                          {appointment.internal_note}
+                        </p>
+                      </div>
+                    ) : null}
                   </Link>
                 ))}
               </div>
@@ -551,11 +569,24 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
                           {formatTime(appointment.start_time)} – {formatTime(appointment.end_time)}
                         </td>
                         <td className="px-5 py-4 font-medium text-app-text">
-                          {formatAppointmentServicesLabel(
-                            appointment.appointment_services
-                              ?.slice()
-                              .sort((a, b) => a.sort_order - b.sort_order),
-                          )}
+                          <div>
+                            {formatAppointmentServicesLabel(
+                              appointment.appointment_services
+                                ?.slice()
+                                .sort((a, b) => a.sort_order - b.sort_order),
+                            )}
+                          </div>
+                          {appointment.internal_note ? (
+                            <div className="mt-2 max-w-md rounded-lg border border-app-soft bg-app-bg/55 px-3 py-2">
+                              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.08em] text-app-muted">
+                                <FileText className="h-3 w-3" />
+                                {treatmentNoteLabel}
+                              </p>
+                              <p className="mt-1 whitespace-pre-wrap text-xs font-normal leading-5 text-app-text">
+                                {appointment.internal_note}
+                              </p>
+                            </div>
+                          ) : null}
                         </td>
                         <td className="px-5 py-4 text-app-muted">
                           {appointment.employee?.display_name || "-"}
