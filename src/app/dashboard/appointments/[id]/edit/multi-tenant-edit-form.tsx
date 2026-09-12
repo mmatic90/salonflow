@@ -32,8 +32,6 @@ export default function MultiTenantEditAppointmentForm({
   locale = "hr",
   appointment,
   services,
-  employees,
-  rooms,
   clients,
 }: Props) {
   const dictionary = getDictionary(locale);
@@ -117,7 +115,7 @@ export default function MultiTenantEditAppointmentForm({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [appointment.id, availabilityReady, date, startTime, serviceId]);
+  }, [appointment.id, availabilityReady, date, startTime, serviceId, t.availabilityError]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
