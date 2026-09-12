@@ -923,7 +923,7 @@ async function validateAppointmentRequest(args: {
   if (!isValidAppointmentStatus(status)) {
     return {
       ok: false as const,
-      message: "Status termina nije valjan.",
+      message: t.invalidStatus,
     };
   }
 
