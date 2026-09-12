@@ -9,8 +9,9 @@ import {
   sendBookingRejectedEmail,
 } from "@/lib/email/booking-email";
 import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
-type NotificationLang = "hr" | "en";
+type NotificationLang = "hr" | "en" | "it";
 
 function formatDateHr(date: string) {
   const [year, month, day] = date.split("-");
@@ -44,8 +45,18 @@ function splitFullName(fullName: string) {
   };
 }
 
-function getServiceName(service: { name?: string | null } | null | undefined) {
-  return service?.name?.trim() || "Odabrana usluga";
+function getServiceName(
+  service: { name?: string | null } | null | undefined,
+  lang: NotificationLang = "hr",
+) {
+  return (
+    service?.name?.trim() ||
+    (lang === "en"
+      ? "Selected service"
+      : lang === "it"
+        ? "Servizio selezionato"
+        : "Odabrana usluga")
+  );
 }
 
 function isCroatianPhone(phone: string | null | undefined) {
@@ -78,6 +89,20 @@ Time: ${args.startTime}
 If you cannot attend, please contact the salon${args.salonPhone ? ` at ${args.salonPhone}` : ""}.
 
 See you soon!`;
+  }
+
+  if (args.lang === "it") {
+    return `${args.salonName}
+
+Il tuo appuntamento è stato confermato.
+
+Servizio: ${args.serviceName}
+Data: ${formatDateHr(args.date)}
+Ora: ${args.startTime}
+
+Se non puoi presentarti, contatta il salone${args.salonPhone ? ` al numero ${args.salonPhone}` : ""}.
+
+A presto!`;
   }
 
   return `${args.salonName}
@@ -116,6 +141,20 @@ Reason: ${args.reason}
 Please contact the salon${args.salonPhone ? ` at ${args.salonPhone}` : ""} to arrange another appointment.`;
   }
 
+  if (args.lang === "it") {
+    return `${args.salonName}
+
+La tua richiesta di prenotazione non può essere confermata.
+
+Servizio: ${args.serviceName}
+Data: ${formatDateHr(args.date)}
+Ora: ${args.startTime}
+
+Motivo: ${args.reason}
+
+Contatta il salone${args.salonPhone ? ` al numero ${args.salonPhone}` : ""} per concordare un altro appuntamento.`;
+  }
+
   return `${args.salonName}
 
 Vaš zahtjev za termin nije moguće potvrditi.
@@ -129,7 +168,7 @@ Razlog: ${args.reason}
 Za dogovor novog termina kontaktirajte salon${args.salonPhone ? ` na ${args.salonPhone}` : ""}.`;
 }
 
-async function getCurrentUserId() {
+async function getCurrentUserId(locale: AppLocale) {
   const supabase = await createClient();
 
   const {
@@ -138,7 +177,7 @@ async function getCurrentUserId() {
   } = await supabase.auth.getUser();
 
   if (error || !user) {
-    throw new Error("Niste prijavljeni.");
+    throw new Error(getDictionary(locale).onlineBookings.actionMessages.notSignedIn);
   }
 
   return user.id;
@@ -146,8 +185,9 @@ async function getCurrentUserId() {
 
 export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const supabase = await createClient();
-  const userId = await getCurrentUserId();
   const permissions = await requireDashboardUser();
+  const t = getDictionary(permissions.organizationLocale).onlineBookings.actionMessages;
+  const userId = await getCurrentUserId(permissions.organizationLocale);
 
   const { data: organization, error: organizationError } = await supabase
     .from("organizations")
@@ -156,7 +196,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
     .maybeSingle();
 
   if (organizationError || !organization) {
-    throw new Error(organizationError?.message || "Nije moguće dohvatiti podatke salona.");
+    throw new Error(organizationError?.message || t.salonLoadError);
   }
 
   const salonAddress = [
@@ -173,7 +213,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const durationMinutes = Number(formData.get("duration_minutes") ?? 0);
 
   if (!requestId || !employeeId || !roomId || !durationMinutes) {
-    throw new Error("Nedostaju podaci za prihvaćanje rezervacije.");
+    throw new Error(t.acceptMissingData);
   }
 
   const { data: request, error: requestError } = await supabase
@@ -198,15 +238,15 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   }
 
   if (!request) {
-    throw new Error("Zahtjev nije pronađen.");
+    throw new Error(t.requestNotFound);
   }
 
   if (request.status !== "pending") {
-    throw new Error("Ovaj zahtjev više nije na čekanju.");
+    throw new Error(t.requestNotPending);
   }
 
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-    throw new Error("Trajanje mora biti veće od 0.");
+    throw new Error(t.durationPositive);
   }
 
   const startTime = String(request.start_time).slice(0, 5);
@@ -241,9 +281,12 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
 
   if (conflict) {
     throw new Error(
-      "Odabrani djelatnik ili soba već imaju termin u tom vremenu.",
+      t.conflict,
     );
   }
+
+  const notificationLang: NotificationLang =
+    request.language === "en" ? "en" : request.language === "it" ? "it" : "hr";
 
   const { firstName, lastName } = splitFullName(request.client_full_name);
   const { data: client, error: clientError } = await supabase
@@ -254,7 +297,13 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
       last_name: lastName,
       phone: request.client_phone || null,
       email: request.client_email || null,
-      notes: request.client_note || "Klijent kreiran iz online zahtjeva za rezervaciju.",
+      notes:
+        request.client_note ||
+        (notificationLang === "en"
+          ? "Client created from an online booking request."
+          : notificationLang === "it"
+            ? "Cliente creato da una richiesta di prenotazione online."
+            : "Klijent kreiran iz online zahtjeva za rezervaciju."),
       marketing_consent: false,
       is_active: true,
     })
@@ -262,7 +311,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
     .single();
 
   if (clientError || !client) {
-    throw new Error(clientError?.message || "Greška pri kreiranju klijenta.");
+    throw new Error(clientError?.message || t.clientCreateError);
   }
 
   const { data: appointment, error: appointmentError } = await supabase
@@ -291,7 +340,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   if (appointmentError || !appointment) {
     await supabase.from("clients").delete().eq("id", client.id);
     throw new Error(
-      appointmentError?.message || "Greška pri kreiranju termina.",
+      appointmentError?.message || t.appointmentCreateError,
     );
   }
 
@@ -332,10 +381,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
     throw new Error(updateRequestError.message);
   }
 
-  const notificationLang: NotificationLang =
-    request.language === "en" ? "en" : "hr";
-
-  const serviceName = getServiceName(request.services);
+  const serviceName = getServiceName(request.services, notificationLang);
 
   if (isCroatianPhone(request.client_phone)) {
     try {
@@ -407,7 +453,7 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
     .maybeSingle();
 
   if (organizationError || !organization) {
-    throw new Error(organizationError?.message || "Nije moguće dohvatiti podatke salona.");
+    throw new Error(organizationError?.message || t.salonLoadError);
   }
 
   const salonAddress = [
@@ -422,7 +468,7 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
   const rejectionReason = String(formData.get("rejection_reason") ?? "").trim();
 
   if (!requestId || !rejectionReason) {
-    throw new Error("Odaberi razlog odbijanja.");
+    throw new Error(t.rejectionReasonRequired);
   }
 
   const { data: request, error: requestError } = await supabase
@@ -444,18 +490,18 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
   }
 
   if (!request) {
-    throw new Error("Zahtjev nije pronađen.");
+    throw new Error(t.requestNotFound);
   }
 
   if (request.status !== "pending") {
-    throw new Error("Ovaj zahtjev više nije na čekanju.");
+    throw new Error(t.requestNotPending);
   }
 
-  const serviceName = getServiceName(request.services);
+  const serviceName = getServiceName(request.services, notificationLang);
   const startTime = String(request.start_time).slice(0, 5);
 
   const notificationLang: NotificationLang =
-    request.language === "en" ? "en" : "hr";
+    request.language === "en" ? "en" : request.language === "it" ? "it" : "hr";
 
   const smsMessage = buildRejectedSms({
     salonName: organization.name,
