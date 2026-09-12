@@ -778,6 +778,71 @@ export async function bulkUpdateSalonWorkingHoursAction(
     const { error } = await supabase.from("salon_working_hours").insert(payload);
     if (error) return { ok: false, message: error.message };
 
+    const newlyClosedDays = payload
+      .filter((item) => {
+        if (!item.is_closed) return false;
+        const previous = (beforeRows ?? []).find(
+          (row) => Number(row.day_of_week) === item.day_of_week,
+        );
+        return !previous?.is_closed;
+      })
+      .map((item) => item.day_of_week);
+
+    if (newlyClosedDays.length > 0) {
+      const { error: defaultScheduleError } = await supabase
+        .from("employee_default_schedule")
+        .update({
+          is_working: false,
+          start_time: null,
+          end_time: null,
+        })
+        .eq("organization_id", permissions.organizationId)
+        .in("day_of_week", newlyClosedDays);
+
+      if (defaultScheduleError) {
+        return { ok: false, message: defaultScheduleError.message };
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data: futureOverrides, error: futureOverridesError } = await supabase
+        .from("employee_schedule_overrides")
+        .select("id, schedule_date")
+        .eq("organization_id", permissions.organizationId)
+        .eq("is_working", true)
+        .gte("schedule_date", today.toISOString().slice(0, 10));
+
+      if (futureOverridesError) {
+        return { ok: false, message: futureOverridesError.message };
+      }
+
+      const overrideIdsToDisable = (futureOverrides ?? [])
+        .filter((row) =>
+          newlyClosedDays.includes(
+            new Date(`${row.schedule_date}T00:00:00`).getDay(),
+          ),
+        )
+        .map((row) => row.id);
+
+      if (overrideIdsToDisable.length > 0) {
+        const { error: overrideUpdateError } = await supabase
+          .from("employee_schedule_overrides")
+          .update({
+            is_working: false,
+            start_time: null,
+            end_time: null,
+            reason: "salon_closed",
+          })
+          .eq("organization_id", permissions.organizationId)
+          .in("id", overrideIdsToDisable);
+
+        if (overrideUpdateError) {
+          return { ok: false, message: overrideUpdateError.message };
+        }
+      }
+    }
+
     await writeAuditLog({
       action: "salon_hours_bulk_updated",
       entityType: "salon_working_hours",
