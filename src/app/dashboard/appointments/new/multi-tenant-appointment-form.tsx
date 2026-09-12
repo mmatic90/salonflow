@@ -47,7 +47,7 @@ function SectionHeader({ icon, title, description }: { icon: React.ReactNode; ti
   );
 }
 
-export default function MultiTenantAppointmentForm({ locale = "hr", defaultDate, clients, employees, rooms, services }: Props) {
+export default function MultiTenantAppointmentForm({ locale = "hr", defaultDate, clients, employees, services }: Props) {
   const dictionary = getDictionary(locale);
   const t = dictionary.appointments;
   const [error, setError] = useState("");
@@ -123,7 +123,7 @@ export default function MultiTenantAppointmentForm({ locale = "hr", defaultDate,
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [availabilityReady, date, startTime, serviceId]);
+  }, [availabilityReady, date, startTime, serviceId, t.availabilityError]);
 
   function selectClient(client: ClientOption) {
     setClientId(client.id);
