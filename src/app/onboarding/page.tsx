@@ -3,6 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
+
+function detectLocale(): AppLocale {
+  if (typeof navigator === "undefined") return "hr";
+  const language = navigator.language.toLowerCase();
+  if (language.startsWith("it")) return "it";
+  if (language.startsWith("en")) return "en";
+  return "hr";
+}
 
 function slugify(value: string) {
   return value
@@ -15,6 +24,8 @@ function slugify(value: string) {
 }
 
 export default function OnboardingPage() {
+  const locale = detectLocale();
+  const t = getDictionary(locale).onboarding;
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [salonName, setSalonName] = useState("");
@@ -70,7 +81,7 @@ export default function OnboardingPage() {
     const normalizedSlug = slugify(slug);
 
     if (normalizedName.length < 2 || normalizedSlug.length < 2) {
-      setErrorMessage("Unesite naziv salona i valjanu oznaku salona.");
+      setErrorMessage(t.validation);
       setLoading(false);
       return;
     }
@@ -83,8 +94,8 @@ export default function OnboardingPage() {
     if (error) {
       setErrorMessage(
         error.code === "23505"
-          ? "Ova oznaka salona već postoji. Odaberite drugu."
-          : "Salon nije moguće stvoriti. Pokušajte ponovno."
+          ? t.slugExists
+          : t.createError
       );
       setLoading(false);
       return;
@@ -97,7 +108,7 @@ export default function OnboardingPage() {
   if (checking) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-app-bg px-4">
-        <p className="text-sm text-app-muted">Provjera korisničkog računa...</p>
+        <p className="text-sm text-app-muted">{t.checking}</p>
       </main>
     );
   }
@@ -106,23 +117,23 @@ export default function OnboardingPage() {
     <main className="flex min-h-screen items-center justify-center bg-app-bg px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl border border-app-soft bg-app-card p-8 shadow-sm">
         <div className="mb-6">
-          <p className="text-sm font-semibold text-app-accent">Dobro došli u SalonFlow</p>
-          <h1 className="mt-2 text-3xl font-bold text-app-text">Postavite svoj prvi salon</h1>
+          <p className="text-sm font-semibold text-app-accent">{t.welcome}</p>
+          <h1 className="mt-2 text-3xl font-bold text-app-text">{t.title}</h1>
           <p className="mt-2 text-sm text-app-muted">
-            Salon će postati zasebna organizacija, a vi ćete biti njezin vlasnik.
+            {t.description}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label htmlFor="salon-name" className="mb-1 block text-sm font-medium text-app-text">
-              Naziv salona
+              {t.salonName}
             </label>
             <input
               id="salon-name"
               value={salonName}
               onChange={(event) => handleSalonNameChange(event.target.value)}
-              placeholder="Primjer: Studio Aurora"
+              placeholder={t.salonNamePlaceholder}
               className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none"
               required
             />
@@ -130,7 +141,7 @@ export default function OnboardingPage() {
 
           <div>
             <label htmlFor="salon-slug" className="mb-1 block text-sm font-medium text-app-text">
-              Oznaka salona
+              {t.salonSlug}
             </label>
             <input
               id="salon-slug"
@@ -144,7 +155,7 @@ export default function OnboardingPage() {
               required
             />
             <p className="mt-1 text-xs text-app-muted">
-              Koristit će se kao jedinstvena tehnička oznaka salona.
+              {t.slugHelp}
             </p>
           </div>
 
@@ -159,7 +170,7 @@ export default function OnboardingPage() {
             disabled={loading}
             className="w-full rounded-xl bg-app-accent px-4 py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {loading ? "Stvaranje salona..." : "Stvori salon"}
+            {loading ? t.creating : t.create}
           </button>
         </form>
       </div>
