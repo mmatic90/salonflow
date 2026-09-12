@@ -117,8 +117,8 @@ export async function getReportsDashboardData(organizationId: string) {
     throw new Error("Nije moguće dohvatiti reports podatke.");
   }
 
-  const appointments: AppointmentRow[] = (appointmentData ?? []).map((item: any) => {
-    const employee = getSingleRelation<any>(item.employee);
+  const appointments: AppointmentRow[] = (appointmentData ?? []).map((item) => {
+    const employee = getSingleRelation(item.employee);
     const services = Array.isArray(item.appointment_services)
       ? [...item.appointment_services]
           .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
@@ -226,9 +226,9 @@ export async function getReportsDashboardData(organizationId: string) {
   const onlineRows = onlineBookingError ? [] : (onlineBookingData ?? []);
   const onlineCounts = {
     total: onlineRows.length,
-    pending: onlineRows.filter((item: any) => item.status === "pending").length,
-    accepted: onlineRows.filter((item: any) => item.status === "accepted").length,
-    rejected: onlineRows.filter((item: any) => item.status === "rejected").length,
+    pending: onlineRows.filter((item) => item.status === "pending").length,
+    accepted: onlineRows.filter((item) => item.status === "accepted").length,
+    rejected: onlineRows.filter((item) => item.status === "rejected").length,
   };
   const onlineConversionRate = safeRate(onlineCounts.accepted, onlineCounts.total);
 
