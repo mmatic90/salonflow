@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 export type ScheduleActionState = {
   error: string;
@@ -73,6 +74,7 @@ function validateEmployeeHoursAgainstSalon(args: {
   isWorking: boolean;
   startTime: string | null;
   endTime: string | null;
+  locale: AppLocale;
   salonHours: Map<
     number,
     { opens_at: string; closes_at: string; is_closed: boolean }
@@ -82,8 +84,10 @@ function validateEmployeeHoursAgainstSalon(args: {
 
   const salonDay = args.salonHours.get(args.dayOfWeek);
 
+  const t = getDictionary(args.locale).schedule.actionErrors;
+
   if (!salonDay || salonDay.is_closed) {
-    return "Zaposlenik ne može raditi dan kada je salon zatvoren.";
+    return t.salonClosed;
   }
 
   if (
@@ -92,7 +96,7 @@ function validateEmployeeHoursAgainstSalon(args: {
     args.startTime < salonDay.opens_at ||
     args.endTime > salonDay.closes_at
   ) {
-    return `Radno vrijeme zaposlenika mora biti unutar radnog vremena salona (${salonDay.opens_at}–${salonDay.closes_at}).`;
+    return `${t.outsideSalonHours} (${salonDay.opens_at}–${salonDay.closes_at}).`;
   }
 
   return null;
@@ -101,14 +105,17 @@ function validateEmployeeHoursAgainstSalon(args: {
 async function getScheduleContext(employeeId: string) {
   const permissions = await getCurrentUserPermissions();
   if (!permissions) {
-    return { ok: false as const, error: "Niste prijavljeni ili nemate aktivan salon." };
+    const t = getDictionary("hr").schedule.actionErrors;
+    return { ok: false as const, error: t.notSignedIn };
   }
+  const locale = permissions.organizationLocale;
+  const t = getDictionary(locale).schedule.actionErrors;
 
   const canManage = ["owner", "admin", "manager"].includes(
     permissions.organizationRole,
   );
   if (!canManage) {
-    return { ok: false as const, error: "Nemate ovlasti za upravljanje rasporedima." };
+    return { ok: false as const, error: t.noPermission };
   }
 
   const supabase = await createClient();
@@ -121,12 +128,14 @@ async function getScheduleContext(employeeId: string) {
     .maybeSingle();
 
   if (error || !employee) {
-    return { ok: false as const, error: error?.message || "Zaposlenik nije pronađen." };
+    return { ok: false as const, error: error?.message || t.employeeNotFound };
   }
 
   return {
     ok: true as const,
     organizationId: permissions.organizationId,
+    locale,
+    t,
     supabase,
   };
 }
@@ -168,7 +177,7 @@ export async function updateDefaultScheduleAction(
   );
   if (invalid) {
     return {
-      error: `Za dan ${invalid.day_of_week} upiši valjano vrijeme početka i završetka rada.`,
+      error: `${context.t.invalidDayTime} (${invalid.day_of_week})`,
       success: "",
     };
   }
@@ -184,6 +193,7 @@ export async function updateDefaultScheduleAction(
       isWorking: item.is_working,
       startTime: item.start_time,
       endTime: item.end_time,
+      locale: context.locale,
       salonHours,
     });
 
@@ -199,7 +209,7 @@ export async function updateDefaultScheduleAction(
   if (error) return { error: error.message, success: "" };
 
   refreshSchedule(employeeId);
-  return { error: "", success: "Zadani raspored je uspješno spremljen." };
+  return { error: "", success: context.t.defaultSaved };
 }
 
 export async function applyDefaultScheduleRangeAction(
@@ -217,11 +227,11 @@ export async function applyDefaultScheduleRangeAction(
   const endTime = String(formData.get("range_end_time") ?? "");
 
   if (dayFrom < 0 || dayFrom > 6 || dayTo < 0 || dayTo > 6 || dayFrom > dayTo) {
-    return { error: "Odaberi valjani raspon dana.", success: "" };
+    return { error: context.t.invalidDayRange, success: "" };
   }
 
   if (isWorking && !isValidTimeRange(startTime, endTime)) {
-    return { error: "Za radne dane upiši valjano vrijeme početka i završetka.", success: "" };
+    return { error: context.t.invalidWorkingTime, success: "" };
   }
 
   const updates = Array.from({ length: dayTo - dayFrom + 1 }, (_, index) => ({
@@ -244,6 +254,7 @@ export async function applyDefaultScheduleRangeAction(
       isWorking: item.is_working,
       startTime: item.start_time,
       endTime: item.end_time,
+      locale: context.locale,
       salonHours,
     });
 
@@ -259,7 +270,7 @@ export async function applyDefaultScheduleRangeAction(
   if (error) return { error: error.message, success: "" };
 
   refreshSchedule(employeeId);
-  return { error: "", success: "Raspored za odabrani raspon dana je spremljen." };
+  return { error: "", success: context.t.rangeSaved };
 }
 
 export async function createScheduleOverrideAction(
@@ -278,21 +289,21 @@ export async function createScheduleOverrideAction(
   const note = String(formData.get("note") ?? "").trim();
 
   if (!dateFrom || !dateTo) {
-    return { error: "Početni i završni datum su obavezni.", success: "" };
+    return { error: context.t.datesRequired, success: "" };
   }
 
   if (!["custom_hours", "day_off", "vacation", "sick_leave"].includes(overrideType)) {
-    return { error: "Tip iznimke nije valjan.", success: "" };
+    return { error: context.t.invalidOverrideType, success: "" };
   }
 
   const isWorking = overrideType === "custom_hours";
   if (isWorking && !isValidTimeRange(startTime, endTime)) {
-    return { error: "Za posebno radno vrijeme upiši valjan početak i završetak.", success: "" };
+    return { error: context.t.invalidCustomHours, success: "" };
   }
 
   const dates = buildDateRange(dateFrom, dateTo);
   if (dates.length === 0) {
-    return { error: "Raspon datuma nije valjan.", success: "" };
+    return { error: context.t.invalidDateRange, success: "" };
   }
 
   const salonHours = await getSalonHoursByDay(
@@ -335,7 +346,7 @@ export async function createScheduleOverrideAction(
   if (error) return { error: error.message, success: "" };
 
   refreshSchedule(employeeId);
-  return { error: "", success: "Iznimka rasporeda je uspješno spremljena." };
+  return { error: "", success: context.t.overrideSaved };
 }
 
 export async function deleteScheduleOverrideAction(
