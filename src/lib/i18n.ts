@@ -70,8 +70,8 @@ const dictionaries = {
         completedTitle: "Odrađeno ovaj mjesec",
         completedDescription: "Uspješno završeni termini ovog mjeseca.",
         noShowTitle: "No-show ovaj mjesec",
-        noShowDescription: "Termini na koje klijenti nisu došli."
-      }
+        noShowDescription: "Termini na koje klijenti nisu došli.",
+      },
     },
     nav: {
       dashboard: "Nadzorna ploča",
@@ -86,6 +86,7 @@ const dictionaries = {
       settings: "Postavke",
     },
   },
+
   en: {
     salonAdminPanel: "Salon administration",
     loggedInAs: "Signed in as",
@@ -149,9 +150,34 @@ const dictionaries = {
         completedTitle: "Completed this month",
         completedDescription: "Successfully completed appointments this month.",
         noShowTitle: "No-shows this month",
-        noShowDescription: "Appointments where clients did not arrive."
-      }
+        noShowDescription: "Appointments where clients did not arrive.",
+      },
     },
+    nav: {
+      dashboard: "Dashboard",
+      onlineBookings: "Online bookings",
+      appointments: "Appointments",
+      calendar: "Calendar",
+      weekCalendar: "Weekly calendar",
+      timeGrid: "Time grid",
+      clients: "Clients",
+      schedule: "Schedules",
+      reports: "Reports",
+      settings: "Settings",
+    },
+  },
+
+  it: {
+    salonAdminPanel: "Amministrazione salone",
+    loggedInAs: "Accesso come",
+    myAccount: "Il mio account",
+    logout: "Esci",
+    loggingOut: "Uscita...",
+    logoutSuccess: "Disconnessione effettuata.",
+    activeSalon: "Salone attivo",
+    feedbackReview: "Visualizza feedback",
+    adminSystem: "sistema di amministrazione",
+    createdBy: "Realizzato da",
     dashboard: {
       title: "Dashboard",
       subtitle: "panoramica della giornata, attività e indicatori principali del salone.",
@@ -204,33 +230,9 @@ const dictionaries = {
         completedTitle: "Completati questo mese",
         completedDescription: "Appuntamenti completati con successo questo mese.",
         noShowTitle: "No-show questo mese",
-        noShowDescription: "Appuntamenti a cui i clienti non si sono presentati."
-      }
+        noShowDescription: "Appuntamenti a cui i clienti non si sono presentati.",
+      },
     },
-    nav: {
-      dashboard: "Dashboard",
-      onlineBookings: "Online bookings",
-      appointments: "Appointments",
-      calendar: "Calendar",
-      weekCalendar: "Weekly calendar",
-      timeGrid: "Time grid",
-      clients: "Clients",
-      schedule: "Schedules",
-      reports: "Reports",
-      settings: "Settings",
-    },
-  },
-  it: {
-    salonAdminPanel: "Amministrazione salone",
-    loggedInAs: "Accesso come",
-    myAccount: "Il mio account",
-    logout: "Esci",
-    loggingOut: "Uscita...",
-    logoutSuccess: "Disconnessione effettuata.",
-    activeSalon: "Salone attivo",
-    feedbackReview: "Visualizza feedback",
-    adminSystem: "sistema di amministrazione",
-    createdBy: "Realizzato da",
     nav: {
       dashboard: "Dashboard",
       onlineBookings: "Prenotazioni online",
