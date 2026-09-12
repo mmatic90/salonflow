@@ -221,7 +221,23 @@ const dictionaries = {
       actions: "Akcije",
       delete: "Obriši",
       deleteError: "Greška pri brisanju overridea.",
-      days: ["Nedjelja","Ponedjeljak","Utorak","Srijeda","Četvrtak","Petak","Subota"]
+      actionErrors: {
+        notSignedIn: "Niste prijavljeni ili nemate aktivan salon.",
+        noPermission: "Nemate ovlasti za upravljanje rasporedima.",
+        employeeNotFound: "Zaposlenik nije pronađen.",
+        salonClosed: "Zaposlenik ne može raditi dan kada je salon zatvoren.",
+        outsideSalonHours: "Radno vrijeme zaposlenika mora biti unutar radnog vremena salona",
+        invalidDayTime: "Upiši valjano vrijeme početka i završetka rada.",
+        defaultSaved: "Zadani raspored je uspješno spremljen.",
+        invalidDayRange: "Odaberi valjani raspon dana.",
+        invalidWorkingTime: "Za radne dane upiši valjano vrijeme početka i završetka.",
+        rangeSaved: "Raspored za odabrani raspon dana je spremljen.",
+        datesRequired: "Početni i završni datum su obavezni.",
+        invalidOverrideType: "Tip iznimke nije valjan.",
+        invalidCustomHours: "Za posebno radno vrijeme upiši valjan početak i završetak.",
+        invalidDateRange: "Raspon datuma nije valjan.",
+        overrideSaved: "Iznimka rasporeda je uspješno spremljena."
+      },      days: ["Nedjelja","Ponedjeljak","Utorak","Srijeda","Četvrtak","Petak","Subota"]
     },
     feedback: {
       unknownBrowser: "Nepoznat preglednik",
@@ -1029,7 +1045,23 @@ const dictionaries = {
       actions: "Actions",
       delete: "Delete",
       deleteError: "Error deleting override.",
-      days: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+      actionErrors: {
+        notSignedIn: "You are not signed in or do not have an active salon.",
+        noPermission: "You do not have permission to manage schedules.",
+        employeeNotFound: "Employee not found.",
+        salonClosed: "An employee cannot work on a day when the salon is closed.",
+        outsideSalonHours: "Employee working hours must be within salon opening hours",
+        invalidDayTime: "Enter a valid start and end time.",
+        defaultSaved: "Default schedule saved successfully.",
+        invalidDayRange: "Select a valid day range.",
+        invalidWorkingTime: "Enter a valid start and end time for working days.",
+        rangeSaved: "Schedule for the selected day range was saved.",
+        datesRequired: "Start and end dates are required.",
+        invalidOverrideType: "Invalid override type.",
+        invalidCustomHours: "Enter a valid start and end time for custom working hours.",
+        invalidDateRange: "Invalid date range.",
+        overrideSaved: "Schedule override saved successfully."
+      },      days: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
     },
     feedback: {
       unknownBrowser: "Unknown browser",
@@ -1837,7 +1869,23 @@ const dictionaries = {
       actions: "Azioni",
       delete: "Elimina",
       deleteError: "Errore durante l'eliminazione dell'eccezione.",
-      days: ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"]
+      actionErrors: {
+        notSignedIn: "Non hai effettuato l'accesso o non hai un salone attivo.",
+        noPermission: "Non hai i permessi per gestire gli orari.",
+        employeeNotFound: "Dipendente non trovato.",
+        salonClosed: "Un dipendente non può lavorare in un giorno in cui il salone è chiuso.",
+        outsideSalonHours: "L'orario del dipendente deve rientrare nell'orario di apertura del salone",
+        invalidDayTime: "Inserisci un orario di inizio e fine valido.",
+        defaultSaved: "Orario predefinito salvato correttamente.",
+        invalidDayRange: "Seleziona un intervallo di giorni valido.",
+        invalidWorkingTime: "Inserisci un orario di inizio e fine valido per i giorni lavorativi.",
+        rangeSaved: "L'orario per l'intervallo di giorni selezionato è stato salvato.",
+        datesRequired: "La data iniziale e finale sono obbligatorie.",
+        invalidOverrideType: "Tipo di eccezione non valido.",
+        invalidCustomHours: "Inserisci un orario di inizio e fine valido per l'orario personalizzato.",
+        invalidDateRange: "Intervallo di date non valido.",
+        overrideSaved: "Eccezione dell'orario salvata correttamente."
+      },      days: ["Domenica","Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato"]
     },
     feedback: {
       unknownBrowser: "Browser sconosciuto",
