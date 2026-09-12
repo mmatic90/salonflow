@@ -6,8 +6,10 @@ import {
   UserX,
   ArrowUpRight,
 } from "lucide-react";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale: AppLocale;
   todayAppointmentsCount: number;
   tomorrowAppointmentsCount: number;
   completedThisMonthCount: number;
@@ -15,37 +17,41 @@ type Props = {
 };
 
 export default function DashboardOverviewWidget({
+  locale,
   todayAppointmentsCount,
   tomorrowAppointmentsCount,
   completedThisMonthCount,
   noShowThisMonthCount,
 }: Props) {
+  const dictionary = getDictionary(locale);
+  const t = dictionary.dashboard.overview;
+
   const cards = [
     {
-      title: "Termini danas",
+      title: t.todayTitle,
       value: todayAppointmentsCount,
-      description: "Aktivni termini zakazani za danas.",
+      description: t.todayDescription,
       href: "/dashboard/calendar/time-grid",
       icon: CalendarCheck,
     },
     {
-      title: "Termini sutra",
+      title: t.tomorrowTitle,
       value: tomorrowAppointmentsCount,
-      description: "Aktivni termini zakazani za sutra.",
+      description: t.tomorrowDescription,
       href: "/dashboard/appointments",
       icon: CalendarDays,
     },
     {
-      title: "Odrađeno ovaj mjesec",
+      title: t.completedTitle,
       value: completedThisMonthCount,
-      description: "Uspješno završeni termini ovog mjeseca.",
+      description: t.completedDescription,
       href: "/dashboard/reports",
       icon: CheckCircle2,
     },
     {
-      title: "No-show ovaj mjesec",
+      title: t.noShowTitle,
       value: noShowThisMonthCount,
-      description: "Termini na koje klijenti nisu došli.",
+      description: t.noShowDescription,
       href: "/dashboard/reports",
       icon: UserX,
     },
