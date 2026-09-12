@@ -343,6 +343,7 @@ async function sendOrScheduleCreatedSms(args: {
     const createdSms = await scheduleSms({
       to: clientPhone,
       message: buildAppointmentCreatedSms({
+        salonName,
         clientName,
         serviceName,
         date: appointmentDate,
