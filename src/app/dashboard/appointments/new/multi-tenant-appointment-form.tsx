@@ -29,6 +29,8 @@ type ServiceOption = AppointmentOption & { durationMinutes: number };
 type Props = {
   locale?: AppLocale;
   defaultDate: string;
+  defaultClientId?: string;
+  defaultServiceId?: string;
   clients: ClientOption[];
   employees: AppointmentOption[];
   rooms: AppointmentOption[];
@@ -70,12 +72,20 @@ function SectionHeader({
 export default function MultiTenantAppointmentForm({
   locale = "hr",
   defaultDate,
+  defaultClientId,
+  defaultServiceId,
   clients,
   employees,
   services,
 }: Props) {
   const dictionary = getDictionary(locale);
   const t = dictionary.appointments;
+  const defaultClient =
+    clients.find((client) => client.id === defaultClientId) ?? null;
+  const initialServiceId =
+    defaultServiceId && services.some((service) => service.id === defaultServiceId)
+      ? defaultServiceId
+      : "";
   const ui = {
     step1: locale === "en" ? "Step 1" : locale === "it" ? "Passo 1" : "Korak 1",
     step2: locale === "en" ? "Step 2" : locale === "it" ? "Passo 2" : "Korak 2",
@@ -104,14 +114,14 @@ export default function MultiTenantAppointmentForm({
   const [availabilityPending, setAvailabilityPending] = useState(false);
   const [date, setDate] = useState(defaultDate);
   const [startTime, setStartTime] = useState("");
-  const [serviceId, setServiceId] = useState("");
+  const [serviceId, setServiceId] = useState(initialServiceId);
   const [employeeId, setEmployeeId] = useState("");
   const [roomId, setRoomId] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [clientSearch, setClientSearch] = useState("");
+  const [clientId, setClientId] = useState(defaultClient?.id ?? "");
+  const [clientName, setClientName] = useState(defaultClient?.label ?? "");
+  const [clientPhone, setClientPhone] = useState(defaultClient?.phone ?? "");
+  const [clientEmail, setClientEmail] = useState(defaultClient?.email ?? "");
+  const [clientSearch, setClientSearch] = useState(defaultClient?.label ?? "");
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [availableEmployees, setAvailableEmployees] = useState<
     AppointmentOption[]
