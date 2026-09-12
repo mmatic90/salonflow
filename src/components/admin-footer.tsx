@@ -1,14 +1,19 @@
+import { getDictionary, type AppLocale } from "@/lib/i18n";
+
 type Props = {
   organizationName: string;
+  locale: AppLocale;
 };
 
-export default function AdminFooter({ organizationName }: Props) {
+export default function AdminFooter({ organizationName, locale }: Props) {
+  const dictionary = getDictionary(locale);
+
   return (
     <footer className="border-t border-app-soft px-4 py-4 text-center text-xs text-app-muted">
-      <span>{organizationName} · admin sustav</span>
+      <span>{organizationName} · {dictionary.adminSystem}</span>
       <span className="mx-2">·</span>
       <span>
-        Izradio{" "}
+        {dictionary.createdBy}{" "}
         <a
           href="https://mit-informatika.com"
           target="_blank"
