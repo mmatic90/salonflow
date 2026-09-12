@@ -84,7 +84,7 @@ export async function getDashboardOverviewStats(organizationId: string) {
 
   const onlineRows = onlineMonthResult.error ? [] : (onlineMonthResult.data ?? []);
   const onlineThisMonthCount = onlineRows.length;
-  const onlineAcceptedThisMonthCount = onlineRows.filter((item: any) => item.status === "accepted").length;
+  const onlineAcceptedThisMonthCount = onlineRows.filter((item) => item.status === "accepted").length;
   const onlineConversionRate = onlineThisMonthCount > 0
     ? Math.round((onlineAcceptedThisMonthCount / onlineThisMonthCount) * 100)
     : 0;
