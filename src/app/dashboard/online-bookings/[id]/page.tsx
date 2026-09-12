@@ -177,14 +177,11 @@ export default async function OnlineBookingDetailsPage({
                     {t.acceptRequest}
                   </h2>
 
-                  <p className="mt-2 text-sm text-app-muted">
-                    Možeš promijeniti samo djelatnika, sobu i trajanje tretmana.
-                    Datum, vrijeme početka, usluga i klijent ostaju fiksni.
-                  </p>
+                  <p className="mt-2 text-sm text-app-muted">{t.acceptHelp}</p>
 
                   {autoSuggestion.suggestion ? (
                     <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-                      Sustav predlaže:{" "}
+                      {t.systemSuggests}{" "}
                       <span className="font-semibold">
                         {autoSuggestion.suggestion.employee_name}
                       </span>{" "}
@@ -197,17 +194,14 @@ export default async function OnlineBookingDetailsPage({
                     </div>
                   ) : (
                     <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                      Sustav trenutno ne nalazi automatski prijedlog za ovaj
-                      termin. Možeš ručno odabrati djelatnika, sobu i trajanje.
+                      {t.noAutoSuggestion}
                     </div>
                   )}
 
                   {options.employees.length === 0 ||
                   options.rooms.length === 0 ? (
                     <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                      Za ovaj termin trenutno nema dostupnog djelatnika ili
-                      slobodne sobe. Najbolje je odbiti zahtjev uz razlog da
-                      termin više nije dostupan.
+                      {t.noAvailability}
                     </div>
                   ) : null}
 
@@ -285,9 +279,7 @@ export default async function OnlineBookingDetailsPage({
                     {t.rejectRequest}
                   </h2>
 
-                  <p className="mt-2 text-sm text-red-700">
-                    {t.client} će dobiti SMS s odabranim razlogom odbijanja.
-                  </p>
+                  <p className="mt-2 text-sm text-red-700">{t.rejectHelp}</p>
 
                   <label className="mt-5 block text-sm">
                     <span className="font-medium text-red-900">
@@ -298,7 +290,7 @@ export default async function OnlineBookingDetailsPage({
                       className="mt-2 w-full rounded-xl border border-red-200 bg-white px-3 py-3 outline-none"
                       required
                     >
-                      <option value="">{t.select} razlog</option>
+                      <option value="">{t.selectReason}</option>
                       {t.rejectionReasons.map((reason) => (
                         <option key={reason} value={reason}>
                           {reason}
