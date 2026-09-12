@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
-type Listener = (count: number) => void;
+type Listener = () => void;
 
 let sharedCount = 0;
 let previousCount: number | null = null;
@@ -14,7 +14,7 @@ const listeners = new Set<Listener>();
 
 function notifyListeners() {
   for (const listener of listeners) {
-    listener(sharedCount);
+    listener();
   }
 }
 
@@ -80,21 +80,28 @@ function stopPollingIfUnused() {
   pollInterval = null;
 }
 
+function subscribe(listener: Listener) {
+  subscriberCount += 1;
+  listeners.add(listener);
+  startPolling();
+
+  return () => {
+    listeners.delete(listener);
+    subscriberCount = Math.max(0, subscriberCount - 1);
+    stopPollingIfUnused();
+  };
+}
+
+function getSnapshot() {
+  return sharedCount;
+}
+
+function getServerSnapshot() {
+  return 0;
+}
+
 export default function OnlineBookingBadge() {
-  const [count, setCount] = useState(sharedCount);
-
-  useEffect(() => {
-    subscriberCount += 1;
-    listeners.add(setCount);
-    setCount(sharedCount);
-    startPolling();
-
-    return () => {
-      listeners.delete(setCount);
-      subscriberCount = Math.max(0, subscriberCount - 1);
-      stopPollingIfUnused();
-    };
-  }, []);
+  const count = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   if (count <= 0) return null;
 
