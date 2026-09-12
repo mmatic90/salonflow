@@ -3,14 +3,27 @@
 import { Clock3 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-function formatCurrentTime(date: Date) {
-  return new Intl.DateTimeFormat("hr-HR", {
+function formatCurrentTime(date: Date, locale: "hr" | "en" | "it") {
+  return new Intl.DateTimeFormat(
+    locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR",
+    {
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date);
+    },
+  ).format(date);
 }
 
-export default function CalendarCurrentTime({ selectedDate, today }: { selectedDate: string; today: string }) {
+export default function CalendarCurrentTime({
+  selectedDate,
+  today,
+  locale = "hr",
+  nowLabel,
+}: {
+  selectedDate: string;
+  today: string;
+  locale?: "hr" | "en" | "it";
+  nowLabel?: string;
+}) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -27,7 +40,7 @@ export default function CalendarCurrentTime({ selectedDate, today }: { selectedD
         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
       </span>
       <Clock3 className="h-4 w-4" />
-      Sada {formatCurrentTime(now)}
+      {nowLabel ?? (locale === "en" ? "Now" : locale === "it" ? "Adesso" : "Sada")} {formatCurrentTime(now, locale)}
     </div>
   );
 }
