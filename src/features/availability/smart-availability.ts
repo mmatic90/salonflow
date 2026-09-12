@@ -30,7 +30,7 @@ type EffectiveScheduleRow = {
   end_time: string | null;
 };
 
-type Suggestion = {
+export type SmartAvailabilitySuggestion = {
   start_time: string;
   end_time: string;
   employee_id: string;
@@ -79,6 +79,9 @@ export async function getSmartAvailability(options: {
   intervalMinutes?: number;
   maxSuggestions?: number;
   excludeAppointmentId?: string;
+  preferredEmployeeId?: string;
+  preferredTimeFrom?: string;
+  preferredTimeTo?: string;
 }) {
   const {
     date,
@@ -86,15 +89,21 @@ export async function getSmartAvailability(options: {
     intervalMinutes = 15,
     maxSuggestions = 3,
     excludeAppointmentId,
+    preferredEmployeeId,
+    preferredTimeFrom,
+    preferredTimeTo,
   } = options;
 
   if (!date) {
-    return { suggestions: [] as Suggestion[], reason: "Datum je obavezan." };
+    return {
+      suggestions: [] as SmartAvailabilitySuggestion[],
+      reason: "Datum je obavezan.",
+    };
   }
 
   if (!items.length) {
     return {
-      suggestions: [] as Suggestion[],
+      suggestions: [] as SmartAvailabilitySuggestion[],
       reason: "Potrebna je barem jedna usluga.",
     };
   }
@@ -102,7 +111,7 @@ export async function getSmartAvailability(options: {
   const totalDuration = calculateTotalDuration(items);
   if (!Number.isFinite(totalDuration) || totalDuration <= 0) {
     return {
-      suggestions: [] as Suggestion[],
+      suggestions: [] as SmartAvailabilitySuggestion[],
       reason: "Ukupno trajanje mora biti veće od 0.",
     };
   }
@@ -121,7 +130,7 @@ export async function getSmartAvailability(options: {
   const typedServices = services ?? [];
   if (typedServices.length !== serviceIds.length) {
     return {
-      suggestions: [] as Suggestion[],
+      suggestions: [] as SmartAvailabilitySuggestion[],
       reason: "Jedna ili više odabranih usluga nisu pronađene ili nisu aktivne.",
     };
   }
@@ -132,7 +141,7 @@ export async function getSmartAvailability(options: {
 
   if (organizationIds.length !== 1) {
     return {
-      suggestions: [] as Suggestion[],
+      suggestions: [] as SmartAvailabilitySuggestion[],
       reason: "Odabrane usluge ne pripadaju istom salonu.",
     };
   }
@@ -196,13 +205,26 @@ export async function getSmartAvailability(options: {
 
   if (!salonDay || salonDay.is_closed) {
     return {
-      suggestions: [] as Suggestion[],
+      suggestions: [] as SmartAvailabilitySuggestion[],
       reason: "Salon je zatvoren na odabrani datum.",
     };
   }
 
   const salonOpen = timeToMinutes(salonDay.opens_at);
   const salonClose = timeToMinutes(salonDay.closes_at);
+  const requestedStart = preferredTimeFrom
+    ? Math.max(salonOpen, timeToMinutes(preferredTimeFrom))
+    : salonOpen;
+  const requestedEnd = preferredTimeTo
+    ? Math.min(salonClose, timeToMinutes(preferredTimeTo))
+    : salonClose;
+
+  if (requestedStart + totalDuration > requestedEnd) {
+    return {
+      suggestions: [] as SmartAvailabilitySuggestion[],
+      reason: "Željeni vremenski raspon je prekratak za odabrane usluge.",
+    };
+  }
 
   const serviceToEmployeeIds = new Map<string, Set<string>>();
   for (const row of employeeMappings ?? []) {
@@ -250,9 +272,11 @@ export async function getSmartAvailability(options: {
     }
   }
 
-  const allowedEmployees = ((employees ?? []) as EmployeeRow[]).filter((employee) =>
-    allowedEmployeeIds?.has(employee.id),
-  );
+  const allowedEmployees = ((employees ?? []) as EmployeeRow[]).filter((employee) => {
+    if (!allowedEmployeeIds?.has(employee.id)) return false;
+    if (preferredEmployeeId && employee.id !== preferredEmployeeId) return false;
+    return true;
+  });
 
   const allowedRooms = ((rooms ?? []) as RoomRow[]).filter((room) =>
     allowedRoomIds?.has(room.id),
@@ -260,14 +284,16 @@ export async function getSmartAvailability(options: {
 
   if (allowedEmployees.length === 0) {
     return {
-      suggestions: [] as Suggestion[],
-      reason: "Nema zaposlenika koji mogu raditi sve odabrane usluge.",
+      suggestions: [] as SmartAvailabilitySuggestion[],
+      reason: preferredEmployeeId
+        ? "Željeni zaposlenik ne može odraditi odabranu uslugu."
+        : "Nema zaposlenika koji mogu raditi sve odabrane usluge.",
     };
   }
 
   if (allowedRooms.length === 0) {
     return {
-      suggestions: [] as Suggestion[],
+      suggestions: [] as SmartAvailabilitySuggestion[],
       reason: "Nema soba koje podržavaju sve odabrane usluge.",
     };
   }
@@ -309,8 +335,10 @@ export async function getSmartAvailability(options: {
 
   if (workingEmployees.length === 0) {
     return {
-      suggestions: [] as Suggestion[],
-      reason: "Nijedan dopušteni zaposlenik ne radi na odabrani datum.",
+      suggestions: [] as SmartAvailabilitySuggestion[],
+      reason: preferredEmployeeId
+        ? "Željeni zaposlenik ne radi na odabrani datum."
+        : "Nijedan dopušteni zaposlenik ne radi na odabrani datum.",
     };
   }
 
@@ -319,11 +347,11 @@ export async function getSmartAvailability(options: {
       excludeAppointmentId ? appointment.id !== excludeAppointmentId : true,
   );
 
-  const suggestions: Suggestion[] = [];
+  const suggestions: SmartAvailabilitySuggestion[] = [];
 
   for (
-    let start = salonOpen;
-    start + totalDuration <= salonClose;
+    let start = requestedStart;
+    start + totalDuration <= requestedEnd;
     start += intervalMinutes
   ) {
     const end = start + totalDuration;
