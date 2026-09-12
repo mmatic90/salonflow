@@ -14,8 +14,6 @@ import {
   Mail,
   Phone,
   Sparkles,
-  Star,
-  UserRound,
   AlertTriangle,
 } from "lucide-react";
 
