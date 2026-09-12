@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import { getClientById } from "@/features/clients/queries";
 import { formatTime, statusLabel } from "@/lib/utils";
 import { requireDashboardUser } from "@/lib/page-guards";
@@ -94,16 +93,6 @@ export default async function ClientDetailsPage({
 }) {
   const permissions = await requireDashboardUser();
   const t = getDictionary(permissions.organizationLocale).clients;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
 
   const { id } = await params;
   const client = await getClientById(id);
