@@ -63,9 +63,9 @@ function formatWorkingHours(
   return open
     .map(
       (row) =>
-        \`\${labels[row.day_of_week]} \${String(row.opens_at).slice(0, 5)}–\${String(
+        `${labels[row.day_of_week]} ${String(row.opens_at).slice(0, 5)}–${String(
           row.closes_at,
-        ).slice(0, 5)}\`,
+        ).slice(0, 5)}`,
     )
     .join(" · ");
 }
@@ -163,12 +163,12 @@ export default async function TenantBookingPage({
             {(["hr", "en", "it"] as const).map((locale) => (
               <Link
                 key={locale}
-                href={\`/booking/\${organization.slug}?lang=\${locale}\`}
-                className={\`rounded-full px-3 py-1.5 text-xs font-bold uppercase transition \${
+                href={`/booking/${organization.slug}?lang=${locale}`}
+                className={`rounded-full px-3 py-1.5 text-xs font-bold uppercase transition ${
                   lang === locale
                     ? "bg-app-accent text-white"
                     : "border border-app-soft bg-white text-app-text"
-                }\`}
+                }`}
               >
                 {locale}
               </Link>
@@ -193,7 +193,7 @@ export default async function TenantBookingPage({
                 <p className="font-bold text-white">{t.contact}</p>
                 {organization.phone ? (
                   <a
-                    href={\`tel:\${organization.phone.replace(/\s+/g, "")}\`}
+                    href={`tel:${organization.phone.replace(/\s+/g, "")}`}
                     className="flex items-center gap-3 hover:underline"
                   >
                     <Phone className="h-4 w-4" />
@@ -202,7 +202,7 @@ export default async function TenantBookingPage({
                 ) : null}
                 {organization.email ? (
                   <a
-                    href={\`mailto:\${organization.email}\`}
+                    href={`mailto:${organization.email}`}
                     className="flex items-center gap-3 hover:underline"
                   >
                     <Mail className="h-4 w-4" />
