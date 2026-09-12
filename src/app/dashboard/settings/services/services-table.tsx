@@ -9,8 +9,10 @@ import {
 } from "@/features/settings/actions";
 import SettingsDeleteButton from "@/components/settings-delete-button";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   services: ServiceItem[];
 };
 
@@ -44,7 +46,8 @@ function parsePrice(value: string) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-export default function ServicesTable({ services }: Props) {
+export default function ServicesTable({ locale = "hr", services }: Props) {
+  const t = getDictionary(locale).settings;
   const initialItems = useMemo(() => services.map(toEditable), [services]);
   const [items, setItems] = useState<EditableService[]>(initialItems);
   const [pending, startTransition] = useTransition();
@@ -84,8 +87,8 @@ export default function ServicesTable({ services }: Props) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-app-muted">
-          Uredi podatke u tablici pa klikni{" "}
-          <span className="font-medium text-app-text">Spremi izmjene</span>.
+          {t.services.editHint}{" "}
+          <span className="font-medium text-app-text">{t.saveChanges}</span>.
         </div>
 
         <div className="flex gap-2">
@@ -96,7 +99,7 @@ export default function ServicesTable({ services }: Props) {
             className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
           >
             <RotateCcw className="h-4 w-4" />
-            Poništi
+            {t.reset}
           </button>
 
           <button
@@ -105,7 +108,7 @@ export default function ServicesTable({ services }: Props) {
             disabled={pending || !hasChanges}
             className="rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
           >
-            {pending ? "Spremanje..." : "Spremi izmjene"}
+            {pending ? t.saving : t.saveChanges}
           </button>
         </div>
       </div>
@@ -114,14 +117,14 @@ export default function ServicesTable({ services }: Props) {
         <table className="min-w-full border-collapse">
           <thead className="bg-app-table-head">
             <tr className="text-left text-sm text-app-muted">
-              <th className="px-4 py-3 font-semibold">Naziv</th>
-              <th className="px-4 py-3 font-semibold">Opis</th>
-              <th className="px-4 py-3 font-semibold">Trajanje</th>
-              <th className="px-4 py-3 font-semibold">Cijena (€)</th>
-              <th className="px-4 py-3 font-semibold">Kategorija</th>
-              <th className="px-4 py-3 font-semibold">Aktivno</th>
-              <th className="px-4 py-3 font-semibold">Online</th>
-              <th className="px-4 py-3 font-semibold">Akcije</th>
+              <th className="px-4 py-3 font-semibold">{t.name}</th>
+              <th className="px-4 py-3 font-semibold">{t.descriptionLabel}</th>
+              <th className="px-4 py-3 font-semibold">{t.duration}</th>
+              <th className="px-4 py-3 font-semibold">{t.price}</th>
+              <th className="px-4 py-3 font-semibold">{t.category}</th>
+              <th className="px-4 py-3 font-semibold">{t.active}</th>
+              <th className="px-4 py-3 font-semibold">{t.online}</th>
+              <th className="px-4 py-3 font-semibold">{t.actions}</th>
             </tr>
           </thead>
 
