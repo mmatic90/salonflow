@@ -12,30 +12,30 @@ type Slot = {
 };
 
 export async function POST(request: Request) {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-
-  const ip =
-    forwardedFor?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip") ||
-    "unknown";
-
-  const rateLimit = await checkRateLimit({
-    ip,
-    endpoint: "public-booking",
-    limit: 5,
-    windowMinutes: 10,
-  });
-
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      {
-        error:
-          "Previše pokušaja rezervacije. Molimo pokušajte ponovno za nekoliko minuta.",
-      },
-      { status: 429 },
-    );
-  }
   try {
+    const forwardedFor = request.headers.get("x-forwarded-for");
+
+    const ip =
+      forwardedFor?.split(",")[0]?.trim() ||
+      request.headers.get("x-real-ip") ||
+      "unknown";
+
+    const rateLimit = await checkRateLimit({
+      ip,
+      endpoint: "public-booking",
+      limit: 5,
+      windowMinutes: 10,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error:
+            "Previše pokušaja rezervacije. Molimo pokušajte ponovno za nekoliko minuta.",
+        },
+        { status: 429 },
+      );
+    }
     const body = await request.json();
 
     const organizationSlug = String(body.organizationSlug ?? "").trim();
@@ -243,8 +243,16 @@ export async function POST(request: Request) {
         "Zahtjev za rezervaciju je poslan. Salon će provjeriti termin i poslati potvrdu.",
     });
   } catch (error) {
-    console.error(error);
+    console.error("Public booking route failed:", error);
 
-    return NextResponse.json({ error: "Server error." }, { status: 500 });
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Došlo je do neočekivane greške pri rezervaciji.",
+      },
+      { status: 500 },
+    );
   }
 }
