@@ -350,7 +350,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
       organization_id: permissions.organizationId,
       appointment_id: appointment.id,
       service_id: request.service_id,
-      service_name: getServiceName(request.services),
+      service_name: getServiceName(request.services, notificationLang),
       duration_minutes: durationMinutes,
       price: request.services?.price ?? null,
       currency: request.services?.currency || "EUR",
@@ -443,8 +443,9 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
 
 export async function rejectOnlineBookingRequestAction(formData: FormData) {
   const supabase = await createClient();
-  const userId = await getCurrentUserId();
   const permissions = await requireDashboardUser();
+  const t = getDictionary(permissions.organizationLocale).onlineBookings.actionMessages;
+  const userId = await getCurrentUserId(permissions.organizationLocale);
 
   const { data: organization, error: organizationError } = await supabase
     .from("organizations")
@@ -497,11 +498,11 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
     throw new Error(t.requestNotPending);
   }
 
-  const serviceName = getServiceName(request.services, notificationLang);
-  const startTime = String(request.start_time).slice(0, 5);
-
   const notificationLang: NotificationLang =
     request.language === "en" ? "en" : request.language === "it" ? "it" : "hr";
+
+  const serviceName = getServiceName(request.services, notificationLang);
+  const startTime = String(request.start_time).slice(0, 5);
 
   const smsMessage = buildRejectedSms({
     salonName: organization.name,
