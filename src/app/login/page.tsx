@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
@@ -13,14 +13,17 @@ function detectLocale(): AppLocale {
   return "hr";
 }
 
+const subscribeToLocale = () => () => {};
+const getServerLocale = (): AppLocale => "hr";
+
 export default function LoginPage() {
   const supabase = createClient();
-  const [locale, setLocale] = useState<AppLocale>("hr");
+  const locale = useSyncExternalStore(
+    subscribeToLocale,
+    detectLocale,
+    getServerLocale,
+  );
   const t = getDictionary(locale).auth;
-
-  useEffect(() => {
-    setLocale(detectLocale());
-  }, []);
   const router = useRouter();
 
   const [email, setEmail] = useState("");
