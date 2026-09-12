@@ -7,6 +7,7 @@ import {
 } from "@/features/settings/actions";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 
 const initialState: SettingsActionState = {
@@ -14,7 +15,8 @@ const initialState: SettingsActionState = {
   success: "",
 };
 
-export default function EquipmentCreateForm() {
+export default function EquipmentCreateForm({ locale = "hr" }: { locale?: AppLocale }) {
+  const t = getDictionary(locale).settings.equipment;
   const [state, formAction, pending] = useActionState(
     createEquipmentAction,
     initialState,
@@ -37,7 +39,7 @@ export default function EquipmentCreateForm() {
     <form action={formAction} className="grid gap-4 md:grid-cols-2">
       <input
         name="name"
-        placeholder="Naziv opreme"
+        placeholder={t.namePlaceholder}
         className="rounded-xl border border-neutral-300 px-4 py-3 outline-none"
         required
       />
@@ -45,7 +47,7 @@ export default function EquipmentCreateForm() {
         name="quantity_total"
         type="number"
         min={1}
-        placeholder="Količina"
+        placeholder={t.quantityPlaceholder}
         className="rounded-xl border border-neutral-300 px-4 py-3 outline-none"
         required
       />
@@ -56,7 +58,7 @@ export default function EquipmentCreateForm() {
           disabled={pending}
           className="rounded-xl bg-black px-5 py-3 font-medium text-white disabled:opacity-50"
         >
-          {pending ? "Dodavanje..." : "Dodaj opremu"}
+          {pending ? t.adding : t.add}
         </button>
       </div>
     </form>
