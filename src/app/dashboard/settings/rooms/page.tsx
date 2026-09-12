@@ -7,9 +7,12 @@ import RoomsTable from "./rooms-table";
 import RoomCreateForm from "./room-create-form";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import EmptyStateCard from "@/components/empty-state-card";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function SettingsRoomsPage() {
-  await requireAdminForSettings();
+  const permissions = await requireAdminForSettings();
+  const settings = getDictionary(permissions.organizationLocale).settings;
+  const t = settings.rooms;
 
   const rooms = await getRooms();
 
@@ -19,7 +22,7 @@ export default async function SettingsRoomsPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Sobe</h1>
+              <h1 className="text-3xl font-bold">{t.title}</h1>
               <p className="mt-2 text-neutral-600">Dodaj i upravljaj sobama.</p>
             </div>
 
@@ -27,28 +30,28 @@ export default async function SettingsRoomsPage() {
               href="/dashboard/settings"
               className="rounded-xl border border-neutral-300 px-4 py-2 font-medium"
             >
-              Natrag
+              {settings.back}
             </Link>
           </div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-md">
-          <h2 className="text-xl font-semibold">Nova soba</h2>
+          <h2 className="text-xl font-semibold">{t.newTitle}</h2>
           <div className="mt-4">
-            <RoomCreateForm />
+            <RoomCreateForm locale={permissions.organizationLocale} />
           </div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-md">
-          <h2 className="text-xl font-semibold">Popis soba</h2>
+          <h2 className="text-xl font-semibold">{t.listTitle}</h2>
           <div className="mt-4">
             {rooms.length === 0 ? (
               <EmptyStateCard
-                title="Nema soba"
-                description="Dodaj prvu sobu kako bi se mogla koristiti u rasporedu i terminima."
+                title={t.emptyTitle}
+                description={t.emptyDescription}
               />
             ) : (
-              <RoomsTable rooms={rooms} />
+              <RoomsTable locale={permissions.organizationLocale} rooms={rooms} />
             )}
           </div>
         </div>
