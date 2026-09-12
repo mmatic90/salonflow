@@ -31,6 +31,18 @@ export default function ClientForm({
 }: Props) {
   const dictionary = getDictionary(locale);
   const t = dictionary.clients;
+  const noteLabel =
+    locale === "en"
+      ? "Salon note"
+      : locale === "it"
+        ? "Nota del salone"
+        : "Napomena salona";
+  const noteHelp =
+    locale === "en"
+      ? "Preferences and important information staff should know."
+      : locale === "it"
+        ? "Preferenze e informazioni importanti che lo staff deve conoscere."
+        : "Preferencije i važne informacije koje osoblje treba znati.";
   const initialState: ClientActionState = {
     error: "",
     values: initialValues,
@@ -74,36 +86,38 @@ export default function ClientForm({
           />
         </div>
 
-        <div>
-          <label
-            htmlFor="phone"
-            className="mb-1 block text-sm font-medium text-app-text"
-          >
-            {t.phone}
-          </label>
-          <input
-            id="phone"
-            name="phone"
-            type="text"
-            defaultValue={state.values.phone}
-            className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
-          />
-        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="phone"
+              className="mb-1 block text-sm font-medium text-app-text"
+            >
+              {t.phone}
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              defaultValue={state.values.phone}
+              className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
+            />
+          </div>
 
-        <div>
-          <label
-            htmlFor="email"
-            className="mb-1 block text-sm font-medium text-app-text"
-          >
-            {t.email}
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            defaultValue={state.values.email}
-            className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
-          />
+          <div>
+            <label
+              htmlFor="email"
+              className="mb-1 block text-sm font-medium text-app-text"
+            >
+              {t.email}
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              defaultValue={state.values.email}
+              className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
+            />
+          </div>
         </div>
 
         <div>
@@ -111,31 +125,16 @@ export default function ClientForm({
             htmlFor="note"
             className="mb-1 block text-sm font-medium text-app-text"
           >
-            {t.note}
+            {noteLabel}
           </label>
           <textarea
             id="note"
             name="note"
-            rows={3}
+            rows={4}
             defaultValue={state.values.note}
             className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
           />
-        </div>
-
-        <div>
-          <label
-            htmlFor="internal_note"
-            className="mb-1 block text-sm font-medium text-app-text"
-          >
-            {t.internalNote}
-          </label>
-          <textarea
-            id="internal_note"
-            name="internal_note"
-            rows={3}
-            defaultValue={state.values.internal_note}
-            className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-2 focus:ring-app-accent/20"
-          />
+          <p className="mt-1.5 text-xs leading-5 text-app-muted">{noteHelp}</p>
         </div>
 
         {state.error ? (
