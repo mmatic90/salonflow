@@ -9,10 +9,13 @@ import {
   type OnlineBookingStatus,
 } from "@/features/online-bookings/queries";
 import AutoRefresh from "@/components/auto-refresh";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
-function formatDateHr(date: string) {
+function formatDate(date: string, locale: "hr" | "en" | "it") {
   const [year, month, day] = date.split("-");
-  return `${day}.${month}.${year}.`;
+  if (locale === "hr") return day + "." + month + "." + year + ".";
+  return day + "/" + month + "/" + year;
 }
 
 function getStatusFromSearchParams(searchParams?: {
@@ -36,10 +39,13 @@ function getStatusFromSearchParams(searchParams?: {
   return "pending";
 }
 
-function statusLabel(status: string) {
-  if (status === "pending") return "Na čekanju";
-  if (status === "accepted") return "Prihvaćeno";
-  if (status === "rejected") return "Odbijeno";
+function statusLabel(
+  status: string,
+  t: ReturnType<typeof getDictionary>["onlineBookings"],
+) {
+  if (status === "pending") return t.pending;
+  if (status === "accepted") return t.accepted;
+  if (status === "rejected") return t.rejected;
   return status;
 }
 
@@ -59,23 +65,23 @@ function statusClass(status: string) {
   return "border-app-soft bg-app-card-alt text-app-muted";
 }
 
-const filters: {
-  value: OnlineBookingStatus;
-  label: string;
-}[] = [
-  { value: "today", label: "Danas" },
-  { value: "pending", label: "Na čekanju" },
-  { value: "accepted", label: "Prihvaćeno" },
-  { value: "rejected", label: "Odbijeno" },
-  { value: "all", label: "Sve" },
-  { value: "archive", label: "Arhiva" },
-];
-
 export default async function OnlineBookingsPage({
   searchParams,
 }: {
   searchParams?: Promise<{ status?: string | string[] }>;
 }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.onlineBookings;
+  const filters: { value: OnlineBookingStatus; label: string }[] = [
+    { value: "today", label: t.today },
+    { value: "pending", label: t.pending },
+    { value: "accepted", label: t.accepted },
+    { value: "rejected", label: t.rejected },
+    { value: "all", label: t.all },
+    { value: "archive", label: t.archive },
+  ];
+
   const resolvedSearchParams = await searchParams;
   const activeStatus = getStatusFromSearchParams(resolvedSearchParams);
 
@@ -90,13 +96,13 @@ export default async function OnlineBookingsPage({
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <p className="text-sm font-medium text-app-muted">
-            Zahtjevi s javne web stranice
+            {t.sourceLabel}
           </p>
 
           <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-3xl font-bold text-app-text">
-                Online rezervacije
+                {t.title}
               </h1>
 
               <p className="mt-2 text-app-muted">
@@ -140,7 +146,7 @@ export default async function OnlineBookingsPage({
 
         {bookings.length === 0 ? (
           <div className="rounded-2xl border border-app-soft bg-app-card p-8 text-center text-app-muted">
-            Nema zahtjeva za odabrani filter.
+            {t.empty}
           </div>
         ) : (
           <div className="space-y-4">
@@ -168,13 +174,13 @@ export default async function OnlineBookingsPage({
                             booking.status,
                           )}`}
                         >
-                          {statusLabel(booking.status)}
+                          {statusLabel(booking.status, t)}
                         </span>
                       </div>
 
                       <p className="mt-2 text-sm text-app-muted">
-                        {booking.services?.name ?? "Nepoznata usluga"} ·{" "}
-                        {formatDateHr(booking.requested_date)} u{" "}
+                        {booking.services?.name ?? t.unknownService} ·{" "}
+                        {formatDate(booking.requested_date, permissions.organizationLocale)} {t.at}{" "}
                         {booking.start_time?.slice(0, 5)}
                       </p>
                     </div>
@@ -184,7 +190,7 @@ export default async function OnlineBookingsPage({
                         href={`/dashboard/online-bookings/${booking.id}`}
                         className="rounded-xl bg-app-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                       >
-                        Otvori zahtjev
+                        {t.openRequest}
                       </Link>
 
                       {booking.status === "pending" ? (
@@ -219,7 +225,7 @@ export default async function OnlineBookingsPage({
                                 type="submit"
                                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                               >
-                                Prihvati
+                                {t.accept}
                               </button>
                             </form>
                           ) : null}
@@ -240,7 +246,7 @@ export default async function OnlineBookingsPage({
                               type="submit"
                               className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
                             >
-                              Odbij
+                              {t.reject}
                             </button>
                           </form>
                         </>
@@ -250,7 +256,7 @@ export default async function OnlineBookingsPage({
 
                   <div className="mt-5 grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-xl bg-app-card-alt p-4">
-                      <div className="text-app-muted">Telefon</div>
+                      <div className="text-app-muted">{t.phone}</div>
                       <div className="mt-1 font-medium text-app-text">
                         {booking.client_phone}
                       </div>
@@ -264,7 +270,7 @@ export default async function OnlineBookingsPage({
                     </div>
 
                     <div className="rounded-xl bg-app-card-alt p-4">
-                      <div className="text-app-muted">Trajanje</div>
+                      <div className="text-app-muted">{t.duration}</div>
                       <div className="mt-1 font-medium text-app-text">
                         {booking.final_duration_minutes ??
                           booking.duration_minutes}{" "}
@@ -273,10 +279,14 @@ export default async function OnlineBookingsPage({
                     </div>
 
                     <div className="rounded-xl bg-app-card-alt p-4">
-                      <div className="text-app-muted">Kreirano</div>
+                      <div className="text-app-muted">{t.created}</div>
                       <div className="mt-1 font-medium text-app-text">
                         {new Date(booking.created_at).toLocaleDateString(
-                          "hr-HR",
+                          permissions.organizationLocale === "en"
+                            ? "en-GB"
+                            : permissions.organizationLocale === "it"
+                              ? "it-IT"
+                              : "hr-HR",
                         )}
                       </div>
                     </div>
@@ -284,25 +294,25 @@ export default async function OnlineBookingsPage({
 
                   {booking.status === "pending" && (
                     <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                      <div className="font-semibold">Brze akcije koriste:</div>
+                      <div className="font-semibold">{t.quickActionsUse}</div>
 
                       <div className="mt-2 grid gap-2 md:grid-cols-3">
                         <div>
-                          <span className="font-medium">Djelatnik:</span>{" "}
+                          <span className="font-medium">{t.employee}:</span>{" "}
                           {booking.final_employee?.display_name ||
                             booking.suggested_employee?.display_name ||
-                            "Nije odabrano"}
+                            t.notSelected}
                         </div>
 
                         <div>
-                          <span className="font-medium">Soba:</span>{" "}
+                          <span className="font-medium">{t.room}:</span>{" "}
                           {booking.final_room?.name ||
                             booking.suggested_room?.name ||
-                            "Nije odabrano"}
+                            t.notSelected}
                         </div>
 
                         <div>
-                          <span className="font-medium">Trajanje:</span>{" "}
+                          <span className="font-medium">{t.duration}:</span>{" "}
                           {booking.final_duration_minutes ??
                             booking.duration_minutes}{" "}
                           min
@@ -310,7 +320,7 @@ export default async function OnlineBookingsPage({
                       </div>
 
                       <p className="mt-2">
-                        Za izmjenu djelatnika, sobe ili trajanja otvori zahtjev.
+                        {t.quickActionHint}
                       </p>
                     </div>
                   )}
@@ -318,7 +328,7 @@ export default async function OnlineBookingsPage({
                   {booking.rejection_reason ? (
                     <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm">
                       <div className="font-medium text-red-900">
-                        Razlog odbijanja
+                        {t.rejectionReason}
                       </div>
                       <p className="mt-1 text-red-700">
                         {booking.rejection_reason}
@@ -328,7 +338,7 @@ export default async function OnlineBookingsPage({
 
                   {booking.client_note ? (
                     <div className="mt-4 rounded-xl bg-app-card-alt p-4 text-sm">
-                      <div className="font-medium text-app-text">Napomena</div>
+                      <div className="font-medium text-app-text">{t.note}</div>
                       <p className="mt-1 text-app-muted">
                         {booking.client_note}
                       </p>
