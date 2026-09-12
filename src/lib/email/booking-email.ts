@@ -15,9 +15,6 @@ const fromEmail =
 
 const replyTo = process.env.RESEND_REPLY_TO || undefined;
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
-const logoUrl = siteUrl ? `${siteUrl}/images/bodyandsoul-logo.png` : "";
-
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
