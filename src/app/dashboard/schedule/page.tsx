@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getEmployeesForSchedule } from "@/features/schedule/queries";
 import { requireAdminForScheduleManagement } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function SchedulePage() {
-  await requireAdminForScheduleManagement();
+  const permissions = await requireAdminForScheduleManagement();
+  const t = getDictionary(permissions.organizationLocale).schedule;
 
   const employees = await getEmployeesForSchedule();
 
@@ -12,10 +14,10 @@ export default async function SchedulePage() {
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <h1 className="text-3xl font-bold text-app-text">
-            Rasporedi zaposlenika
+            {t.title}
           </h1>
           <p className="mt-2 text-app-muted">
-            Upravljanje default rasporedom i dnevnim overrideovima.
+            {t.description}
           </p>
         </div>
 
@@ -35,7 +37,7 @@ export default async function SchedulePage() {
                   <h2 className="text-lg font-semibold text-app-text">
                     {employee.display_name}
                   </h2>
-                  <p className="text-sm text-app-muted">Uredi raspored</p>
+                  <p className="text-sm text-app-muted">{t.editSchedule}</p>
                 </div>
               </div>
             </Link>
