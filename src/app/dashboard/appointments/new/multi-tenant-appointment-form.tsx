@@ -267,7 +267,7 @@ export default function MultiTenantAppointmentForm({
         return;
       }
 
-      window.location.href = result.redirectTo || "/dashboard/appointments";
+      window.location.href = `/dashboard/calendar?date=${encodeURIComponent(date)}`;
     } catch (requestError) {
       console.error(requestError);
       setError(t.networkError);
