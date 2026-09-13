@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import {
+  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
   Clock3,
   DoorOpen,
+  ListPlus,
   Loader2,
   Mail,
   MessageSquareText,
@@ -18,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import AppointmentTimeSelect from "@/components/appointment-time-select";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 export type AppointmentOption = { id: string; label: string };
@@ -26,6 +30,12 @@ type ClientOption = AppointmentOption & {
   email: string | null;
 };
 type ServiceOption = AppointmentOption & { durationMinutes: number };
+type AvailabilityIssue =
+  | "no_employee_for_service"
+  | "no_employee_available"
+  | "no_room_for_service"
+  | "no_room_available";
+
 type Props = {
   locale?: AppLocale;
   defaultDate: string;
@@ -72,6 +82,38 @@ function SectionHeader({
   );
 }
 
+function availabilityIssueText(issue: AvailabilityIssue | null, locale: AppLocale) {
+  if (!issue) return null;
+
+  const messages = {
+    hr: {
+      no_employee_for_service: "Nijedan djelatnik nije povezan s ovom uslugom.",
+      no_employee_available:
+        "Nijedan djelatnik za ovu uslugu nije slobodan u odabrano vrijeme.",
+      no_room_for_service: "Nijedna soba nije povezana s ovom uslugom.",
+      no_room_available:
+        "Nijedna odgovarajuća soba nije slobodna u odabrano vrijeme.",
+    },
+    en: {
+      no_employee_for_service: "No employee is assigned to this service.",
+      no_employee_available:
+        "No employee for this service is available at the selected time.",
+      no_room_for_service: "No room is assigned to this service.",
+      no_room_available: "No suitable room is available at the selected time.",
+    },
+    it: {
+      no_employee_for_service: "Nessun operatore è associato a questo servizio.",
+      no_employee_available:
+        "Nessun operatore per questo servizio è libero nell'orario selezionato.",
+      no_room_for_service: "Nessuna cabina è associata a questo servizio.",
+      no_room_available:
+        "Nessuna cabina adatta è libera nell'orario selezionato.",
+    },
+  } as const;
+
+  return messages[locale][issue];
+}
+
 export default function MultiTenantAppointmentForm({
   locale = "hr",
   defaultDate,
@@ -82,6 +124,7 @@ export default function MultiTenantAppointmentForm({
   defaultRoomId,
   clients,
   employees,
+  rooms,
   services,
 }: Props) {
   const dictionary = getDictionary(locale);
@@ -126,6 +169,24 @@ export default function MultiTenantAppointmentForm({
         : locale === "it"
           ? "Cambia cliente"
           : "Promijeni klijenta",
+    unavailableTitle:
+      locale === "en"
+        ? "This slot is not available"
+        : locale === "it"
+          ? "Questo orario non è disponibile"
+          : "Termin nije dostupan",
+    waitlist:
+      locale === "en"
+        ? "Add to waitlist"
+        : locale === "it"
+          ? "Aggiungi alla lista d'attesa"
+          : "Dodaj na listu čekanja",
+    waitlistClientHelp:
+      locale === "en"
+        ? "Select an existing client to add this request to the waitlist."
+        : locale === "it"
+          ? "Seleziona un cliente esistente per aggiungere la richiesta alla lista d'attesa."
+          : "Odaberite postojećeg klijenta kako biste ovaj zahtjev dodali na listu čekanja.",
   };
 
   const [error, setError] = useState("");
@@ -143,13 +204,19 @@ export default function MultiTenantAppointmentForm({
   const [clientSearch, setClientSearch] = useState(defaultClient?.label ?? "");
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [additionalDetailsOpen, setAdditionalDetailsOpen] = useState(false);
-  const [availableEmployees, setAvailableEmployees] = useState<
-    AppointmentOption[]
-  >([]);
+  const [appointmentNote, setAppointmentNote] = useState("");
+  const [employeeIssue, setEmployeeIssue] = useState<AvailabilityIssue | null>(null);
+  const [roomIssue, setRoomIssue] = useState<AvailabilityIssue | null>(null);
+  const [availableEmployees, setAvailableEmployees] = useState<AppointmentOption[]>([]);
   const [availableRooms, setAvailableRooms] = useState<AppointmentOption[]>([]);
 
-  const hasRequiredSetup = employees.length > 0 && services.length > 0;
+  const hasRequiredSetup =
+    employees.length > 0 && services.length > 0 && rooms.length > 0;
   const availabilityReady = Boolean(date && startTime && serviceId);
+  const availabilityUnavailable =
+    availabilityReady &&
+    !availabilityPending &&
+    Boolean(employeeIssue || roomIssue);
 
   const filteredClients = useMemo(() => {
     const query = clientSearch.trim().toLocaleLowerCase("hr");
@@ -178,9 +245,26 @@ export default function MultiTenantAppointmentForm({
     [availableRooms, roomId],
   );
 
+  const waitlistHref = useMemo(() => {
+    if (!clientId || !serviceId || !date || !startTime) return null;
+
+    const params = new URLSearchParams({
+      open: "1",
+      clientId,
+      serviceId,
+      dateFrom: date,
+      timeFrom: startTime,
+    });
+    if (employeeId) params.set("employeeId", employeeId);
+    if (appointmentNote.trim()) params.set("notes", appointmentNote.trim());
+    return `/dashboard/waitlist?${params.toString()}`;
+  }, [appointmentNote, clientId, date, employeeId, serviceId, startTime]);
+
   function resetAvailabilitySelection() {
     setAvailableEmployees([]);
     setAvailableRooms([]);
+    setEmployeeIssue(null);
+    setRoomIssue(null);
     setEmployeeId("");
     setRoomId("");
   }
@@ -206,6 +290,8 @@ export default function MultiTenantAppointmentForm({
           error?: string;
           employees?: AppointmentOption[];
           rooms?: AppointmentOption[];
+          employee_issue?: AvailabilityIssue | null;
+          room_issue?: AvailabilityIssue | null;
         };
 
         if (!response.ok) {
@@ -216,6 +302,8 @@ export default function MultiTenantAppointmentForm({
         const nextRooms = result.rooms ?? [];
         setAvailableEmployees(nextEmployees);
         setAvailableRooms(nextRooms);
+        setEmployeeIssue(result.employee_issue ?? null);
+        setRoomIssue(result.room_issue ?? null);
         setEmployeeId((current) =>
           nextEmployees.some((employee) => employee.id === current)
             ? current
@@ -239,6 +327,8 @@ export default function MultiTenantAppointmentForm({
         }
         setAvailableEmployees([]);
         setAvailableRooms([]);
+        setEmployeeIssue(null);
+        setRoomIssue(null);
         setEmployeeId("");
         setRoomId("");
         setError(
@@ -354,13 +444,11 @@ export default function MultiTenantAppointmentForm({
               <Clock3 className="h-4 w-4 text-app-muted" />
               {t.startTime}
             </span>
-            <input
-              className={fieldClass}
-              type="time"
-              name="start_time"
+            <AppointmentTimeSelect
+              locale={locale}
               value={startTime}
-              onChange={(event) => {
-                setStartTime(event.target.value);
+              onChange={(nextTime) => {
+                setStartTime(nextTime);
                 resetAvailabilitySelection();
               }}
               required
@@ -432,19 +520,21 @@ export default function MultiTenantAppointmentForm({
                 {t.available}: {availableEmployees.length}
               </span>
             ) : availabilityReady ? (
-              <span className="text-xs text-amber-700">{t.noEmployees}</span>
+              <span className="text-xs text-amber-700">
+                {availabilityIssueText(employeeIssue, locale) || t.noEmployees}
+              </span>
             ) : null}
           </label>
 
           <label className="space-y-2 text-sm font-medium text-app-text">
             <span className="flex items-center gap-2">
               <DoorOpen className="h-4 w-4 text-app-muted" />
-              {t.availableRoom}{" "}
-              <span className="font-normal text-app-muted">({t.optional})</span>
+              {t.availableRoom}
             </span>
             <select
               className={fieldClass}
               name="room_id"
+              required
               value={roomId}
               onChange={(event) => setRoomId(event.target.value)}
               disabled={!availabilityReady || availabilityPending}
@@ -466,12 +556,47 @@ export default function MultiTenantAppointmentForm({
                 {t.available}: {availableRooms.length}
               </span>
             ) : availabilityReady && !availabilityPending ? (
-              <span className="text-xs text-app-muted">{t.noRooms}</span>
+              <span className="text-xs text-amber-700">
+                {availabilityIssueText(roomIssue, locale) || t.noRooms}
+              </span>
             ) : null}
           </label>
         </div>
 
-        {availabilityReady && selectedService ? (
+        {availabilityUnavailable ? (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold">{ui.unavailableTitle}</p>
+                <div className="mt-1 space-y-1 text-amber-800">
+                  {employeeIssue ? (
+                    <p>• {availabilityIssueText(employeeIssue, locale)}</p>
+                  ) : null}
+                  {roomIssue ? (
+                    <p>• {availabilityIssueText(roomIssue, locale)}</p>
+                  ) : null}
+                </div>
+                <div className="mt-3">
+                  {waitlistHref ? (
+                    <Link
+                      href={waitlistHref}
+                      className="inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-white px-3.5 py-2.5 font-semibold text-amber-900 transition hover:bg-amber-100"
+                    >
+                      <ListPlus className="h-4 w-4" /> {ui.waitlist}
+                    </Link>
+                  ) : (
+                    <p className="text-xs font-medium text-amber-800">
+                      {ui.waitlistClientHelp}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {availabilityReady && selectedService && !availabilityUnavailable ? (
           <div className="mt-5 rounded-2xl border border-app-accent/20 bg-app-accent/5 p-4">
             <div className="flex items-start gap-3">
               <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-app-accent" />
@@ -545,9 +670,7 @@ export default function MultiTenantAppointmentForm({
                     <UserRound className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-app-text">
-                      {t.newClient}
-                    </p>
+                    <p className="text-sm font-medium text-app-text">{t.newClient}</p>
                     <p className="text-xs text-app-muted">{t.enterBelow}</p>
                   </div>
                 </button>
@@ -694,6 +817,8 @@ export default function MultiTenantAppointmentForm({
               className={fieldClass}
               name="notes"
               rows={4}
+              value={appointmentNote}
+              onChange={(event) => setAppointmentNote(event.target.value)}
               placeholder={t.notePlaceholder}
             />
           </label>
@@ -703,7 +828,12 @@ export default function MultiTenantAppointmentForm({
       <button
         type="submit"
         disabled={
-          pending || availabilityPending || !hasRequiredSetup || !employeeId
+          pending ||
+          availabilityPending ||
+          !hasRequiredSetup ||
+          availabilityUnavailable ||
+          !employeeId ||
+          !roomId
         }
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent px-5 py-4 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none"
       >
