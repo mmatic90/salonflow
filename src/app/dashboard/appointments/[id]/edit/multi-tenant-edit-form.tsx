@@ -45,6 +45,8 @@ type AvailabilityOption = {
 };
 
 type AvailabilityIssue =
+  | "salon_closed"
+  | "outside_salon_hours"
   | "no_employee_for_service"
   | "no_employee_available"
   | "no_room_for_service"
@@ -82,6 +84,8 @@ function availabilityIssueText(issue: AvailabilityIssue | null, locale: AppLocal
 
   const messages = {
     hr: {
+      salon_closed: "Salon je zatvoren na odabrani datum.",
+      outside_salon_hours: "Odabrano vrijeme je izvan radnog vremena salona.",
       no_employee_for_service: "Nijedan djelatnik nije povezan s ovom uslugom.",
       no_employee_available:
         "Nijedan djelatnik za ovu uslugu nije slobodan u odabrano vrijeme.",
@@ -90,6 +94,8 @@ function availabilityIssueText(issue: AvailabilityIssue | null, locale: AppLocal
         "Nijedna odgovarajuća soba nije slobodna u odabrano vrijeme.",
     },
     en: {
+      salon_closed: "The salon is closed on the selected date.",
+      outside_salon_hours: "The selected time is outside salon opening hours.",
       no_employee_for_service: "No employee is assigned to this service.",
       no_employee_available:
         "No employee for this service is available at the selected time.",
@@ -97,6 +103,9 @@ function availabilityIssueText(issue: AvailabilityIssue | null, locale: AppLocal
       no_room_available: "No suitable room is available at the selected time.",
     },
     it: {
+      salon_closed: "Il salone è chiuso nella data selezionata.",
+      outside_salon_hours:
+        "L'orario selezionato è fuori dall'orario di apertura del salone.",
       no_employee_for_service: "Nessun operatore è associato a questo servizio.",
       no_employee_available:
         "Nessun operatore per questo servizio è libero nell'orario selezionato.",
@@ -228,6 +237,7 @@ export default function MultiTenantEditAppointmentForm({
   const [appointmentNote, setAppointmentNote] = useState(
     appointment.client_note ?? "",
   );
+  const [generalIssue, setGeneralIssue] = useState<AvailabilityIssue | null>(null);
   const [employeeIssue, setEmployeeIssue] = useState<AvailabilityIssue | null>(null);
   const [roomIssue, setRoomIssue] = useState<AvailabilityIssue | null>(null);
   const [availableEmployees, setAvailableEmployees] = useState<AvailabilityOption[]>([]);
@@ -239,7 +249,7 @@ export default function MultiTenantEditAppointmentForm({
   const availabilityUnavailable =
     availabilityReady &&
     !availabilityPending &&
-    Boolean(employeeIssue || roomIssue);
+    Boolean(generalIssue || employeeIssue || roomIssue);
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === clientId) ?? null,
     [clientId, clients],
@@ -261,6 +271,7 @@ export default function MultiTenantEditAppointmentForm({
   function resetAvailabilitySelection() {
     setAvailableEmployees([]);
     setAvailableRooms([]);
+    setGeneralIssue(null);
     setEmployeeIssue(null);
     setRoomIssue(null);
     setEmployeeId("");
@@ -289,6 +300,7 @@ export default function MultiTenantEditAppointmentForm({
           error?: string;
           employees?: AvailabilityOption[];
           rooms?: AvailabilityOption[];
+          general_issue?: AvailabilityIssue | null;
           employee_issue?: AvailabilityIssue | null;
           room_issue?: AvailabilityIssue | null;
         };
@@ -301,6 +313,7 @@ export default function MultiTenantEditAppointmentForm({
         const nextRooms = result.rooms ?? [];
         setAvailableEmployees(nextEmployees);
         setAvailableRooms(nextRooms);
+        setGeneralIssue(result.general_issue ?? null);
         setEmployeeIssue(result.employee_issue ?? null);
         setRoomIssue(result.room_issue ?? null);
         setEmployeeId((current) =>
@@ -326,6 +339,7 @@ export default function MultiTenantEditAppointmentForm({
         }
         setAvailableEmployees([]);
         setAvailableRooms([]);
+        setGeneralIssue(null);
         setEmployeeIssue(null);
         setRoomIssue(null);
         setEmployeeId("");
@@ -507,7 +521,7 @@ export default function MultiTenantEditAppointmentForm({
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 {t.checkingSchedule}
               </span>
-            ) : availabilityReady && displayedEmployees.length === 0 ? (
+            ) : availabilityReady && displayedEmployees.length === 0 && !generalIssue ? (
               <span className="block text-xs text-amber-700">
                 {availabilityIssueText(employeeIssue, locale) || t.noEmployees}
               </span>
@@ -539,7 +553,8 @@ export default function MultiTenantEditAppointmentForm({
           </select>
           {availabilityReady &&
           !availabilityPending &&
-          displayedRooms.length === 0 ? (
+          displayedRooms.length === 0 &&
+          !generalIssue ? (
             <span className="block text-xs text-amber-700">
               {availabilityIssueText(roomIssue, locale) || t.noRooms}
             </span>
@@ -553,6 +568,9 @@ export default function MultiTenantEditAppointmentForm({
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{ui.unavailableTitle}</p>
                 <div className="mt-1 space-y-1 text-amber-800">
+                  {generalIssue ? (
+                    <p>• {availabilityIssueText(generalIssue, locale)}</p>
+                  ) : null}
                   {employeeIssue ? (
                     <p>• {availabilityIssueText(employeeIssue, locale)}</p>
                   ) : null}
