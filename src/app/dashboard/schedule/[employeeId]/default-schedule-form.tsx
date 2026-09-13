@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import { Clock3 } from "lucide-react";
+import { Clock3, Coffee } from "lucide-react";
 import AppointmentTimeSelect from "@/components/appointment-time-select";
 import {
   updateDefaultScheduleAction,
@@ -23,9 +23,34 @@ type Props = {
 const dayValues = [1, 2, 3, 4, 5, 6, 0];
 
 function copy(locale: AppLocale) {
-  if (locale === "en") return { working: "Working", off: "Not working" };
-  if (locale === "it") return { working: "Lavora", off: "Non lavora" };
-  return { working: "Radi", off: "Ne radi" };
+  if (locale === "en") {
+    return {
+      working: "Working",
+      off: "Not working",
+      break: "Break / split shift",
+      breakHelp: "Appointments cannot be booked during this interval.",
+      breakStart: "Break starts",
+      breakEnd: "Break ends",
+    };
+  }
+  if (locale === "it") {
+    return {
+      working: "Lavora",
+      off: "Non lavora",
+      break: "Pausa / turno spezzato",
+      breakHelp: "Durante questo intervallo non possono essere prenotati appuntamenti.",
+      breakStart: "Inizio pausa",
+      breakEnd: "Fine pausa",
+    };
+  }
+  return {
+    working: "Radi",
+    off: "Ne radi",
+    break: "Pauza / dvokratno",
+    breakHelp: "Tijekom ovog raspona nije moguće rezervirati termin.",
+    breakStart: "Početak pauze",
+    breakEnd: "Kraj pauze",
+  };
 }
 
 export default function DefaultScheduleForm({
@@ -68,10 +93,44 @@ export default function DefaultScheduleForm({
       }, {}),
     [defaultSchedule],
   );
+  const initialBreakMap = useMemo(
+    () =>
+      dayValues.reduce<Record<number, boolean>>((acc, value) => {
+        const item = defaultSchedule.find((schedule) => schedule.day_of_week === value);
+        acc[value] = Boolean(item?.break_start_time && item?.break_end_time);
+        return acc;
+      }, {}),
+    [defaultSchedule],
+  );
+  const initialBreakStartMap = useMemo(
+    () =>
+      dayValues.reduce<Record<number, string>>((acc, value) => {
+        const item = defaultSchedule.find((schedule) => schedule.day_of_week === value);
+        acc[value] = item?.break_start_time?.slice(0, 5) ?? "12:00";
+        return acc;
+      }, {}),
+    [defaultSchedule],
+  );
+  const initialBreakEndMap = useMemo(
+    () =>
+      dayValues.reduce<Record<number, string>>((acc, value) => {
+        const item = defaultSchedule.find((schedule) => schedule.day_of_week === value);
+        acc[value] = item?.break_end_time?.slice(0, 5) ?? "13:00";
+        return acc;
+      }, {}),
+    [defaultSchedule],
+  );
 
   const [workingMap, setWorkingMap] = useState<Record<number, boolean>>(initialWorkingMap);
   const [startMap, setStartMap] = useState<Record<number, string>>(initialStartMap);
   const [endMap, setEndMap] = useState<Record<number, string>>(initialEndMap);
+  const [breakMap, setBreakMap] = useState<Record<number, boolean>>(initialBreakMap);
+  const [breakStartMap, setBreakStartMap] = useState<Record<number, string>>(
+    initialBreakStartMap,
+  );
+  const [breakEndMap, setBreakEndMap] = useState<Record<number, string>>(
+    initialBreakEndMap,
+  );
 
   return (
     <form action={formAction} className="space-y-4">
@@ -80,6 +139,7 @@ export default function DefaultScheduleForm({
           const salonDay = salonHours.find((row) => row.day_of_week === value);
           const salonClosed = !salonDay || salonDay.is_closed;
           const isWorking = salonClosed ? false : (workingMap[value] ?? false);
+          const hasBreak = isWorking && (breakMap[value] ?? false);
 
           return (
             <article
@@ -102,12 +162,13 @@ export default function DefaultScheduleForm({
                     name={`is_working_${value}`}
                     checked={isWorking}
                     disabled={salonClosed}
-                    onChange={(event) =>
-                      setWorkingMap((prev) => ({
-                        ...prev,
-                        [value]: event.target.checked,
-                      }))
-                    }
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setWorkingMap((prev) => ({ ...prev, [value]: checked }));
+                      if (!checked) {
+                        setBreakMap((prev) => ({ ...prev, [value]: false }));
+                      }
+                    }}
                     className="sr-only"
                   />
                   <span
@@ -159,6 +220,75 @@ export default function DefaultScheduleForm({
                   />
                 </label>
               </div>
+
+              {isWorking ? (
+                <div className="mt-4 rounded-xl border border-app-soft bg-app-card-alt/45 p-3.5">
+                  <label className="flex cursor-pointer items-center justify-between gap-4">
+                    <div>
+                      <p className="flex items-center gap-2 text-sm font-semibold text-app-text">
+                        <Coffee className="h-4 w-4 text-app-muted" /> {ui.break}
+                      </p>
+                      <p className="mt-1 text-xs text-app-muted">{ui.breakHelp}</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      name={`has_break_${value}`}
+                      checked={hasBreak}
+                      onChange={(event) =>
+                        setBreakMap((prev) => ({
+                          ...prev,
+                          [value]: event.target.checked,
+                        }))
+                      }
+                      className="sr-only"
+                    />
+                    <span
+                      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+                        hasBreak ? "bg-app-accent" : "bg-app-soft"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                          hasBreak ? "translate-x-6" : "translate-x-1"
+                        }`}
+                      />
+                    </span>
+                  </label>
+
+                  {hasBreak ? (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <label className="space-y-1.5 text-sm font-medium text-app-text">
+                        <span>{ui.breakStart}</span>
+                        <AppointmentTimeSelect
+                          locale={locale}
+                          name={`break_start_time_${value}`}
+                          value={breakStartMap[value] ?? ""}
+                          onChange={(next) =>
+                            setBreakStartMap((prev) => ({ ...prev, [value]: next }))
+                          }
+                          required
+                          startHour={5}
+                          endHour={22}
+                        />
+                      </label>
+                      <label className="space-y-1.5 text-sm font-medium text-app-text">
+                        <span>{ui.breakEnd}</span>
+                        <AppointmentTimeSelect
+                          locale={locale}
+                          name={`break_end_time_${value}`}
+                          value={breakEndMap[value] ?? ""}
+                          onChange={(next) =>
+                            setBreakEndMap((prev) => ({ ...prev, [value]: next }))
+                          }
+                          required
+                          startHour={5}
+                          endHour={22}
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           );
         })}
