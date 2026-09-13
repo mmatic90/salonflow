@@ -57,12 +57,14 @@ function isActive(pathname: string, href: string) {
 }
 
 function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "SF";
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "SF"
+  );
 }
 
 function subscribeToSidebarPreference(listener: () => void) {
@@ -83,7 +85,12 @@ function getSidebarPreferenceServerSnapshot() {
   return false;
 }
 
-export default function DashboardSidebar({ role, displayName, organizationName, locale }: Props) {
+export default function DashboardSidebar({
+  role,
+  displayName,
+  organizationName,
+  locale,
+}: Props) {
   const pathname = usePathname();
   const dictionary = getDictionary(locale);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -115,86 +122,178 @@ export default function DashboardSidebar({ role, displayName, organizationName, 
       <div className="sticky top-0 z-50 border-b border-app-soft bg-app-card px-4 py-3 shadow-sm lg:hidden">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <div className="truncate text-lg font-semibold text-app-text">{organizationName}</div>
+            <div className="truncate text-lg font-semibold text-app-text">
+              {organizationName}
+            </div>
             <div className="text-xs text-app-muted">{dictionary.salonAdminPanel}</div>
           </div>
-          <button type="button" onClick={() => setMobileOpen((prev) => !prev)} className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg">
-            {mobileOpen ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
+          <button
+            type="button"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-expanded={mobileOpen}
+            className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg"
+          >
+            {mobileOpen ? (
+              <PanelLeftClose className="h-5 w-5" />
+            ) : (
+              <PanelLeft className="h-5 w-5" />
+            )}
           </button>
         </div>
 
-        <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-app-soft bg-app-card-alt px-4 py-3">
-          <div className="text-sm text-app-muted">{dictionary.loggedInAs}: <span className="font-medium text-app-text">{displayName}</span></div>
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard/account" className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg">{dictionary.myAccount}</Link>
-            <LogoutButton locale={locale} />
-          </div>
-        </div>
+        {mobileOpen ? (
+          <div className="mt-4 space-y-3">
+            <nav className="space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                      active
+                        ? "bg-app-accent text-white shadow-sm"
+                        : "bg-app-card-alt text-app-text hover:bg-white"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                    {item.href === "/dashboard/online-bookings" ? (
+                      <OnlineBookingBadge />
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
 
-        {mobileOpen && (
-          <div className="mt-4 space-y-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(pathname, item.href);
-              return (
-                <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${active ? "bg-app-accent text-white shadow-sm" : "bg-app-card-alt text-app-text hover:bg-white"}`}>
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                  {item.href === "/dashboard/online-bookings" && <OnlineBookingBadge />}
+            <div className="rounded-2xl border border-app-soft bg-app-card-alt px-4 py-3">
+              <div className="text-sm text-app-muted">
+                {dictionary.loggedInAs}:{" "}
+                <span className="font-medium text-app-text">{displayName}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Link
+                  href="/dashboard/account"
+                  onClick={() => setMobileOpen(false)}
+                  className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
+                >
+                  {dictionary.myAccount}
                 </Link>
-              );
-            })}
+                <LogoutButton locale={locale} />
+              </div>
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
 
-      <aside className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-app-soft lg:bg-app-card lg:py-6 lg:shadow-sm transition-all duration-200 ${desktopCollapsed ? "lg:w-24" : "lg:w-72"}`}>
-        <div className="flex items-start justify-between gap-2 px-4 pb-6">
+      <aside
+        className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-app-soft lg:bg-app-card lg:py-6 lg:shadow-sm transition-all duration-200 ${
+          desktopCollapsed ? "lg:w-24" : "lg:w-72"
+        }`}
+      >
+        <div
+          className={`flex items-start gap-2 pb-6 ${
+            desktopCollapsed ? "justify-center px-3" : "justify-between px-4"
+          }`}
+        >
           {!desktopCollapsed ? (
             <div className="min-w-0">
-              <div className="truncate text-xl font-bold text-app-text">{organizationName}</div>
-              <div className="mt-1 text-sm text-app-muted">{dictionary.salonAdminPanel}</div>
+              <div className="truncate text-xl font-bold text-app-text">
+                {organizationName}
+              </div>
+              <div className="mt-1 text-sm text-app-muted">
+                {dictionary.salonAdminPanel}
+              </div>
             </div>
-          ) : (
-            <div className="text-sm font-bold text-app-text" title={organizationName}>{getInitials(organizationName)}</div>
-          )}
-          <button type="button" onClick={toggleDesktop} className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg">
-            {desktopCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          ) : null}
+          <button
+            type="button"
+            onClick={toggleDesktop}
+            title={organizationName}
+            className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg"
+          >
+            {desktopCollapsed ? (
+              <PanelLeft className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </button>
         </div>
+
+        {desktopCollapsed ? (
+          <div
+            className="mx-auto mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-app-card-alt text-xs font-bold text-app-text"
+            title={organizationName}
+          >
+            {getInitials(organizationName)}
+          </div>
+        ) : null}
 
         <nav className="flex-1 space-y-2 overflow-y-auto px-3">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(pathname, item.href);
             return (
-              <Link key={item.href} href={item.href} className={`flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition ${desktopCollapsed ? "justify-center" : "gap-3"} ${active ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-card-alt"}`} title={desktopCollapsed ? item.label : undefined}>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                  desktopCollapsed ? "justify-center" : "gap-3"
+                } ${
+                  active
+                    ? "bg-app-accent text-white shadow-sm"
+                    : "text-app-text hover:bg-app-card-alt"
+                }`}
+                title={desktopCollapsed ? item.label : undefined}
+              >
                 <Icon className="h-4 w-4 shrink-0" />
                 {!desktopCollapsed ? (
-                  <><span>{item.label}</span>{item.href === "/dashboard/online-bookings" && <OnlineBookingBadge />}</>
-                ) : item.href === "/dashboard/online-bookings" ? <OnlineBookingBadge /> : null}
+                  <>
+                    <span>{item.label}</span>
+                    {item.href === "/dashboard/online-bookings" ? (
+                      <OnlineBookingBadge />
+                    ) : null}
+                  </>
+                ) : item.href === "/dashboard/online-bookings" ? (
+                  <OnlineBookingBadge />
+                ) : null}
               </Link>
             );
           })}
         </nav>
 
         <div className="mt-auto px-3 pt-6">
-          <div className="rounded-2xl border border-app-soft bg-app-card-alt p-4">
-            {!desktopCollapsed ? (
-              <>
-                <div className="text-sm text-app-muted">{dictionary.loggedInAs}: <span className="font-medium text-app-text">{displayName}</span></div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link href="/dashboard/account" className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg">{dictionary.myAccount}</Link>
-                  <LogoutButton locale={locale} />
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <Link href="/dashboard/account" title={dictionary.myAccount} className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg"><UserCircle2 className="h-4 w-4" /></Link>
+          {!desktopCollapsed ? (
+            <div className="rounded-2xl border border-app-soft bg-app-card-alt p-4">
+              <div className="text-sm text-app-muted">
+                {dictionary.loggedInAs}:{" "}
+                <span className="font-medium text-app-text">{displayName}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  href="/dashboard/account"
+                  className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
+                >
+                  {dictionary.myAccount}
+                </Link>
                 <LogoutButton locale={locale} />
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 border-t border-app-soft pt-4">
+              <Link
+                href="/dashboard/account"
+                title={`${dictionary.myAccount} · ${displayName}`}
+                aria-label={dictionary.myAccount}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-app-soft bg-white text-app-text transition hover:bg-app-bg"
+              >
+                <UserCircle2 className="h-4 w-4" />
+              </Link>
+              <LogoutButton locale={locale} iconOnly />
+            </div>
+          )}
         </div>
       </aside>
     </>
