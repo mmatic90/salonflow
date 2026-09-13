@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUserPermissions } from "@/lib/permissions";
+import { getPlatformAdminContext } from "@/lib/platform-admin";
 import { sendFeedbackNotificationEmail } from "@/lib/email/feedback-email";
 import {
   createFeedbackSchema,
@@ -32,10 +33,14 @@ function safeFileExtension(file: File) {
   return "jpg";
 }
 
+function revalidateFeedbackPaths(id?: string) {
+  revalidatePath("/platform");
+  revalidatePath("/platform/feedback");
+  if (id) revalidatePath(`/platform/feedback/${id}`);
+}
+
 async function requireSystemDeveloper() {
-  const permissions = await getCurrentUserPermissions();
-  if (!permissions?.isSystemDeveloper) return null;
-  return permissions;
+  return getPlatformAdminContext();
 }
 
 async function deleteFeedbackRecords(ids: string[], screenshotPaths: string[]) {
@@ -46,7 +51,9 @@ async function deleteFeedbackRecords(ids: string[], screenshotPaths: string[]) {
       .from("feedback")
       .remove(screenshotPaths);
 
-    if (storageError) throw new Error(`Screenshot nije obrisan: ${storageError.message}`);
+    if (storageError) {
+      throw new Error(`Screenshot nije obrisan: ${storageError.message}`);
+    }
   }
 
   const { error: deleteError } = await supabase
@@ -127,6 +134,8 @@ export async function createFeedback(
       created_by: permissions.userId,
       created_by_email: permissions.email,
       created_by_name: permissions.displayName,
+      organization_id: permissions.organizationId,
+      organization_name: permissions.organizationName,
       type: parsed.data.type,
       priority: parsed.data.priority,
       title: parsed.data.title,
@@ -169,16 +178,16 @@ export async function createFeedback(
     console.error("Feedback email notification failed:", emailError);
   }
 
-  revalidatePath("/dashboard/feedback");
+  revalidateFeedbackPaths();
   return { ok: true, feedbackId };
 }
 
 export async function updateFeedback(
   input: unknown,
 ): Promise<FeedbackActionResult> {
-  const permissions = await requireSystemDeveloper();
+  const platformAdmin = await requireSystemDeveloper();
 
-  if (!permissions) {
+  if (!platformAdmin) {
     return { ok: false, error: "Nemate dopuštenje za ovu radnju." };
   }
 
@@ -198,17 +207,20 @@ export async function updateFeedback(
 
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/dashboard/feedback");
-  revalidatePath(`/dashboard/feedback/${parsed.data.id}`);
+  revalidateFeedbackPaths(parsed.data.id);
   return { ok: true, feedbackId: parsed.data.id };
 }
 
 export async function deleteFeedback(id: string): Promise<FeedbackActionResult> {
-  const permissions = await requireSystemDeveloper();
-  if (!permissions) return { ok: false, error: "Nemate dopuštenje za ovu radnju." };
+  const platformAdmin = await requireSystemDeveloper();
+  if (!platformAdmin) {
+    return { ok: false, error: "Nemate dopuštenje za ovu radnju." };
+  }
 
   const parsedId = feedbackIdSchema.safeParse(id);
-  if (!parsedId.success) return { ok: false, error: "Neispravan feedback ID." };
+  if (!parsedId.success) {
+    return { ok: false, error: "Neispravan feedback ID." };
+  }
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -228,27 +240,38 @@ export async function deleteFeedback(id: string): Promise<FeedbackActionResult> 
   } catch (deleteError) {
     return {
       ok: false,
-      error: deleteError instanceof Error ? deleteError.message : "Feedback nije obrisan.",
+      error:
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Feedback nije obrisan.",
     };
   }
 
-  revalidatePath("/dashboard/feedback");
+  revalidateFeedbackPaths();
   return { ok: true, feedbackId: parsedId.data, deletedCount: 1 };
 }
 
 export async function cleanupOldFeedback(): Promise<FeedbackActionResult> {
-  const permissions = await requireSystemDeveloper();
-  if (!permissions) return { ok: false, error: "Nemate dopuštenje za ovu radnju." };
+  const platformAdmin = await requireSystemDeveloper();
+  if (!platformAdmin) {
+    return { ok: false, error: "Nemate dopuštenje za ovu radnju." };
+  }
 
   const now = Date.now();
-  const doneBefore = new Date(now - DONE_RETENTION_DAYS * 86400000).toISOString();
-  const rejectedBefore = new Date(now - REJECTED_RETENTION_DAYS * 86400000).toISOString();
+  const doneBefore = new Date(
+    now - DONE_RETENTION_DAYS * 86400000,
+  ).toISOString();
+  const rejectedBefore = new Date(
+    now - REJECTED_RETENTION_DAYS * 86400000,
+  ).toISOString();
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("feedback")
     .select("id, screenshot_path, status, updated_at")
-    .or(`and(status.eq.done,updated_at.lt.${doneBefore}),and(status.eq.rejected,updated_at.lt.${rejectedBefore})`);
+    .or(
+      `and(status.eq.done,updated_at.lt.${doneBefore}),and(status.eq.rejected,updated_at.lt.${rejectedBefore})`,
+    );
 
   if (error) return { ok: false, error: error.message };
 
@@ -258,15 +281,20 @@ export async function cleanupOldFeedback(): Promise<FeedbackActionResult> {
   try {
     await deleteFeedbackRecords(
       candidates.map((item) => item.id),
-      candidates.flatMap((item) => item.screenshot_path ? [item.screenshot_path] : []),
+      candidates.flatMap((item) =>
+        item.screenshot_path ? [item.screenshot_path] : [],
+      ),
     );
   } catch (cleanupError) {
     return {
       ok: false,
-      error: cleanupError instanceof Error ? cleanupError.message : "Čišćenje nije uspjelo.",
+      error:
+        cleanupError instanceof Error
+          ? cleanupError.message
+          : "Čišćenje nije uspjelo.",
     };
   }
 
-  revalidatePath("/dashboard/feedback");
+  revalidateFeedbackPaths();
   return { ok: true, deletedCount: candidates.length };
 }
