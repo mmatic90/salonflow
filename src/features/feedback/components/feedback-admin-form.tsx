@@ -8,7 +8,13 @@ import { deleteFeedback, updateFeedback } from "@/features/feedback/actions";
 import type { FeedbackRow } from "@/features/feedback/types";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 
-export default function FeedbackAdminForm({ locale = "hr", feedback }: { locale?: AppLocale; feedback: FeedbackRow }) {
+export default function FeedbackAdminForm({
+  locale = "hr",
+  feedback,
+}: {
+  locale?: AppLocale;
+  feedback: FeedbackRow;
+}) {
   const t = getDictionary(locale).developerFeedback;
   const [isPending, startTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
@@ -53,21 +59,26 @@ export default function FeedbackAdminForm({ locale = "hr", feedback }: { locale?
       }
 
       toast.success(t.deleteSuccess);
-      router.push("/dashboard/feedback");
+      router.push("/platform/feedback");
       router.refresh();
     });
   }
 
   return (
     <div className="space-y-4">
-      <form onSubmit={handleSubmit} className="space-y-5 rounded-3xl border border-app-soft bg-app-card p-6 shadow-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-5 rounded-3xl border border-app-soft bg-app-card p-6 shadow-sm"
+      >
         <div>
           <h2 className="text-lg font-bold text-app-text">{t.manageTitle}</h2>
           <p className="mt-1 text-sm text-app-muted">{t.manageDescription}</p>
         </div>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-app-text">{t.status}</span>
+          <span className="mb-2 block text-sm font-semibold text-app-text">
+            {t.status}
+          </span>
           <select
             name="status"
             defaultValue={feedback.status}
@@ -83,7 +94,9 @@ export default function FeedbackAdminForm({ locale = "hr", feedback }: { locale?
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-app-text">{t.internalComment}</span>
+          <span className="mb-2 block text-sm font-semibold text-app-text">
+            {t.internalComment}
+          </span>
           <textarea
             name="adminComment"
             defaultValue={feedback.admin_comment ?? ""}
@@ -99,7 +112,7 @@ export default function FeedbackAdminForm({ locale = "hr", feedback }: { locale?
           disabled={isPending || isDeleting}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
         >
-          {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {isPending ? t.saving : t.saveChanges}
         </button>
       </form>
@@ -115,7 +128,11 @@ export default function FeedbackAdminForm({ locale = "hr", feedback }: { locale?
           disabled={isDeleting || isPending}
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-800 disabled:opacity-60"
         >
-          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          {isDeleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
           {isDeleting ? t.deleting : t.deleteFeedback}
         </button>
       </section>
