@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarDays,
   Clock3,
+  CreditCard,
   Mail,
   MapPin,
   MessageSquareText,
@@ -14,13 +15,41 @@ import {
   UsersRound,
 } from "lucide-react";
 import { getPlatformSalonById } from "@/features/platform-admin/queries";
-import SalonStatusControl from "@/features/platform-admin/components/salon-status-control";
+import SalonPlanLifecycleControl from "@/features/platform-admin/components/salon-plan-lifecycle-control";
+import {
+  lifecycleLabel,
+  salonPlans,
+  type SalonLifecycleStatus,
+} from "@/lib/plans";
 
-function formatDate(value: string) {
+function formatDate(value: string | null) {
+  if (!value) return "-";
   return new Intl.DateTimeFormat("hr-HR", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatDateOnly(value: string | null) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("hr-HR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function lifecycleClasses(status: SalonLifecycleStatus) {
+  switch (status) {
+    case "trial":
+      return "bg-blue-100 text-blue-800";
+    case "active":
+      return "bg-emerald-100 text-emerald-800";
+    case "past_due":
+      return "bg-amber-100 text-amber-800";
+    case "suspended":
+      return "bg-red-100 text-red-800";
+  }
 }
 
 function roleLabel(role: string) {
@@ -85,51 +114,51 @@ export default async function PlatformSalonDetailPage({
       </Link>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <Building2 className="h-7 w-7" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-3xl font-extrabold tracking-tight text-slate-950">
-                  {salon.name}
-                </h1>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold ${
-                    salon.isActive
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-amber-100 text-amber-800"
-                  }`}
-                >
-                  {salon.isActive ? "Aktivan" : "Suspendiran"}
-                </span>
-              </div>
-              <p className="mt-2 text-sm text-slate-500">
-                /{salon.slug} · {salon.locale.toUpperCase()} · {salon.currency}
-              </p>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                Platformski pregled tenant računa. Ovdje se ne prikazuju klijenti,
-                termini, prihodi ni tretmanski podaci salona.
-              </p>
-            </div>
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <Building2 className="h-7 w-7" />
           </div>
-
-          <SalonStatusControl
-            organizationId={salon.id}
-            organizationName={salon.name}
-            isActive={salon.isActive}
-          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="truncate text-3xl font-extrabold tracking-tight text-slate-950">
+                {salon.name}
+              </h1>
+              <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+                {salonPlans[salon.planCode].name}
+              </span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold ${lifecycleClasses(
+                  salon.lifecycleStatus,
+                )}`}
+              >
+                {lifecycleLabel(salon.lifecycleStatus)}
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-slate-500">
+              /{salon.slug} · {salon.locale.toUpperCase()} · {salon.currency}
+            </p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+              Platformski pregled tenant računa. Ovdje se ne prikazuju klijenti,
+              termini, prihodi ni tretmanski podaci salona.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <UsersRound className="h-5 w-5 text-slate-600" />
           <p className="mt-4 text-3xl font-extrabold text-slate-950">
             {salon.members.filter((member) => member.isActive).length}
           </p>
           <p className="mt-1 text-sm text-slate-500">Aktivnih članova</p>
+        </div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <CreditCard className="h-5 w-5 text-slate-600" />
+          <p className="mt-4 text-2xl font-extrabold text-slate-950">
+            {salonPlans[salon.planCode].name}
+          </p>
+          <p className="mt-1 text-sm text-slate-500">Trenutni plan</p>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <MessageSquareText className="h-5 w-5 text-slate-600" />
@@ -140,10 +169,10 @@ export default async function PlatformSalonDetailPage({
         </div>
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <ShieldCheck className="h-5 w-5 text-slate-600" />
-          <p className="mt-4 text-3xl font-extrabold text-slate-950">
-            {salon.feedback.total}
+          <p className="mt-4 text-2xl font-extrabold text-slate-950">
+            {lifecycleLabel(salon.lifecycleStatus)}
           </p>
-          <p className="mt-1 text-sm text-slate-500">Ukupno feedbacka</p>
+          <p className="mt-1 text-sm text-slate-500">Lifecycle status</p>
         </div>
       </section>
 
@@ -168,6 +197,41 @@ export default async function PlatformSalonDetailPage({
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-slate-600" />
+              <h2 className="text-xl font-bold text-slate-950">
+                Subscription podaci
+              </h2>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <DetailCard
+                label="Plan"
+                value={salonPlans[salon.planCode].name}
+              />
+              <DetailCard
+                label="Status"
+                value={lifecycleLabel(salon.lifecycleStatus)}
+              />
+              <DetailCard
+                label="Trial počeo"
+                value={formatDateOnly(salon.trialStartedAt)}
+              />
+              <DetailCard
+                label="Trial završava"
+                value={formatDateOnly(salon.trialEndsAt)}
+              />
+              <DetailCard
+                label="Plan zadnje promijenjen"
+                value={formatDate(salon.planChangedAt)}
+              />
+              <DetailCard
+                label="Dashboard pristup"
+                value={salon.isActive ? "Omogućen" : "Blokiran"}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-center gap-3">
               <UserRound className="h-5 w-5 text-slate-600" />
               <h2 className="text-xl font-bold text-slate-950">Vlasnik i kontakt</h2>
             </div>
@@ -187,6 +251,14 @@ export default async function PlatformSalonDetailPage({
         </div>
 
         <div className="space-y-6">
+          <SalonPlanLifecycleControl
+            organizationId={salon.id}
+            organizationName={salon.name}
+            planCode={salon.planCode}
+            lifecycleStatus={salon.lifecycleStatus}
+            trialEndsAt={salon.trialEndsAt}
+          />
+
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -255,12 +327,12 @@ export default async function PlatformSalonDetailPage({
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-600 shadow-sm">
             <div className="flex items-center gap-2 font-bold text-slate-900">
-              <Clock3 className="h-4 w-4" /> Status tenant računa
+              <Clock3 className="h-4 w-4" /> Lifecycle pravila
             </div>
             <p className="mt-2">
-              Suspendiranje blokira pristup salon dashboardu svim članovima ovog
-              tenanta. Ne briše nijedan podatak i može se poništiti ponovnom
-              aktivacijom.
+              Trial i Past due trenutno ne blokiraju pristup. Suspended blokira
+              salon dashboard svim članovima tenanta, bez brisanja podataka.
+              Automatski billing prijelazi još nisu uključeni.
             </p>
             <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
               {salon.email ? (
