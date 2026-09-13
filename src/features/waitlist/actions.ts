@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireDashboardUser } from "@/lib/page-guards";
+import { requireDashboardCapability } from "@/lib/page-guards";
 import { refreshWaitlistEntryOpportunity } from "@/features/waitlist/opportunities";
 
 function text(formData: FormData, key: string) {
@@ -42,7 +42,10 @@ function validatePreferenceRange(formData: FormData) {
 }
 
 export async function createWaitlistEntryAction(formData: FormData) {
-  const permissions = await requireDashboardUser();
+  const permissions = await requireDashboardCapability(
+    "waitlist",
+    "/dashboard/waitlist",
+  );
   const clientId = text(formData, "client_id");
   const serviceId = text(formData, "service_id");
   const preferredEmployeeId = nullable(formData, "preferred_employee_id");
@@ -85,7 +88,10 @@ export async function updateWaitlistEntryAction(
   entryId: string,
   formData: FormData,
 ) {
-  const permissions = await requireDashboardUser();
+  const permissions = await requireDashboardCapability(
+    "waitlist",
+    "/dashboard/waitlist",
+  );
   const clientId = text(formData, "client_id");
   const serviceId = text(formData, "service_id");
   const preferredEmployeeId = nullable(formData, "preferred_employee_id");
@@ -128,7 +134,10 @@ export async function updateWaitlistEntryAction(
 }
 
 export async function cancelWaitlistEntryAction(entryId: string) {
-  const permissions = await requireDashboardUser();
+  const permissions = await requireDashboardCapability(
+    "waitlist",
+    "/dashboard/waitlist",
+  );
   const supabase = await createClient();
   const { error } = await supabase
     .from("waitlist_entries")
