@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   ChevronDown,
   Clock3,
+  Info,
   ListPlus,
   Pencil,
   UserRound,
@@ -29,6 +30,25 @@ import type { AppLocale } from "@/lib/i18n";
 const fieldClass =
   "w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none transition focus:border-app-accent focus:ring-4 focus:ring-app-accent/10";
 
+type SearchParams = Promise<{
+  open?: string;
+  clientId?: string;
+  serviceId?: string;
+  employeeId?: string;
+  dateFrom?: string;
+  timeFrom?: string;
+  notes?: string;
+}>;
+
+type WaitlistDraftDefaults = {
+  clientId?: string;
+  serviceId?: string;
+  employeeId?: string;
+  dateFrom?: string;
+  timeFrom?: string;
+  notes?: string;
+};
+
 function ui(locale: AppLocale) {
   if (locale === "en") {
     return {
@@ -36,6 +56,9 @@ function ui(locale: AppLocale) {
       description: "Keep track of clients who want an earlier or currently unavailable slot.",
       add: "Add to waitlist",
       addHelp: "Choose a client and service. Date, time and employee preferences are optional.",
+      prefillTitle: "Appointment details copied",
+      prefillHelp:
+        "The requested start date and time are filled in. Choose the latest acceptable date and time to define the waitlist range.",
       client: "Client",
       service: "Service",
       employee: "Preferred employee",
@@ -44,6 +67,7 @@ function ui(locale: AppLocale) {
       dateTo: "To date",
       timeFrom: "From time",
       timeTo: "To time",
+      rangeEndRequired: "Required for this waitlist request",
       notes: "Note",
       save: "Add to waitlist",
       active: "Waiting",
@@ -74,6 +98,9 @@ function ui(locale: AppLocale) {
       description: "Tieni traccia dei clienti che desiderano un orario anticipato o al momento non disponibile.",
       add: "Aggiungi alla lista d'attesa",
       addHelp: "Scegli cliente e servizio. Data, orario e operatore preferito sono facoltativi.",
+      prefillTitle: "Dati dell'appuntamento copiati",
+      prefillHelp:
+        "Data e ora iniziali sono già compilate. Scegli la data e l'ora massime accettabili per definire l'intervallo della lista d'attesa.",
       client: "Cliente",
       service: "Servizio",
       employee: "Operatore preferito",
@@ -82,6 +109,7 @@ function ui(locale: AppLocale) {
       dateTo: "Data al",
       timeFrom: "Ora dalle",
       timeTo: "Ora alle",
+      rangeEndRequired: "Obbligatorio per questa richiesta",
       notes: "Nota",
       save: "Aggiungi alla lista",
       active: "In attesa",
@@ -111,6 +139,9 @@ function ui(locale: AppLocale) {
     description: "Prati klijente koji žele raniji ili trenutno nedostupan termin.",
     add: "Dodaj na listu čekanja",
     addHelp: "Odaberi klijenta i uslugu. Datum, vrijeme i željeni zaposlenik nisu obavezni.",
+    prefillTitle: "Podaci termina su preneseni",
+    prefillHelp:
+      "Početni datum i vrijeme već su popunjeni. Odredite najkasniji datum i vrijeme koji klijentu odgovaraju kako biste definirali raspon čekanja.",
     client: "Klijent",
     service: "Usluga",
     employee: "Željeni zaposlenik",
@@ -119,6 +150,7 @@ function ui(locale: AppLocale) {
     dateTo: "Datum do",
     timeFrom: "Vrijeme od",
     timeTo: "Vrijeme do",
+    rangeEndRequired: "Obavezno za ovaj zahtjev",
     notes: "Napomena",
     save: "Dodaj na listu",
     active: "Na čekanju",
@@ -168,6 +200,16 @@ function time(value: string | null) {
   return value ? value.slice(0, 5) : null;
 }
 
+function validDate(value: string | undefined) {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : undefined;
+}
+
+function validTime(value: string | undefined) {
+  return value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+    ? value
+    : undefined;
+}
+
 function buildBookingHref(entry: WaitlistEntry, today: string) {
   const params = new URLSearchParams({
     clientId: entry.client_id,
@@ -186,18 +228,30 @@ function buildBookingHref(entry: WaitlistEntry, today: string) {
 
 function WaitlistFields({
   entry,
+  defaults,
+  requireRangeEnd = false,
   clients,
   services,
   employees,
   locale,
 }: {
   entry?: WaitlistEntry;
+  defaults?: WaitlistDraftDefaults;
+  requireRangeEnd?: boolean;
   clients: WaitlistOption[];
   services: WaitlistOption[];
   employees: WaitlistOption[];
   locale: AppLocale;
 }) {
   const t = ui(locale);
+  const clientId = entry?.client_id ?? defaults?.clientId ?? "";
+  const serviceId = entry?.service_id ?? defaults?.serviceId ?? "";
+  const employeeId =
+    entry?.preferred_employee_id ?? defaults?.employeeId ?? "";
+  const dateFrom = entry?.preferred_date_from ?? defaults?.dateFrom ?? "";
+  const timeFrom =
+    time(entry?.preferred_time_from ?? null) ?? defaults?.timeFrom ?? "";
+  const requireTimeTo = requireRangeEnd || Boolean(timeFrom && entry);
 
   return (
     <div className="grid gap-4">
@@ -207,7 +261,7 @@ function WaitlistFields({
           <select
             className={fieldClass}
             name="client_id"
-            defaultValue={entry?.client_id ?? ""}
+            defaultValue={clientId}
             required
           >
             <option value="" disabled>
@@ -226,7 +280,7 @@ function WaitlistFields({
           <select
             className={fieldClass}
             name="service_id"
-            defaultValue={entry?.service_id ?? ""}
+            defaultValue={serviceId}
             required
           >
             <option value="" disabled>
@@ -246,7 +300,7 @@ function WaitlistFields({
         <select
           className={fieldClass}
           name="preferred_employee_id"
-          defaultValue={entry?.preferred_employee_id ?? ""}
+          defaultValue={employeeId}
         >
           <option value="">{t.anyEmployee}</option>
           {employees.map((employee) => (
@@ -264,16 +318,26 @@ function WaitlistFields({
             className={fieldClass}
             type="date"
             name="preferred_date_from"
-            defaultValue={entry?.preferred_date_from ?? ""}
+            defaultValue={dateFrom}
+            required={requireRangeEnd}
           />
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>{t.dateTo}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            {t.dateTo}
+            {requireRangeEnd ? (
+              <span className="text-xs font-normal text-app-muted">
+                ({t.rangeEndRequired})
+              </span>
+            ) : null}
+          </span>
           <input
             className={fieldClass}
             type="date"
             name="preferred_date_to"
+            min={dateFrom || undefined}
             defaultValue={entry?.preferred_date_to ?? ""}
+            required={requireRangeEnd}
           />
         </label>
       </div>
@@ -285,16 +349,26 @@ function WaitlistFields({
             className={fieldClass}
             type="time"
             name="preferred_time_from"
-            defaultValue={time(entry?.preferred_time_from ?? null) ?? ""}
+            defaultValue={timeFrom}
+            required={requireRangeEnd}
           />
         </label>
         <label className="space-y-2 text-sm font-medium text-app-text">
-          <span>{t.timeTo}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            {t.timeTo}
+            {requireRangeEnd ? (
+              <span className="text-xs font-normal text-app-muted">
+                ({t.rangeEndRequired})
+              </span>
+            ) : null}
+          </span>
           <input
             className={fieldClass}
             type="time"
             name="preferred_time_to"
+            min={timeFrom || undefined}
             defaultValue={time(entry?.preferred_time_to ?? null) ?? ""}
+            required={requireTimeTo}
           />
         </label>
       </div>
@@ -305,14 +379,18 @@ function WaitlistFields({
           className={fieldClass}
           name="notes"
           rows={3}
-          defaultValue={entry?.notes ?? ""}
+          defaultValue={entry?.notes ?? defaults?.notes ?? ""}
         />
       </label>
     </div>
   );
 }
 
-export default async function WaitlistPage() {
+export default async function WaitlistPage({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}) {
   const permissions = await requireDashboardUser();
   const locale = permissions.organizationLocale;
   const t = ui(locale);
@@ -320,6 +398,33 @@ export default async function WaitlistPage() {
   const { entries, clients, services, employees } = await getWaitlistPageData(
     permissions.organizationId,
   );
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+
+  const draftDefaults: WaitlistDraftDefaults = {
+    clientId: clients.some((item) => item.id === resolvedSearchParams?.clientId)
+      ? resolvedSearchParams?.clientId
+      : undefined,
+    serviceId: services.some((item) => item.id === resolvedSearchParams?.serviceId)
+      ? resolvedSearchParams?.serviceId
+      : undefined,
+    employeeId: employees.some(
+      (item) => item.id === resolvedSearchParams?.employeeId,
+    )
+      ? resolvedSearchParams?.employeeId
+      : undefined,
+    dateFrom: validDate(resolvedSearchParams?.dateFrom),
+    timeFrom: validTime(resolvedSearchParams?.timeFrom),
+    notes: resolvedSearchParams?.notes?.slice(0, 2000),
+  };
+  const hasAppointmentPrefill =
+    resolvedSearchParams?.open === "1" &&
+    Boolean(
+      draftDefaults.clientId &&
+        draftDefaults.serviceId &&
+        draftDefaults.dateFrom &&
+        draftDefaults.timeFrom,
+    );
+
   const waiting = entries.filter((entry) => entry.status === "waiting");
   const history = entries.filter((entry) => entry.status !== "waiting");
 
@@ -347,7 +452,10 @@ export default async function WaitlistPage() {
           </div>
         </section>
 
-        <details className="group rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+        <details
+          open={hasAppointmentPrefill}
+          className="group rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+        >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-app-accent text-white">
@@ -360,8 +468,22 @@ export default async function WaitlistPage() {
             </div>
             <ChevronDown className="h-5 w-5 text-app-muted transition group-open:rotate-180" />
           </summary>
-          <form action={createWaitlistEntryAction} className="border-t border-app-soft p-5 sm:p-6">
+          <form
+            action={createWaitlistEntryAction}
+            className="border-t border-app-soft p-5 sm:p-6"
+          >
+            {hasAppointmentPrefill ? (
+              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-app-accent/20 bg-app-accent/5 p-4 text-sm">
+                <Info className="mt-0.5 h-5 w-5 shrink-0 text-app-accent" />
+                <div>
+                  <p className="font-semibold text-app-text">{t.prefillTitle}</p>
+                  <p className="mt-1 leading-6 text-app-muted">{t.prefillHelp}</p>
+                </div>
+              </div>
+            ) : null}
             <WaitlistFields
+              defaults={hasAppointmentPrefill ? draftDefaults : undefined}
+              requireRangeEnd={hasAppointmentPrefill}
               clients={clients}
               services={services}
               employees={employees}
@@ -428,7 +550,9 @@ export default async function WaitlistPage() {
                         </p>
                         {entry.client?.phone || entry.client?.email ? (
                           <p className="mt-1 truncate text-xs text-app-muted">
-                            {[entry.client.phone, entry.client.email].filter(Boolean).join(" · ")}
+                            {[entry.client.phone, entry.client.email]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </p>
                         ) : null}
                       </div>
@@ -450,7 +574,9 @@ export default async function WaitlistPage() {
                             : t.anyDate}
                         </p>
                         <p className="mt-1 text-xs text-app-muted">
-                          {timeFrom && timeTo ? `${timeFrom} – ${timeTo}` : t.anyTime}
+                          {timeFrom && timeTo
+                            ? `${timeFrom} – ${timeTo}`
+                            : t.anyTime}
                         </p>
                       </div>
                       <div className="rounded-xl bg-white px-3 py-2.5">
@@ -545,7 +671,8 @@ export default async function WaitlistPage() {
                       {entry.client?.name ?? t.client}
                     </p>
                     <p className="mt-1 text-sm text-app-muted">
-                      {entry.service?.name ?? t.service} · {entry.status === "booked" ? t.booked : t.cancelled}
+                      {entry.service?.name ?? t.service} ·{" "}
+                      {entry.status === "booked" ? t.booked : t.cancelled}
                     </p>
                   </div>
                   {entry.status === "booked" && entry.booked_appointment_id ? (
