@@ -1,23 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUserPermissions } from "@/lib/permissions";
+import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { feedbackIdSchema } from "@/features/feedback/validation";
 import type { FeedbackRow, FeedbackStats } from "@/features/feedback/types";
 
 const DONE_RETENTION_DAYS = 90;
 const REJECTED_RETENTION_DAYS = 30;
 
-async function requireSystemDeveloper() {
-  const permissions = await getCurrentUserPermissions();
-
-  if (!permissions?.isSystemDeveloper) {
-    throw new Error("Nemate dopuštenje za pristup feedbacku.");
-  }
-
-  return permissions;
-}
-
 export async function getFeedbackList(): Promise<FeedbackRow[]> {
-  await requireSystemDeveloper();
+  await requirePlatformAdmin();
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -31,9 +21,9 @@ export async function getFeedbackList(): Promise<FeedbackRow[]> {
 }
 
 export async function getFeedbackStats(items?: FeedbackRow[]): Promise<FeedbackStats> {
-  await requireSystemDeveloper();
+  await requirePlatformAdmin();
 
-  const feedbackItems = items ?? await getFeedbackList();
+  const feedbackItems = items ?? (await getFeedbackList());
   const now = Date.now();
   const doneCutoff = now - DONE_RETENTION_DAYS * 86400000;
   const rejectedCutoff = now - REJECTED_RETENTION_DAYS * 86400000;
@@ -50,11 +40,13 @@ export async function getFeedbackStats(items?: FeedbackRow[]): Promise<FeedbackS
   const supabase = createAdminClient();
   let screenshotBytes = 0;
 
-  const userFolders = [...new Set(
-    screenshotItems
-      .map((item) => item.screenshot_path?.split("/")[0])
-      .filter((value): value is string => Boolean(value)),
-  )];
+  const userFolders = [
+    ...new Set(
+      screenshotItems
+        .map((item) => item.screenshot_path?.split("/")[0])
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ];
 
   for (const folder of userFolders) {
     const { data, error } = await supabase.storage
@@ -63,7 +55,9 @@ export async function getFeedbackStats(items?: FeedbackRow[]): Promise<FeedbackS
 
     if (!error) {
       screenshotBytes += (data ?? []).reduce(
-        (sum, file) => sum + (typeof file.metadata?.size === "number" ? file.metadata.size : 0),
+        (sum, file) =>
+          sum +
+          (typeof file.metadata?.size === "number" ? file.metadata.size : 0),
         0,
       );
     }
@@ -78,7 +72,7 @@ export async function getFeedbackStats(items?: FeedbackRow[]): Promise<FeedbackS
 }
 
 export async function getFeedbackById(id: string): Promise<FeedbackRow | null> {
-  await requireSystemDeveloper();
+  await requirePlatformAdmin();
 
   const parsedId = feedbackIdSchema.safeParse(id);
   if (!parsedId.success) return null;
@@ -95,14 +89,21 @@ export async function getFeedbackById(id: string): Promise<FeedbackRow | null> {
   return (data as FeedbackRow | null) ?? null;
 }
 
-export async function createFeedbackScreenshotSignedUrl(path: string, download = false) {
-  await requireSystemDeveloper();
+export async function createFeedbackScreenshotSignedUrl(
+  path: string,
+  download = false,
+) {
+  await requirePlatformAdmin();
 
   const supabase = createAdminClient();
   const fileName = path.split("/").pop() ?? "feedback-screenshot";
   const { data, error } = await supabase.storage
     .from("feedback")
-    .createSignedUrl(path, 60 * 15, download ? { download: fileName } : undefined);
+    .createSignedUrl(
+      path,
+      60 * 15,
+      download ? { download: fileName } : undefined,
+    );
 
   if (error) throw new Error(error.message);
 
