@@ -1,15 +1,23 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   ArrowRight,
   Building2,
+  Clock3,
   Mail,
   MessageSquareText,
   Phone,
   ShieldCheck,
+  Sparkles,
   UsersRound,
 } from "lucide-react";
 import { getPlatformOverview } from "@/features/platform-admin/queries";
+import {
+  lifecycleLabel,
+  salonPlans,
+  type SalonLifecycleStatus,
+} from "@/lib/plans";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("hr-HR", {
@@ -17,6 +25,19 @@ function formatDate(value: string) {
     month: "2-digit",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function lifecycleClasses(status: SalonLifecycleStatus) {
+  switch (status) {
+    case "trial":
+      return "bg-blue-100 text-blue-800";
+    case "active":
+      return "bg-emerald-100 text-emerald-800";
+    case "past_due":
+      return "bg-amber-100 text-amber-800";
+    case "suspended":
+      return "bg-red-100 text-red-800";
+  }
 }
 
 function StatCard({
@@ -60,9 +81,9 @@ export default async function PlatformAdminPage() {
               Platform Admin
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Pregled tenant računa i centralnog feedbacka. Ovdje se namjerno ne
-              prikazuju klijenti, termini, tretmanske bilješke ni poslovni podaci
-              salona.
+              Tenant računi, planovi, lifecycle i centralni feedback. Ovdje se
+              namjerno ne prikazuju klijenti, termini, tretmanske bilješke ni
+              poslovni podaci salona.
             </p>
           </div>
           <Link
@@ -75,25 +96,35 @@ export default async function PlatformAdminPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
-          label="Ukupno salona"
+          label="Ukupno"
           value={stats.totalSalons}
           icon={<Building2 className="h-5 w-5" />}
         />
         <StatCard
-          label="Aktivni saloni"
+          label="Aktivni"
           value={stats.activeSalons}
           icon={<ShieldCheck className="h-5 w-5" />}
         />
         <StatCard
-          label="Otvoreni feedback"
-          value={stats.openFeedback}
-          icon={<MessageSquareText className="h-5 w-5" />}
+          label="Trial"
+          value={stats.trialSalons}
+          icon={<Sparkles className="h-5 w-5" />}
         />
         <StatCard
-          label="Ukupno feedbacka"
-          value={stats.totalFeedback}
+          label="Past due"
+          value={stats.pastDueSalons}
+          icon={<AlertTriangle className="h-5 w-5" />}
+        />
+        <StatCard
+          label="Suspendirani"
+          value={stats.suspendedSalons}
+          icon={<Clock3 className="h-5 w-5" />}
+        />
+        <StatCard
+          label="Otvoreni feedback"
+          value={stats.openFeedback}
           icon={<MessageSquareText className="h-5 w-5" />}
         />
       </section>
@@ -102,8 +133,8 @@ export default async function PlatformAdminPage() {
         <div className="flex flex-col gap-2 border-b border-slate-200 px-5 py-5 sm:px-6">
           <h2 className="text-xl font-bold text-slate-950">Saloni</h2>
           <p className="text-sm text-slate-500">
-            Samo podaci potrebni za upravljanje tenant računom i kontakt s
-            vlasnikom.
+            Samo podaci potrebni za upravljanje tenant računom, lifecycleom i
+            kontaktom s vlasnikom.
           </p>
         </div>
 
@@ -124,19 +155,25 @@ export default async function PlatformAdminPage() {
                       <h3 className="truncate text-lg font-bold text-slate-950">
                         {salon.name}
                       </h3>
+                      <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700">
+                        {salonPlans[salon.planCode].name}
+                      </span>
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                          salon.isActive
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-amber-100 text-amber-800"
-                        }`}
+                        className={`rounded-full px-2.5 py-1 text-xs font-bold ${lifecycleClasses(
+                          salon.lifecycleStatus,
+                        )}`}
                       >
-                        {salon.isActive ? "Aktivan" : "Suspendiran"}
+                        {lifecycleLabel(salon.lifecycleStatus)}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
                       /{salon.slug} · {salon.locale.toUpperCase()} · {salon.currency}
                     </p>
+                    {salon.lifecycleStatus === "trial" && salon.trialEndsAt ? (
+                      <p className="mt-1 text-xs font-medium text-blue-700">
+                        Trial do {formatDate(salon.trialEndsAt)}
+                      </p>
+                    ) : null}
                   </div>
                   {salon.openFeedback > 0 ? (
                     <Link
