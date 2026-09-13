@@ -166,6 +166,7 @@ export async function createFeedback(
   try {
     await sendFeedbackNotificationEmail({
       feedbackId,
+      salonName: permissions.organizationName,
       createdByName: permissions.displayName,
       createdByEmail: permissions.email,
       type: parsed.data.type,
