@@ -1,6 +1,6 @@
 # SalonFlow Plan Capability Matrix
 
-This document records the audited commercial capability split for the current SalonFlow codebase before plan enforcement is enabled.
+This document records the audited commercial capability split for the current SalonFlow codebase and the staged enforcement status.
 
 ## Status meanings
 
@@ -8,7 +8,7 @@ This document records the audited commercial capability split for the current Sa
 - **Partial** — meaningful implementation exists, but it must be finished or tenant-hardened before it is enforced or advertised as fully available.
 - **Planned** — commercial roadmap capability; do not market it as currently delivered.
 
-Plan enforcement is intentionally **not enabled yet**. The matrix is the source for the next implementation phase.
+The **first entitlement-enforcement batch is implemented** for the available Waitlist, Advanced Reports and Audit Log capabilities. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
 
 ## Trial rule
 
@@ -41,18 +41,18 @@ Growth adds utilization, retention and management insight on top of the Starter 
 
 | Capability | Status | Current implementation / enforcement target |
 | --- | --- | --- |
-| Waitlist | Available | `/dashboard/waitlist`, waiting/history lifecycle and booking prefill. |
-| Automatic waitlist opportunities | Available | Event-driven freed-slot matching plus dashboard opportunity panel. |
-| CRM insights | Available | Client segmentation, favorite service/employee, visit cadence and CRM signals. |
-| Attendance insights | Available | Completed/cancelled/no-show counts and history-aware rates. |
-| Advanced reports | Available | Full `/dashboard/reports` module: status mix, online conversion, trends, employees, services and busiest days. |
+| Waitlist | Available | **Enforced.** `/dashboard/waitlist`, waitlist mutations and database RLS require Growth/Pro or Trial. Starter keeps existing rows but cannot read or mutate them. |
+| Automatic waitlist opportunities | Available | **Covered by Waitlist enforcement.** Dashboard waitlist queries/panel are skipped entirely for Starter. Event-driven persistence remains maintained internally so waitlist state is not destroyed by plan changes. |
+| CRM insights | Available | Client segmentation, favorite service/employee, visit cadence and CRM signals. **Not enforced yet.** |
+| Attendance insights | Available | Completed/cancelled/no-show counts and history-aware rates. **Not enforced yet.** |
+| Advanced reports | Available | **Enforced.** Full `/dashboard/reports` module requires Growth/Pro or Trial through a server page guard; Starter retains only the dashboard operational overview. |
 | Appointment reminders | Partial | Tenant-aware SMS scheduling exists. The separate email reminder cron still needs full tenant context/branding and per-tenant commercial enforcement before this capability should be considered fully ready. |
 
-### Growth enforcement targets
+### Growth enforcement notes
 
-When enforcement is enabled, at minimum guard both navigation/UI **and server-side actions/queries** for waitlist, smart waitlist, CRM-derived insights and the full Reports module. Hiding links alone is not sufficient.
+The sidebar and main dashboard expose clear locked Growth states rather than silently failing. Direct URLs are protected server-side. Waitlist server actions are also guarded, and the main Starter dashboard does not execute waitlist count/opportunity queries.
 
-The main dashboard must remain functional on Starter; Growth-only waitlist queries/panels should be skipped rather than queried and hidden afterward.
+CRM-derived insights and reminders are deliberately outside this first batch and remain unchanged until their own tenant-hardening/enforcement work.
 
 ## Pro
 
@@ -60,7 +60,7 @@ Pro is the governance/automation tier. The current product has one clearly finis
 
 | Capability | Status | Current implementation / enforcement target |
 | --- | --- | --- |
-| Audit log and export | Available | Tenant-scoped immutable `audit_logs`, filtered dashboard view and export route. Strong fit for larger multi-user salons. |
+| Audit log and export | Available | **Enforced.** Pro/Trial management users can read the audit page and CSV export. Audit events continue to be written for all plans so historical governance data is preserved for a later upgrade. Database RLS also protects direct audit-log reads. |
 | Advanced CRM workflow | Planned | Future retention action lists, follow-up workflow and CRM-driven tasks. Existing client insights belong to Growth, not this capability. |
 | Automated review requests | Partial | A prototype cron exists, but currently contains single-salon assumptions including a hardcoded Body & Soul SMS label and Google review URL and is not safe to expose as a multi-tenant Pro feature yet. |
 | Advanced automations | Planned | Future follow-up and operational automations beyond existing booking flows. |
@@ -94,18 +94,19 @@ Booking accept/reject communication is tenant-aware and reusable. Appointment-cr
 
 ### Audit log
 
-Audit storage is tenant-aware through RLS, entries are immutable from the application, and export already exists. This is a legitimate current Pro differentiator rather than a placeholder roadmap feature.
+Audit storage remains tenant-aware and immutable from the application. The first enforcement batch additionally restricts reads to Pro/Trial management users at both the application and RLS layers. Inserts remain available to all authenticated tenant members so a future upgrade does not start with an empty history.
 
 ## Enforcement order
 
-When plan enforcement begins, use this order to reduce regression risk:
+Staged enforcement remains the rule:
 
-1. **Read-only/navigation gating first** — plan badges, upgrade states and hiding Growth/Pro navigation while preserving clear upgrade messaging.
-2. **Page/server guards** — prevent direct URL access to premium pages.
-3. **Mutation/action guards** — protect server actions and API routes; never rely only on UI hiding.
-4. **Background jobs** — make cron/reminder/review jobs tenant- and entitlement-aware before commercial enforcement.
-5. **Public booking/API behavior** — keep Starter booking stable; only gate capabilities that are explicitly premium.
-6. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
+1. **Navigation/upgrade states** — implemented for Waitlist, Reports and Audit Log.
+2. **Page/server guards** — implemented for Waitlist, Reports and Audit Log/export.
+3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. Future capability batches must follow the same pattern.
+4. **CRM insight enforcement** — next candidate after regression QA of this first batch.
+5. **Background jobs** — make reminder/review jobs tenant- and entitlement-aware before commercial enforcement.
+6. **Public booking/API behavior** — keep Starter booking stable; only gate capabilities that are explicitly premium.
+7. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
 
 ## Pricing
 
