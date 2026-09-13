@@ -64,11 +64,12 @@ export default function ServiceSearchPicker({
   }, [services, value]);
 
   const groups = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase(locale === "hr" ? "hr" : locale);
+    const rawQuery = selected && query === selected.label ? "" : query.trim();
+    const normalizedQuery = rawQuery.toLocaleLowerCase(locale);
     const filtered = services.filter((service) => {
-      if (!normalizedQuery || selected?.id === service.id) return true;
+      if (!normalizedQuery) return true;
       return `${service.label} ${service.category ?? ""}`
-        .toLocaleLowerCase(locale === "hr" ? "hr" : locale)
+        .toLocaleLowerCase(locale)
         .includes(normalizedQuery);
     });
 
@@ -86,7 +87,7 @@ export default function ServiceSearchPicker({
         category,
         items: items.sort((a, b) => a.label.localeCompare(b.label, locale)),
       }));
-  }, [locale, query, selected?.id, services, t.other]);
+  }, [locale, query, selected, services, t.other]);
 
   function choose(service: ServiceSearchOption) {
     onChange(service.id);
