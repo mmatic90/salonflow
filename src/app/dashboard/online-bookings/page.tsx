@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import {
   acceptOnlineBookingRequestAction,
   rejectOnlineBookingRequestAction,
@@ -6,11 +7,12 @@ import {
 import {
   getOnlineBookingCounts,
   getOnlineBookings,
+  type OnlineBookingAvailabilityIssue,
   type OnlineBookingStatus,
 } from "@/features/online-bookings/queries";
 import AutoRefresh from "@/components/auto-refresh";
 import { requireDashboardUser } from "@/lib/page-guards";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 function formatDate(date: string, locale: "hr" | "en" | "it") {
   const [year, month, day] = date.split("-");
@@ -65,6 +67,73 @@ function statusClass(status: string) {
   return "border-app-soft bg-app-card-alt text-app-muted";
 }
 
+function availabilityIssueText(
+  issue: OnlineBookingAvailabilityIssue | null,
+  locale: AppLocale,
+) {
+  if (!issue) return null;
+
+  const copy = {
+    hr: {
+      no_mapped_employee: "Nijedan djelatnik nije povezan s ovom uslugom.",
+      no_available_employee:
+        "Nijedan djelatnik za ovu uslugu nije slobodan u traženo vrijeme.",
+      no_mapped_room: "Nijedna soba nije povezana s ovom uslugom.",
+      no_available_room: "Nijedna odgovarajuća soba nije slobodna u traženo vrijeme.",
+    },
+    en: {
+      no_mapped_employee: "No employee is assigned to this service.",
+      no_available_employee:
+        "No employee for this service is available at the requested time.",
+      no_mapped_room: "No room is assigned to this service.",
+      no_available_room: "No suitable room is available at the requested time.",
+    },
+    it: {
+      no_mapped_employee: "Nessun operatore è associato a questo servizio.",
+      no_available_employee:
+        "Nessun operatore per questo servizio è libero nell'orario richiesto.",
+      no_mapped_room: "Nessuna cabina è associata a questo servizio.",
+      no_available_room:
+        "Nessuna cabina adatta è libera nell'orario richiesto.",
+    },
+  } as const;
+
+  return copy[locale][issue];
+}
+
+function availabilityHeadings(locale: AppLocale) {
+  if (locale === "en") {
+    return {
+      available: "Requested slot is available",
+      unavailable: "Requested slot is not currently available",
+      availableHelp:
+        "SalonFlow found an available employee and room for the requested time.",
+      unavailableHelp:
+        "Open the request to choose another employee, room or alternative time.",
+    };
+  }
+
+  if (locale === "it") {
+    return {
+      available: "L'orario richiesto è disponibile",
+      unavailable: "L'orario richiesto non è al momento disponibile",
+      availableHelp:
+        "SalonFlow ha trovato un operatore e una cabina disponibili per l'orario richiesto.",
+      unavailableHelp:
+        "Apri la richiesta per scegliere un altro operatore, una cabina o un orario alternativo.",
+    };
+  }
+
+  return {
+    available: "Traženi termin je dostupan",
+    unavailable: "Traženi termin trenutno nije dostupan",
+    availableHelp:
+      "SalonFlow je pronašao slobodnog djelatnika i sobu za traženi datum i vrijeme.",
+    unavailableHelp:
+      "Otvori zahtjev za odabir drugog djelatnika, sobe ili alternativnog vremena.",
+  };
+}
+
 export default async function OnlineBookingsPage({
   searchParams,
 }: {
@@ -73,6 +142,7 @@ export default async function OnlineBookingsPage({
   const permissions = await requireDashboardUser();
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.onlineBookings;
+  const availabilityCopy = availabilityHeadings(permissions.organizationLocale);
   const filters: { value: OnlineBookingStatus; label: string }[] = [
     { value: "today", label: t.today },
     { value: "pending", label: t.pending },
@@ -95,16 +165,11 @@ export default async function OnlineBookingsPage({
       <AutoRefresh />
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <p className="text-sm font-medium text-app-muted">
-            {t.sourceLabel}
-          </p>
+          <p className="text-sm font-medium text-app-muted">{t.sourceLabel}</p>
 
           <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-app-text">
-                {t.title}
-              </h1>
-
+              <h1 className="text-3xl font-bold text-app-text">{t.title}</h1>
               <p className="mt-2 text-app-muted">{t.intro}</p>
             </div>
 
@@ -148,11 +213,19 @@ export default async function OnlineBookingsPage({
         ) : (
           <div className="space-y-4">
             {bookings.map((booking) => {
+              const liveAvailability = booking.live_availability;
+              const quickEmployee = liveAvailability?.employee ?? null;
+              const quickRoom = liveAvailability?.room ?? null;
               const canQuickAccept =
-                booking.status === "pending" &&
-                booking.final_employee_id &&
-                booking.final_room_id &&
-                (booking.final_duration_minutes || booking.duration_minutes);
+                booking.status === "pending" && quickEmployee && quickRoom;
+              const employeeIssue = availabilityIssueText(
+                liveAvailability?.employeeIssue ?? null,
+                permissions.organizationLocale,
+              );
+              const roomIssue = availabilityIssueText(
+                liveAvailability?.roomIssue ?? null,
+                permissions.organizationLocale,
+              );
 
               return (
                 <article
@@ -177,8 +250,11 @@ export default async function OnlineBookingsPage({
 
                       <p className="mt-2 text-sm text-app-muted">
                         {booking.services?.name ?? t.unknownService} ·{" "}
-                        {formatDate(booking.requested_date, permissions.organizationLocale)} {t.at}{" "}
-                        {booking.start_time?.slice(0, 5)}
+                        {formatDate(
+                          booking.requested_date,
+                          permissions.organizationLocale,
+                        )}{" "}
+                        {t.at} {booking.start_time?.slice(0, 5)}
                       </p>
                     </div>
 
@@ -202,12 +278,12 @@ export default async function OnlineBookingsPage({
                               <input
                                 type="hidden"
                                 name="employee_id"
-                                value={booking.final_employee_id}
+                                value={quickEmployee.id}
                               />
                               <input
                                 type="hidden"
                                 name="room_id"
-                                value={booking.final_room_id}
+                                value={quickRoom.id}
                               />
                               <input
                                 type="hidden"
@@ -269,9 +345,7 @@ export default async function OnlineBookingsPage({
                     <div className="rounded-xl bg-app-card-alt p-4">
                       <div className="text-app-muted">{t.duration}</div>
                       <div className="mt-1 font-medium text-app-text">
-                        {booking.final_duration_minutes ??
-                          booking.duration_minutes}{" "}
-                        min
+                        {booking.final_duration_minutes ?? booking.duration_minutes} min
                       </div>
                     </div>
 
@@ -289,38 +363,57 @@ export default async function OnlineBookingsPage({
                     </div>
                   </div>
 
-                  {booking.status === "pending" && (
-                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                      <div className="font-semibold">{t.quickActionsUse}</div>
-
-                      <div className="mt-2 grid gap-2 md:grid-cols-3">
-                        <div>
-                          <span className="font-medium">{t.employee}:</span>{" "}
-                          {booking.final_employee?.display_name ||
-                            booking.suggested_employee?.display_name ||
-                            t.notSelected}
-                        </div>
-
-                        <div>
-                          <span className="font-medium">{t.room}:</span>{" "}
-                          {booking.final_room?.name ||
-                            booking.suggested_room?.name ||
-                            t.notSelected}
-                        </div>
-
-                        <div>
-                          <span className="font-medium">{t.duration}:</span>{" "}
-                          {booking.final_duration_minutes ??
-                            booking.duration_minutes}{" "}
-                          min
+                  {booking.status === "pending" ? (
+                    canQuickAccept ? (
+                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold">
+                              {availabilityCopy.available}
+                            </div>
+                            <p className="mt-1 text-emerald-800">
+                              {availabilityCopy.availableHelp}
+                            </p>
+                            <div className="mt-3 grid gap-2 md:grid-cols-3">
+                              <div>
+                                <span className="font-medium">{t.employee}:</span>{" "}
+                                {quickEmployee.display_name}
+                              </div>
+                              <div>
+                                <span className="font-medium">{t.room}:</span>{" "}
+                                {quickRoom.name}
+                              </div>
+                              <div>
+                                <span className="font-medium">{t.duration}:</span>{" "}
+                                {booking.final_duration_minutes ??
+                                  booking.duration_minutes}{" "}
+                                min
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-
-                      <p className="mt-2">
-                        {t.quickActionHint}
-                      </p>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                          <div>
+                            <div className="font-semibold">
+                              {availabilityCopy.unavailable}
+                            </div>
+                            <div className="mt-2 space-y-1 text-amber-800">
+                              {employeeIssue ? <p>• {employeeIssue}</p> : null}
+                              {roomIssue ? <p>• {roomIssue}</p> : null}
+                            </div>
+                            <p className="mt-2 text-amber-800">
+                              {availabilityCopy.unavailableHelp}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : null}
 
                   {booking.rejection_reason ? (
                     <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm">
@@ -336,9 +429,7 @@ export default async function OnlineBookingsPage({
                   {booking.client_note ? (
                     <div className="mt-4 rounded-xl bg-app-card-alt p-4 text-sm">
                       <div className="font-medium text-app-text">{t.note}</div>
-                      <p className="mt-1 text-app-muted">
-                        {booking.client_note}
-                      </p>
+                      <p className="mt-1 text-app-muted">{booking.client_note}</p>
                     </div>
                   ) : null}
                 </article>
