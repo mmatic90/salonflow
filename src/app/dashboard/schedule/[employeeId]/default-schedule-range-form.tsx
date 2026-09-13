@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useMemo } from "react";
+import { useActionState, useMemo, useState } from "react";
+import AppointmentTimeSelect from "@/components/appointment-time-select";
 import {
   applyDefaultScheduleRangeAction,
   type ScheduleActionState,
@@ -28,21 +29,12 @@ export default function DefaultScheduleRangeForm({
 }: Props) {
   const t = getDictionary(locale).schedule;
   const dayOptions = dayValues.map((value) => ({ value, label: t.days[value] }));
-
-  const initialState: ScheduleActionState = {
-    error: "",
-    success: "",
-  };
-
+  const initialState: ScheduleActionState = { error: "", success: "" };
   const boundAction = applyDefaultScheduleRangeAction.bind(null, employeeId);
-  const [state, formAction, pending] = useActionState(
-    boundAction,
-    initialState,
-  );
+  const [state, formAction, pending] = useActionState(boundAction, initialState);
 
   const suggestedRange = useMemo(() => {
     const workingDays = defaultSchedule.filter((item) => item.is_working);
-
     if (workingDays.length === 0) {
       return {
         dayFrom: 1,
@@ -52,7 +44,6 @@ export default function DefaultScheduleRangeForm({
         endTime: "16:00",
       };
     }
-
     return {
       dayFrom: Math.min(...workingDays.map((item) => item.day_of_week)),
       dayTo: Math.max(...workingDays.map((item) => item.day_of_week)),
@@ -62,35 +53,34 @@ export default function DefaultScheduleRangeForm({
     };
   }, [defaultSchedule]);
 
+  const [isWorking, setIsWorking] = useState(suggestedRange.isWorking);
+  const [startTime, setStartTime] = useState(suggestedRange.startTime);
+  const [endTime, setEndTime] = useState(suggestedRange.endTime);
+
   const closedDays = dayOptions.filter((day) => {
     const salonDay = salonHours.find((item) => item.day_of_week === day.value);
     return !salonDay || salonDay.is_closed;
   });
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-5">
       {closedDays.length ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {t.closedDaysNotice}
         </div>
       ) : null}
+
       <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label htmlFor="day_from" className="mb-1 block text-sm font-medium">
-            {t.fromDay}
-          </label>
+        <label className="space-y-1.5 text-sm font-medium text-app-text">
+          <span>{t.fromDay}</span>
           <select
-            id="day_from"
             name="day_from"
             defaultValue={String(suggestedRange.dayFrom)}
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
+            className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
           >
             {dayOptions.map((day) => {
-              const salonDay = salonHours.find(
-                (item) => item.day_of_week === day.value,
-              );
+              const salonDay = salonHours.find((item) => item.day_of_week === day.value);
               const closed = !salonDay || salonDay.is_closed;
-
               return (
                 <option key={day.value} value={day.value} disabled={closed}>
                   {day.label}{closed ? " — " + t.salonClosedSuffix : ""}
@@ -98,24 +88,18 @@ export default function DefaultScheduleRangeForm({
               );
             })}
           </select>
-        </div>
+        </label>
 
-        <div>
-          <label htmlFor="day_to" className="mb-1 block text-sm font-medium">
-            {t.toDay}
-          </label>
+        <label className="space-y-1.5 text-sm font-medium text-app-text">
+          <span>{t.toDay}</span>
           <select
-            id="day_to"
             name="day_to"
             defaultValue={String(suggestedRange.dayTo)}
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
+            className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 outline-none"
           >
             {dayOptions.map((day) => {
-              const salonDay = salonHours.find(
-                (item) => item.day_of_week === day.value,
-              );
+              const salonDay = salonHours.find((item) => item.day_of_week === day.value);
               const closed = !salonDay || salonDay.is_closed;
-
               return (
                 <option key={day.value} value={day.value} disabled={closed}>
                   {day.label}{closed ? " — " + t.salonClosedSuffix : ""}
@@ -123,58 +107,68 @@ export default function DefaultScheduleRangeForm({
               );
             })}
           </select>
-        </div>
+        </label>
       </div>
 
-      <label className="flex items-center gap-2 text-sm font-medium">
+      <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-app-soft bg-white p-4">
+        <div>
+          <p className="text-sm font-semibold text-app-text">{t.worksInRange}</p>
+          <p className="mt-1 text-xs text-app-muted">{isWorking ? t.customHours : t.dayOff}</p>
+        </div>
         <input
           type="checkbox"
           name="range_is_working"
-          defaultChecked={suggestedRange.isWorking}
+          checked={isWorking}
+          onChange={(event) => setIsWorking(event.target.checked)}
+          className="sr-only"
         />
-        {t.worksInRange}
+        <span
+          className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+            isWorking ? "bg-app-accent" : "bg-app-soft"
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+              isWorking ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </span>
       </label>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label
-            htmlFor="range_start_time"
-            className="mb-1 block text-sm font-medium"
-          >
-            {t.start}
+      {isWorking ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="space-y-1.5 text-sm font-medium text-app-text">
+            <span>{t.start}</span>
+            <AppointmentTimeSelect
+              locale={locale}
+              name="range_start_time"
+              value={startTime}
+              onChange={setStartTime}
+              required
+              startHour={5}
+              endHour={22}
+            />
           </label>
-          <input
-            id="range_start_time"
-            name="range_start_time"
-            type="time"
-            defaultValue={suggestedRange.startTime}
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="range_end_time"
-            className="mb-1 block text-sm font-medium"
-          >
-            {t.end}
+          <label className="space-y-1.5 text-sm font-medium text-app-text">
+            <span>{t.end}</span>
+            <AppointmentTimeSelect
+              locale={locale}
+              name="range_end_time"
+              value={endTime}
+              onChange={setEndTime}
+              required
+              startHour={6}
+              endHour={23}
+            />
           </label>
-          <input
-            id="range_end_time"
-            name="range_end_time"
-            type="time"
-            defaultValue={suggestedRange.endTime}
-            className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
-          />
         </div>
-      </div>
+      ) : null}
 
       {state.error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}
         </div>
       ) : null}
-
       {state.success ? (
         <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
           {state.success}
@@ -185,7 +179,7 @@ export default function DefaultScheduleRangeForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl bg-black px-5 py-3 font-medium text-white disabled:opacity-50"
+          className="rounded-xl bg-app-accent px-5 py-3 font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
         >
           {pending ? t.applying : t.applyRange}
         </button>
