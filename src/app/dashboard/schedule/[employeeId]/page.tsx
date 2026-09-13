@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarClock, Clock3 } from "lucide-react";
+import { ArrowLeft, CalendarClock, Clock3, Coffee } from "lucide-react";
 import { getEmployeeSchedulePageData } from "@/features/schedule/queries";
 import DefaultScheduleForm from "./default-schedule-form";
 import DefaultScheduleRangeForm from "./default-schedule-range-form";
@@ -20,6 +20,13 @@ export default async function EmployeeSchedulePage({
   const data = await getEmployeeSchedulePageData(employeeId);
 
   if (!data) notFound();
+
+  const breakLabel =
+    permissions.organizationLocale === "en"
+      ? "Break"
+      : permissions.organizationLocale === "it"
+        ? "Pausa"
+        : "Pauza";
 
   return (
     <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
@@ -85,6 +92,13 @@ export default async function EmployeeSchedulePage({
                       ? `${item.start_time.slice(0, 5)} – ${item.end_time.slice(0, 5)}`
                       : "—"}
                   </div>
+
+                  {item.is_working && item.break_start_time && item.break_end_time ? (
+                    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-app-muted">
+                      <Coffee className="h-3.5 w-3.5" />
+                      {breakLabel}: {item.break_start_time.slice(0, 5)} – {item.break_end_time.slice(0, 5)}
+                    </div>
+                  ) : null}
 
                   {item.reason_label ? (
                     <p className="mt-2 text-xs leading-5 text-app-muted">
