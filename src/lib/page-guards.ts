@@ -4,9 +4,14 @@ import {
   canAccessReports,
   canAccessScheduleManagement,
   canAccessSettings,
+  canUseCapability,
   getCurrentUserPermissions,
   getSuspendedOrganizationForCurrentUser,
 } from "@/lib/permissions";
+import {
+  buildCapabilityUpgradePath,
+  type SalonCapabilityCode,
+} from "@/lib/entitlements";
 
 export async function requireDashboardUser() {
   const permissions = await getCurrentUserPermissions();
@@ -27,6 +32,19 @@ export async function requireDashboardUser() {
   return permissions;
 }
 
+export async function requireDashboardCapability(
+  capabilityCode: SalonCapabilityCode,
+  returnTo = "/dashboard",
+) {
+  const permissions = await requireDashboardUser();
+
+  if (!canUseCapability(permissions, capabilityCode)) {
+    redirect(buildCapabilityUpgradePath(capabilityCode, returnTo));
+  }
+
+  return permissions;
+}
+
 export async function requireAdminForSettings() {
   const permissions = await requireDashboardUser();
 
@@ -42,6 +60,31 @@ export async function requireAdminForReports() {
 
   if (!canAccessReports(permissions.role)) {
     redirect("/dashboard");
+  }
+
+  if (!canUseCapability(permissions, "advanced_reports")) {
+    redirect(
+      buildCapabilityUpgradePath("advanced_reports", "/dashboard/reports"),
+    );
+  }
+
+  return permissions;
+}
+
+export async function requireAdminForAuditLog() {
+  const permissions = await requireDashboardUser();
+
+  if (!canAccessSettings(permissions.role)) {
+    redirect("/dashboard");
+  }
+
+  if (!canUseCapability(permissions, "audit_log")) {
+    redirect(
+      buildCapabilityUpgradePath(
+        "audit_log",
+        "/dashboard/settings/audit-log",
+      ),
+    );
   }
 
   return permissions;
