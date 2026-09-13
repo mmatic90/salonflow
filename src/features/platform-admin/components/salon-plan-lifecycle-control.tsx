@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Loader2, Save } from "lucide-react";
+import { CheckCircle2, FlaskConical, Loader2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updatePlatformSalonLifecycleAction } from "@/features/platform-admin/actions";
+import {
+  getEffectiveEntitlementPlan,
+  getPlanCapabilities,
+} from "@/lib/entitlements";
 import {
   salonLifecycleStatuses,
   salonPlanCodes,
@@ -36,6 +40,8 @@ export default function SalonPlanLifecycleControl({
   const [trialEndsOn, setTrialEndsOn] = useState(dateInputValue(trialEndsAt));
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const entitlementPlan = getEffectiveEntitlementPlan(plan, status);
+  const capabilities = getPlanCapabilities(entitlementPlan);
 
   function handleSave() {
     if (status === "trial" && !trialEndsOn) {
@@ -137,6 +143,54 @@ export default function SalonPlanLifecycleControl({
         <p className="mt-2 text-xs text-slate-500">
           Hard limiti za djelatnike i usluge još nisu aktivirani.
         </p>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-bold text-slate-900">
+              Capability preview · {salonPlans[entitlementPlan].name}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              {status === "trial"
+                ? "Trial privremeno koristi puni Pro entitlement bez obzira na odabrani plaćeni plan."
+                : "Pregled funkcija koje centralni entitlement katalog pripisuje ovom planu."}
+            </p>
+          </div>
+          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+            Enforcement još nije uključen
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-2">
+          {capabilities.map((capability) => (
+            <div
+              key={capability.code}
+              className="flex items-start gap-3 rounded-xl bg-slate-50 px-3 py-2.5"
+            >
+              {capability.availability === "available" ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+              ) : (
+                <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-violet-700" />
+              )}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-slate-800">
+                    {capability.name}
+                  </p>
+                  {capability.availability === "planned" ? (
+                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                      Planirano
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                  {capability.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <button
