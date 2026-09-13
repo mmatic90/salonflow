@@ -4,9 +4,11 @@ import {
   normalizeBillingProvider,
   type BillingProvider,
 } from "@/lib/billing";
-import type {
-  SalonLifecycleStatus,
-  SalonPlanCode,
+import {
+  normalizeSalonLifecycleStatus,
+  normalizeSalonPlanCode,
+  type SalonLifecycleStatus,
+  type SalonPlanCode,
 } from "@/lib/plans";
 
 export type PlatformSalon = {
@@ -104,21 +106,6 @@ function isOpenFeedbackStatus(status: string) {
   return status !== "done" && status !== "rejected";
 }
 
-function planCode(value: unknown): SalonPlanCode {
-  return value === "starter" ? "starter" : "pro";
-}
-
-function lifecycleStatus(value: unknown): SalonLifecycleStatus {
-  if (
-    value === "trial" ||
-    value === "past_due" ||
-    value === "suspended"
-  ) {
-    return value;
-  }
-  return "active";
-}
-
 export async function getPlatformOverview(): Promise<PlatformOverview> {
   await requirePlatformAdmin();
   const supabase = createAdminClient();
@@ -176,8 +163,10 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
         city: organization.city ?? null,
         countryCode: String(organization.country_code ?? "HR"),
         isActive: organization.is_active !== false,
-        planCode: planCode(organization.plan_code),
-        lifecycleStatus: lifecycleStatus(organization.lifecycle_status),
+        planCode: normalizeSalonPlanCode(organization.plan_code),
+        lifecycleStatus: normalizeSalonLifecycleStatus(
+          organization.lifecycle_status,
+        ),
         trialStartedAt: organization.trial_started_at ?? null,
         trialEndsAt: organization.trial_ends_at ?? null,
         planChangedAt: String(organization.plan_changed_at ?? organization.created_at),
@@ -290,8 +279,10 @@ export async function getPlatformSalonById(
     countryCode: String(organization.country_code ?? "HR"),
     logoUrl: organization.logo_url ?? null,
     isActive: organization.is_active !== false,
-    planCode: planCode(organization.plan_code),
-    lifecycleStatus: lifecycleStatus(organization.lifecycle_status),
+    planCode: normalizeSalonPlanCode(organization.plan_code),
+    lifecycleStatus: normalizeSalonLifecycleStatus(
+      organization.lifecycle_status,
+    ),
     trialStartedAt: organization.trial_started_at ?? null,
     trialEndsAt: organization.trial_ends_at ?? null,
     planChangedAt: String(organization.plan_changed_at ?? organization.created_at),
