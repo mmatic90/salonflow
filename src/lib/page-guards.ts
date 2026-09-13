@@ -5,12 +5,20 @@ import {
   canAccessScheduleManagement,
   canAccessSettings,
   getCurrentUserPermissions,
+  getSuspendedOrganizationForCurrentUser,
 } from "@/lib/permissions";
 
 export async function requireDashboardUser() {
   const permissions = await getCurrentUserPermissions();
 
   if (!permissions) {
+    const suspendedOrganization =
+      await getSuspendedOrganizationForCurrentUser();
+
+    if (suspendedOrganization) {
+      redirect("/suspended");
+    }
+
     const supabase = await createClient();
     await supabase.auth.signOut();
     redirect("/login");
