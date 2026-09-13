@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdminForSettings } from "@/lib/page-guards";
+import { requireAdminForAuditLog } from "@/lib/page-guards";
 import PageShell from "@/components/page-shell";
 import PageHeader from "@/components/page-header";
 import PageSection from "@/components/page-section";
@@ -56,7 +56,7 @@ function buildHref(current: Record<string, string>, updates: Record<string, stri
 }
 
 export default async function AuditLogPage({ searchParams }: { searchParams: SearchParams }) {
-  const permissions = await requireAdminForSettings();
+  const permissions = await requireAdminForAuditLog();
   const t = getDictionary(permissions.organizationLocale).settings.audit;
   const raw = await searchParams;
   const params = {
@@ -78,75 +78,261 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Sea
 
   const totalPages = Math.max(1, Math.ceil(result.total / params.pageSize));
   const safePage = Math.min(params.page, totalPages);
-  const activeParams: Record<string, string> = {
-    ...(params.dateFrom && { dateFrom: params.dateFrom }), ...(params.dateTo && { dateTo: params.dateTo }),
-    ...(params.timestampFrom && { timestampFrom: params.timestampFrom }), ...(params.timestampTo && { timestampTo: params.timestampTo }),
-    ...(params.actor && { actor: params.actor }), ...(params.action && { action: params.action }),
-    ...(params.entityType && { entityType: params.entityType }), ...(params.search && { search: params.search }),
+  const current = {
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+    timestampFrom: params.timestampFrom,
+    timestampTo: params.timestampTo,
+    actor: params.actor,
+    action: params.action,
+    entityType: params.entityType,
+    search: params.search,
+    selected: params.selected,
+    page: String(safePage),
     pageSize: String(params.pageSize),
   };
-  const currentPageParams = { ...activeParams, page: String(safePage) };
-  const selectedIndex = result.items.findIndex((log) => log.id === params.selected);
-  const selectedLog = selectedIndex >= 0 ? result.items[selectedIndex] : null;
-  const previousLog = selectedIndex > 0 ? result.items[selectedIndex - 1] : null;
-  const nextLog = selectedIndex >= 0 && selectedIndex < result.items.length - 1 ? result.items[selectedIndex + 1] : null;
-  const exportParams = new URLSearchParams(activeParams); exportParams.delete("pageSize");
-  const exportHref = `/dashboard/settings/audit-log/export${exportParams.size ? `?${exportParams}` : ""}`;
-  const quickRanges = [
-    [t.activitiesToday.replace("Aktivnosti ", "").replace("Activities ", "").replace("Attività ", "") || t.activitiesToday, formatDateInput(today), formatDateInput(today)],
-    [t.last7Days, formatDateInput(sevenDaysAgo), formatDateInput(today)],
-    [t.last30Days, formatDateInput(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29)), formatDateInput(today)],
-    [t.thisMonth, formatDateInput(new Date(today.getFullYear(), today.getMonth(), 1)), formatDateInput(today)],
-  ];
+
+  const selectedLog = params.selected
+    ? result.items.find((item) => item.id === params.selected) ?? null
+    : null;
+  const exportParams = new URLSearchParams();
+  if (params.dateFrom) exportParams.set("dateFrom", params.dateFrom);
+  if (params.dateTo) exportParams.set("dateTo", params.dateTo);
+  if (params.actor) exportParams.set("actor", params.actor);
+  if (params.action) exportParams.set("action", params.action);
+  if (params.entityType) exportParams.set("entityType", params.entityType);
+  if (params.search) exportParams.set("search", params.search);
 
   return (
     <PageShell maxWidth="max-w-7xl">
       <AuditLogScrollRestorer />
-      <PageHeader title={t.title} description={t.description} actions={
-        <div className="flex flex-wrap gap-2">
-          <a href={exportHref} className="rounded-xl bg-app-text px-4 py-2 text-sm font-semibold text-white">{t.exportCsv}</a>
-          <Link href="/dashboard/settings" className="rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text">{getDictionary(permissions.organizationLocale).settings.back}</Link>
+      <PageHeader title={t.title} description={t.description} />
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-app-muted">{t.total}</p>
+          <p className="mt-2 text-3xl font-bold text-app-text">{result.total}</p>
         </div>
-      } />
+        <div className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-app-muted">{t.today}</p>
+          <p className="mt-2 text-3xl font-bold text-app-text">{todayResult.total}</p>
+        </div>
+        <div className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm">
+          <p className="text-sm font-medium text-app-muted">{t.last7Days}</p>
+          <p className="mt-2 text-3xl font-bold text-app-text">{weekResult.total}</p>
+        </div>
+      </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[[t.foundActivities, result.total], [t.usersInLog, options.actors.length], [t.activitiesToday, todayResult.total], [t.last7Days, weekResult.total]].map(([label, value]) => (
-          <div key={String(label)} className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm"><p className="text-sm text-app-muted">{label}</p><p className="mt-2 text-3xl font-semibold text-app-text">{value}</p></div>
-        ))}
-      </div>
-
-      <PageSection title={t.filters}>
-        <div className="space-y-4 rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm">
-          <div className="flex flex-wrap gap-2">
-            {quickRanges.map(([label, from, to]) => <Link key={label} href={buildHref(activeParams, { dateFrom: from, dateTo: to, timestampFrom: undefined, timestampTo: undefined, page: 1 })} className="rounded-full border border-app-soft px-3 py-1.5 text-sm font-medium">{label}</Link>)}
-            <Link href={buildHref(activeParams, { dateFrom: undefined, dateTo: undefined, timestampFrom: undefined, timestampTo: undefined, page: 1 })} className="rounded-full border border-app-soft px-3 py-1.5 text-sm font-medium">{t.all}</Link>
+      <PageSection title={t.filtersTitle} description={t.filtersDescription}>
+        <form className="grid gap-4 lg:grid-cols-4">
+          <label className="space-y-2 text-sm font-medium text-app-text">
+            <span>{t.dateFrom}</span>
+            <input
+              type="date"
+              name="dateFrom"
+              defaultValue={params.dateFrom}
+              className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none focus:border-app-accent"
+            />
+          </label>
+          <label className="space-y-2 text-sm font-medium text-app-text">
+            <span>{t.dateTo}</span>
+            <input
+              type="date"
+              name="dateTo"
+              defaultValue={params.dateTo}
+              className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none focus:border-app-accent"
+            />
+          </label>
+          <label className="space-y-2 text-sm font-medium text-app-text">
+            <span>{t.actor}</span>
+            <select
+              name="actor"
+              defaultValue={params.actor}
+              className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none focus:border-app-accent"
+            >
+              <option value="">{t.allActors}</option>
+              {options.actors.map((actor) => (
+                <option key={actor.value} value={actor.value}>{actor.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2 text-sm font-medium text-app-text">
+            <span>{t.action}</span>
+            <select
+              name="action"
+              defaultValue={params.action}
+              className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none focus:border-app-accent"
+            >
+              <option value="">{t.allActions}</option>
+              {options.actions.map((action) => (
+                <option key={action} value={action}>{actionLabel(action, t.actionLabels)}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2 text-sm font-medium text-app-text lg:col-span-2">
+            <span>{t.search}</span>
+            <input
+              name="search"
+              defaultValue={params.search}
+              placeholder={t.searchPlaceholder}
+              className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none focus:border-app-accent"
+            />
+          </label>
+          <label className="space-y-2 text-sm font-medium text-app-text">
+            <span>{t.entityType}</span>
+            <select
+              name="entityType"
+              defaultValue={params.entityType}
+              className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none focus:border-app-accent"
+            >
+              <option value="">{t.allEntityTypes}</option>
+              {options.entityTypes.map((entityType) => (
+                <option key={entityType} value={entityType}>{entityLabel(entityType, t.entityLabels)}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-2 text-sm font-medium text-app-text">
+            <span>{t.pageSize}</span>
+            <select
+              name="pageSize"
+              defaultValue={params.pageSize}
+              className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none focus:border-app-accent"
+            >
+              {[25, 50, 100, 200].map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-wrap items-end gap-2 lg:col-span-4">
+            <button
+              className="rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white"
+              type="submit"
+            >
+              {t.applyFilters}
+            </button>
+            <Link
+              href="/dashboard/settings/audit-log"
+              className="rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text"
+            >
+              {t.clearFilters}
+            </Link>
+            <a
+              href={`/dashboard/settings/audit-log/export?${exportParams.toString()}`}
+              className="rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text"
+            >
+              {t.exportCsv}
+            </a>
           </div>
-          {params.timestampFrom && params.timestampTo ? <p className="rounded-xl bg-app-card-alt px-4 py-3 text-sm text-app-muted">{t.preciseRangeNotice}</p> : null}
-          <form method="get" className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <label className="space-y-1 text-sm text-app-muted"><span>{t.dateFrom}</span><input type="date" name="dateFrom" defaultValue={params.dateFrom} className="w-full rounded-xl border border-app-soft bg-white px-3 py-2" /></label>
-            <label className="space-y-1 text-sm text-app-muted"><span>{t.dateTo}</span><input type="date" name="dateTo" defaultValue={params.dateTo} className="w-full rounded-xl border border-app-soft bg-white px-3 py-2" /></label>
-            <label className="space-y-1 text-sm text-app-muted"><span>{t.user}</span><select name="actor" defaultValue={params.actor} className="w-full rounded-xl border border-app-soft bg-white px-3 py-2"><option value="">{t.allUsers}</option>{options.actors.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}</select></label>
-            <label className="space-y-1 text-sm text-app-muted"><span>{t.action}</span><select name="action" defaultValue={params.action} className="w-full rounded-xl border border-app-soft bg-white px-3 py-2"><option value="">{t.allActions}</option>{options.actions.map((a) => <option key={a} value={a}>{actionLabel(a, t.actions)}</option>)}</select></label>
-            <label className="space-y-1 text-sm text-app-muted"><span>{t.entity}</span><select name="entityType" defaultValue={params.entityType} className="w-full rounded-xl border border-app-soft bg-white px-3 py-2"><option value="">{t.allEntities}</option>{options.entityTypes.map((e) => <option key={e} value={e}>{entityLabel(e, t.entities)}</option>)}</select></label>
-            <label className="space-y-1 text-sm text-app-muted"><span>{t.search}</span><input name="search" defaultValue={params.search} className="w-full rounded-xl border border-app-soft bg-white px-3 py-2" /></label>
-            <input type="hidden" name="pageSize" value={params.pageSize} />
-            <div className="flex gap-2 md:col-span-2 xl:col-span-6"><button className="rounded-xl bg-app-text px-4 py-2 text-sm font-semibold text-white">{t.applyFilters}</button><Link href="/dashboard/settings/audit-log" className="rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium">{t.resetFilters}</Link></div>
-          </form>
+        </form>
+      </PageSection>
+
+      <PageSection title={t.activityTitle} description={t.activityDescription}>
+        {result.items.length === 0 ? (
+          <EmptyStateCard title={t.emptyTitle} description={t.emptyDescription} />
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-app-soft bg-app-card shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-app-soft text-sm">
+                <thead className="bg-app-table-head text-left text-xs font-semibold uppercase tracking-wide text-app-muted">
+                  <tr>
+                    <th className="px-4 py-3">{t.dateTime}</th>
+                    <th className="px-4 py-3">{t.actor}</th>
+                    <th className="px-4 py-3">{t.action}</th>
+                    <th className="px-4 py-3">{t.entity}</th>
+                    <th className="px-4 py-3">{t.entityName}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-app-soft">
+                  {result.items.map((item) => (
+                    <tr key={item.id} className="hover:bg-app-card-alt">
+                      <td className="whitespace-nowrap px-4 py-3 text-app-muted">
+                        {formatDateTime(item.created_at, permissions.organizationLocale)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-app-text">
+                          {item.actor_display_name || item.actor_email || t.unknownActor}
+                        </div>
+                        {item.actor_email && item.actor_display_name ? (
+                          <div className="mt-0.5 text-xs text-app-muted">{item.actor_email}</div>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${actionBadgeClass(item.action)}`}>
+                          {actionLabel(item.action, t.actionLabels)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-app-muted">
+                        {entityLabel(item.entity_type, t.entityLabels)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {item.entity_id ? (
+                          <AuditLogNavigationLink
+                            href={buildHref(current, { selected: item.id })}
+                            className="font-medium text-app-accent hover:underline"
+                          >
+                            {item.entity_label || item.entity_id}
+                          </AuditLogNavigationLink>
+                        ) : (
+                          <span className="text-app-muted">{item.entity_label || "-"}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-app-muted">
+            {t.page} {safePage} / {totalPages} · {result.total} {t.records}
+          </div>
+          <div className="flex gap-2">
+            {safePage > 1 ? (
+              <Link
+                href={buildHref(current, { page: safePage - 1, selected: undefined })}
+                className="rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-semibold text-app-text"
+              >
+                {t.previous}
+              </Link>
+            ) : null}
+            {safePage < totalPages ? (
+              <Link
+                href={buildHref(current, { page: safePage + 1, selected: undefined })}
+                className="rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-semibold text-app-text"
+              >
+                {t.next}
+              </Link>
+            ) : null}
+          </div>
         </div>
       </PageSection>
 
-      <PageSection title={t.activityLog}>
-        <div className="rounded-2xl border border-app-soft bg-app-card shadow-sm">
-          {result.items.length === 0 ? <div className="p-6"><EmptyStateCard title={t.noEntries} description={t.noEntriesDescription} /></div> : (
-            <div className="overflow-x-auto"><table className="min-w-full border-collapse"><thead className="bg-app-table-head"><tr className="text-left text-sm text-app-muted"><th className="px-4 py-3">{t.dateTime}</th><th className="px-4 py-3">{t.action}</th><th className="px-4 py-3">{t.user}</th><th className="px-4 py-3">{t.entity}</th><th className="px-4 py-3 text-right">{t.details}</th></tr></thead><tbody>
-              {result.items.map((log) => <tr key={log.id} className="border-t border-app-soft text-sm hover:bg-app-card-alt"><td className="whitespace-nowrap px-4 py-4">{formatDateTime(log.created_at, permissions.organizationLocale)}</td><td className="px-4 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${actionBadgeClass(log.action)}`}>{actionLabel(log.action, t.actions)}</span></td><td className="px-4 py-4">{log.actor_display_name || log.actor_email || t.unknown}</td><td className="px-4 py-4">{entityLabel(log.entity_type, t.entities)}{log.entity_label ? <span className="text-app-muted"> · {log.entity_label}</span> : null}</td><td className="px-4 py-4 text-right"><AuditLogNavigationLink href={buildHref(currentPageParams, { selected: log.id })} className="rounded-lg border border-app-soft bg-white px-3 py-1.5 text-xs font-semibold">{t.open}</AuditLogNavigationLink></td></tr>)}
-            </tbody></table></div>
-          )}
-          <div className="flex flex-col gap-3 border-t border-app-soft p-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-2 text-sm text-app-muted"><span>{t.display}</span>{[25,50,100,200].map((size) => <Link key={size} href={buildHref(activeParams, { pageSize: size, page: 1 })} className={`rounded-lg px-2.5 py-1 ${params.pageSize === size ? "bg-app-text text-white" : "border border-app-soft bg-white"}`}>{size}</Link>)}</div><div className="flex items-center gap-3 text-sm"><Link href={safePage > 1 ? buildHref(activeParams, { page: safePage - 1 }) : "#"} className={safePage <= 1 ? "pointer-events-none opacity-40" : "rounded-xl border border-app-soft px-3 py-2"}>← {t.previous}</Link><span>{t.page} {safePage} {t.of} {totalPages}</span><Link href={safePage < totalPages ? buildHref(activeParams, { page: safePage + 1 }) : "#"} className={safePage >= totalPages ? "pointer-events-none opacity-40" : "rounded-xl border border-app-soft px-3 py-2"}>{t.next} →</Link></div></div>
-        </div>
-      </PageSection>
-
-      {selectedLog ? <div className="fixed inset-0 z-50 flex justify-end bg-black/30"><AuditLogNavigationLink href={buildHref(currentPageParams, { selected: undefined })} ariaLabel={t.closeDetails} className="absolute inset-0"> </AuditLogNavigationLink><aside className="relative z-10 h-full w-full max-w-md overflow-y-auto border-l border-app-soft bg-app-card p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-app-muted">{t.auditRecord}</p><h2 className="mt-1 text-2xl font-semibold">{actionLabel(selectedLog.action, t.actions)}</h2></div><AuditLogNavigationLink href={buildHref(currentPageParams, { selected: undefined })} className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium">{t.close}</AuditLogNavigationLink></div><div className="mt-5 flex gap-2"><AuditLogNavigationLink href={previousLog ? buildHref(currentPageParams, { selected: previousLog.id }) : "#"} className={`flex-1 rounded-xl border border-app-soft px-3 py-2 text-center text-sm ${previousLog ? "bg-white" : "pointer-events-none opacity-40"}`}>← {t.previousRecord}</AuditLogNavigationLink><AuditLogNavigationLink href={nextLog ? buildHref(currentPageParams, { selected: nextLog.id }) : "#"} className={`flex-1 rounded-xl border border-app-soft px-3 py-2 text-center text-sm ${nextLog ? "bg-white" : "pointer-events-none opacity-40"}`}>{t.nextRecord} →</AuditLogNavigationLink></div><div className="mt-8 space-y-4">{[[t.dateTime, formatDateTime(selectedLog.created_at, permissions.organizationLocale)], [t.user, selectedLog.actor_display_name || selectedLog.actor_email || t.unknown], [t.email, selectedLog.actor_email || t.notRecorded], [t.action, actionLabel(selectedLog.action, t.actions)], [t.entity, entityLabel(selectedLog.entity_type, t.entities)], [t.entityName, selectedLog.entity_label || t.notRecorded], [t.entityId, selectedLog.entity_id || t.notRecorded], [t.auditId, selectedLog.id]].map(([label,value]) => <div key={label} className="rounded-2xl border border-app-soft bg-app-card-alt p-4"><p className="text-xs font-semibold uppercase tracking-wide text-app-muted">{label}</p><p className="mt-2 break-words text-sm font-medium">{value}</p></div>)}</div></aside></div> : null}
+      {selectedLog ? (
+        <PageSection title={t.selectedTitle} description={t.selectedDescription}>
+          <div className="rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-app-muted">{t.dateTime}</p>
+                <p className="mt-1 font-medium text-app-text">{formatDateTime(selectedLog.created_at, permissions.organizationLocale)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-app-muted">{t.actor}</p>
+                <p className="mt-1 font-medium text-app-text">{selectedLog.actor_display_name || selectedLog.actor_email || t.unknownActor}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-app-muted">{t.action}</p>
+                <p className="mt-1 font-medium text-app-text">{actionLabel(selectedLog.action, t.actionLabels)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-app-muted">{t.entity}</p>
+                <p className="mt-1 font-medium text-app-text">{entityLabel(selectedLog.entity_type, t.entityLabels)}</p>
+              </div>
+            </div>
+          </div>
+        </PageSection>
+      ) : null}
     </PageShell>
   );
 }
