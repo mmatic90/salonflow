@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Sparkles,
   ListPlus,
+  LockKeyhole,
 } from "lucide-react";
 import { requireDashboardUser } from "@/lib/page-guards";
 import OverdueAppointmentsPanel from "@/components/overdue-appointments-panel";
@@ -19,6 +20,8 @@ import { getAppointmentsByDate } from "@/features/appointments/queries";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
 import { getWaitingWaitlistCount } from "@/features/waitlist/queries";
 import { getWaitlistOpportunityAlerts } from "@/features/waitlist/opportunity-queries";
+import { canUseCapability } from "@/lib/permissions";
+import { buildCapabilityUpgradePath } from "@/lib/entitlements";
 import {
   formatDateLabel,
   formatTime,
@@ -44,6 +47,10 @@ export default async function DashboardPage() {
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.dashboard;
   const today = getTodayLocalDate();
+  const canUseWaitlist = canUseCapability(permissions, "waitlist");
+  const waitlistHref = canUseWaitlist
+    ? "/dashboard/waitlist"
+    : buildCapabilityUpgradePath("waitlist", "/dashboard/waitlist");
   const waitlistLabel =
     permissions.organizationLocale === "en"
       ? "Waitlist"
@@ -63,8 +70,12 @@ export default async function DashboardPage() {
       () => EMPTY_OVERVIEW,
     ),
     getAppointmentsByDate(today).catch(() => []),
-    getWaitingWaitlistCount(permissions.organizationId).catch(() => 0),
-    getWaitlistOpportunityAlerts(permissions.organizationId).catch(() => []),
+    canUseWaitlist
+      ? getWaitingWaitlistCount(permissions.organizationId).catch(() => 0)
+      : Promise.resolve(0),
+    canUseWaitlist
+      ? getWaitlistOpportunityAlerts(permissions.organizationId).catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   const visibleTodayAppointments = todayAppointments
@@ -80,10 +91,12 @@ export default async function DashboardPage() {
           locale={permissions.organizationLocale}
         />
 
-        <WaitlistOpportunityPanel
-          items={waitlistOpportunities}
-          locale={permissions.organizationLocale}
-        />
+        {canUseWaitlist ? (
+          <WaitlistOpportunityPanel
+            items={waitlistOpportunities}
+            locale={permissions.organizationLocale}
+          />
+        ) : null}
 
         <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
           <div className="bg-gradient-to-br from-white via-white to-app-bg p-5 sm:p-6 md:p-7">
@@ -117,14 +130,22 @@ export default async function DashboardPage() {
                   {t.calendar}
                 </Link>
                 <Link
-                  href="/dashboard/waitlist"
+                  href={waitlistHref}
                   className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 font-semibold text-app-text shadow-sm transition hover:-translate-y-0.5 hover:bg-app-card-alt sm:col-span-1"
                 >
-                  <ListPlus className="h-4 w-4" />
+                  {canUseWaitlist ? (
+                    <ListPlus className="h-4 w-4" />
+                  ) : (
+                    <LockKeyhole className="h-4 w-4" />
+                  )}
                   {waitlistLabel}
-                  {waitlistCount > 0 ? (
+                  {canUseWaitlist && waitlistCount > 0 ? (
                     <span className="rounded-full bg-app-accent/10 px-2 py-0.5 text-xs font-bold text-app-accent">
                       {waitlistCount}
+                    </span>
+                  ) : !canUseWaitlist ? (
+                    <span className="rounded-full bg-app-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-app-muted">
+                      Growth
                     </span>
                   ) : null}
                 </Link>
