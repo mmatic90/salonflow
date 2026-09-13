@@ -1,4 +1,4 @@
-export const salonPlanCodes = ["starter", "pro"] as const;
+export const salonPlanCodes = ["starter", "growth", "pro"] as const;
 export type SalonPlanCode = (typeof salonPlanCodes)[number];
 
 export const salonLifecycleStatuses = [
@@ -32,21 +32,43 @@ export const salonPlans: Record<SalonPlanCode, SalonPlanDefinition> = {
   starter: {
     code: "starter",
     name: "Starter",
-    description: "Osnovni plan za manje salone i početak rada u SalonFlowu.",
+    description:
+      "Osnovni plan za manje salone kojima trebaju kalendar, klijenti, rasporedi i online rezervacije.",
+    limits: { ...unlimitedFoundationLimits },
+  },
+  growth: {
+    code: "growth",
+    name: "Growth",
+    description:
+      "Plan za salone koji žele automatiziranu listu čekanja, CRM uvide i naprednije izvještaje.",
     limits: { ...unlimitedFoundationLimits },
   },
   pro: {
     code: "pro",
     name: "Pro",
-    description: "Napredni plan za salone kojima treba puni SalonFlow workflow.",
+    description:
+      "Najviši plan za napredni CRM, automatizacije, integracije i premium workflow.",
     limits: { ...unlimitedFoundationLimits },
   },
+};
+
+export const salonPlanRank: Record<SalonPlanCode, number> = {
+  starter: 0,
+  growth: 1,
+  pro: 2,
 };
 
 export const DEFAULT_TRIAL_DAYS = 14;
 
 export function isSalonPlanCode(value: unknown): value is SalonPlanCode {
-  return typeof value === "string" && salonPlanCodes.includes(value as SalonPlanCode);
+  return (
+    typeof value === "string" &&
+    salonPlanCodes.includes(value as SalonPlanCode)
+  );
+}
+
+export function normalizeSalonPlanCode(value: unknown): SalonPlanCode {
+  return isSalonPlanCode(value) ? value : "starter";
 }
 
 export function isSalonLifecycleStatus(
@@ -56,6 +78,19 @@ export function isSalonLifecycleStatus(
     typeof value === "string" &&
     salonLifecycleStatuses.includes(value as SalonLifecycleStatus)
   );
+}
+
+export function normalizeSalonLifecycleStatus(
+  value: unknown,
+): SalonLifecycleStatus {
+  return isSalonLifecycleStatus(value) ? value : "active";
+}
+
+export function isPlanAtLeast(
+  planCode: SalonPlanCode,
+  minimumPlan: SalonPlanCode,
+) {
+  return salonPlanRank[planCode] >= salonPlanRank[minimumPlan];
 }
 
 export function lifecycleLabel(status: SalonLifecycleStatus) {
