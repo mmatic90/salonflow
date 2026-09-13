@@ -52,12 +52,16 @@ for each row execute function public.validate_service_equipment_tenant_reference
 
 alter table public.service_equipment enable row level security;
 
+drop policy if exists "Members can view service equipment"
+  on public.service_equipment;
 create policy "Members can view service equipment"
 on public.service_equipment
 for select
 to authenticated
 using (public.is_organization_member(organization_id));
 
+drop policy if exists "Managers can manage service equipment"
+  on public.service_equipment;
 create policy "Managers can manage service equipment"
 on public.service_equipment
 for all
