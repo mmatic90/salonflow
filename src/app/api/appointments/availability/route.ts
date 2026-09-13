@@ -205,16 +205,22 @@ export async function GET(request: NextRequest) {
 
   const scheduleRows = await Promise.all(
     employeesWithService.map(async (employee) => {
-      const { data, error } = await supabase.rpc("get_employee_effective_schedule", {
-        p_employee_id: employee.id,
-        p_date: date,
-      });
+      const [scheduleResult, breakResult] = await Promise.all([
+        supabase.rpc("get_employee_effective_schedule", {
+          p_employee_id: employee.id,
+          p_date: date,
+        }),
+        supabase.rpc("get_employee_effective_break", {
+          p_employee_id: employee.id,
+          p_date: date,
+        }),
+      ]);
 
-      if (error) {
+      if (scheduleResult.error) {
         return { employeeId: employee.id, available: false };
       }
 
-      const schedule = data?.[0];
+      const schedule = scheduleResult.data?.[0];
       const scheduleStart = schedule?.start_time
         ? timeToMinutes(schedule.start_time)
         : null;
@@ -227,6 +233,18 @@ export async function GET(request: NextRequest) {
         scheduleEnd !== null &&
         startMinutes >= scheduleStart &&
         endMinutes <= scheduleEnd;
+
+      const employeeBreak = breakResult.error ? null : breakResult.data?.[0];
+      const overlapsBreak = Boolean(
+        employeeBreak?.break_start_time &&
+          employeeBreak.break_end_time &&
+          overlaps(
+            startMinutes,
+            endMinutes,
+            timeToMinutes(employeeBreak.break_start_time),
+            timeToMinutes(employeeBreak.break_end_time),
+          ),
+      );
 
       const hasOverlap = appointments.some(
         (appointment) =>
@@ -241,7 +259,7 @@ export async function GET(request: NextRequest) {
 
       return {
         employeeId: employee.id,
-        available: withinSchedule && !hasOverlap,
+        available: withinSchedule && !overlapsBreak && !hasOverlap,
       };
     }),
   );
