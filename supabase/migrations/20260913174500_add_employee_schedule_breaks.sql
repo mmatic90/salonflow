@@ -47,6 +47,35 @@ alter table public.employee_schedule_overrides
     )
   );
 
+-- Whenever a schedule becomes non-working (for example because the salon is
+-- closed for that weekday), stale break values must be cleared automatically.
+create or replace function public.normalize_employee_schedule_breaks()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if new.is_working is not true then
+    new.break_start_time = null;
+    new.break_end_time = null;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists employee_default_schedule_normalize_breaks
+  on public.employee_default_schedule;
+create trigger employee_default_schedule_normalize_breaks
+before insert or update on public.employee_default_schedule
+for each row execute function public.normalize_employee_schedule_breaks();
+
+drop trigger if exists employee_schedule_overrides_normalize_breaks
+  on public.employee_schedule_overrides;
+create trigger employee_schedule_overrides_normalize_breaks
+before insert or update on public.employee_schedule_overrides
+for each row execute function public.normalize_employee_schedule_breaks();
+
 create or replace function public.get_employee_effective_break(
   p_employee_id uuid,
   p_date date
