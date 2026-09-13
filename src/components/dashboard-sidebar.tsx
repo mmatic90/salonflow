@@ -9,6 +9,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Settings,
+  ShieldCheck,
   Users,
   UserCircle2,
 } from "lucide-react";
@@ -24,6 +25,7 @@ type Props = {
   displayName: string;
   organizationName: string;
   locale: AppLocale;
+  isSystemDeveloper?: boolean;
 };
 
 type NavDefinition = {
@@ -43,12 +45,42 @@ const SIDEBAR_STORAGE_KEY = "dashboard-sidebar-collapsed";
 const SIDEBAR_CHANGE_EVENT = "salonflow-sidebar-change";
 
 const navDefinitions: NavDefinition[] = [
-  { href: "/dashboard", key: "dashboard", icon: LayoutDashboard, roles: ["admin", "employee"] },
-  { href: "/dashboard/calendar", key: "calendar", icon: CalendarDays, roles: ["admin", "employee"] },
-  { href: "/dashboard/online-bookings", key: "onlineBookings", icon: BellRing, roles: ["admin", "employee"] },
-  { href: "/dashboard/clients", key: "clients", icon: Users, roles: ["admin", "employee"] },
-  { href: "/dashboard/reports", key: "reports", icon: LayoutDashboard, roles: ["admin"] },
-  { href: "/dashboard/settings", key: "settings", icon: Settings, roles: ["admin"] },
+  {
+    href: "/dashboard",
+    key: "dashboard",
+    icon: LayoutDashboard,
+    roles: ["admin", "employee"],
+  },
+  {
+    href: "/dashboard/calendar",
+    key: "calendar",
+    icon: CalendarDays,
+    roles: ["admin", "employee"],
+  },
+  {
+    href: "/dashboard/online-bookings",
+    key: "onlineBookings",
+    icon: BellRing,
+    roles: ["admin", "employee"],
+  },
+  {
+    href: "/dashboard/clients",
+    key: "clients",
+    icon: Users,
+    roles: ["admin", "employee"],
+  },
+  {
+    href: "/dashboard/reports",
+    key: "reports",
+    icon: LayoutDashboard,
+    roles: ["admin"],
+  },
+  {
+    href: "/dashboard/settings",
+    key: "settings",
+    icon: Settings,
+    roles: ["admin"],
+  },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -90,6 +122,7 @@ export default function DashboardSidebar({
   displayName,
   organizationName,
   locale,
+  isSystemDeveloper = false,
 }: Props) {
   const pathname = usePathname();
   const dictionary = getDictionary(locale);
@@ -125,7 +158,9 @@ export default function DashboardSidebar({
             <div className="truncate text-lg font-semibold text-app-text">
               {organizationName}
             </div>
-            <div className="text-xs text-app-muted">{dictionary.salonAdminPanel}</div>
+            <div className="text-xs text-app-muted">
+              {dictionary.salonAdminPanel}
+            </div>
           </div>
           <button
             type="button"
@@ -181,6 +216,15 @@ export default function DashboardSidebar({
                 >
                   {dictionary.myAccount}
                 </Link>
+                {isSystemDeveloper ? (
+                  <Link
+                    href="/platform"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> Platform Admin
+                  </Link>
+                ) : null}
                 <LogoutButton locale={locale} />
               </div>
             </div>
@@ -278,6 +322,14 @@ export default function DashboardSidebar({
                 >
                   {dictionary.myAccount}
                 </Link>
+                {isSystemDeveloper ? (
+                  <Link
+                    href="/platform"
+                    className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> Platform Admin
+                  </Link>
+                ) : null}
                 <LogoutButton locale={locale} />
               </div>
             </div>
@@ -291,6 +343,16 @@ export default function DashboardSidebar({
               >
                 <UserCircle2 className="h-4 w-4" />
               </Link>
+              {isSystemDeveloper ? (
+                <Link
+                  href="/platform"
+                  title="Platform Admin"
+                  aria-label="Platform Admin"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-app-soft bg-white text-app-text transition hover:bg-app-bg"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </Link>
+              ) : null}
               <LogoutButton locale={locale} iconOnly />
             </div>
           )}
