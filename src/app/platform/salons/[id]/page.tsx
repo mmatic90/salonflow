@@ -16,6 +16,11 @@ import {
 } from "lucide-react";
 import { getPlatformSalonById } from "@/features/platform-admin/queries";
 import SalonPlanLifecycleControl from "@/features/platform-admin/components/salon-plan-lifecycle-control";
+import SalonBillingContactControl from "@/features/platform-admin/components/salon-billing-contact-control";
+import {
+  billingProviderLabel,
+  isStripeBillingConnected,
+} from "@/lib/billing";
 import {
   lifecycleLabel,
   salonPlans,
@@ -103,6 +108,11 @@ export default async function PlatformSalonDetailPage({
   ]
     .filter(Boolean)
     .join(", ");
+  const stripeConnected = isStripeBillingConnected({
+    provider: salon.billingProvider,
+    stripeCustomerId: salon.stripeCustomerId,
+    stripeSubscriptionId: salon.stripeSubscriptionId,
+  });
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -132,6 +142,9 @@ export default async function PlatformSalonDetailPage({
                 )}`}
               >
                 {lifecycleLabel(salon.lifecycleStatus)}
+              </span>
+              <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-800">
+                Billing: {billingProviderLabel(salon.billingProvider)}
               </span>
             </div>
             <p className="mt-2 text-sm text-slate-500">
@@ -198,35 +211,59 @@ export default async function PlatformSalonDetailPage({
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center gap-3">
               <CreditCard className="h-5 w-5 text-slate-600" />
-              <h2 className="text-xl font-bold text-slate-950">
-                Subscription podaci
-              </h2>
+              <h2 className="text-xl font-bold text-slate-950">Plan i lifecycle</h2>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <DetailCard label="Plan" value={salonPlans[salon.planCode].name} />
+              <DetailCard label="Status" value={lifecycleLabel(salon.lifecycleStatus)} />
+              <DetailCard label="Trial počeo" value={formatDateOnly(salon.trialStartedAt)} />
+              <DetailCard label="Trial završava" value={formatDateOnly(salon.trialEndsAt)} />
+              <DetailCard label="Plan zadnje promijenjen" value={formatDate(salon.planChangedAt)} />
+              <DetailCard label="Dashboard pristup" value={salon.isActive ? "Omogućen" : "Blokiran"} />
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <CreditCard className="h-5 w-5 text-slate-600" />
+                <div>
+                  <h2 className="text-xl font-bold text-slate-950">Billing readiness</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Provider metadata za buduću Stripe integraciju.
+                  </p>
+                </div>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-bold ${
+                  stripeConnected
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {stripeConnected ? "Stripe povezan" : "Stripe nije povezan"}
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <DetailCard label="Billing provider" value={billingProviderLabel(salon.billingProvider)} />
+              <DetailCard label="Billing email" value={salon.billingEmail} />
+              <DetailCard label="Stripe customer" value={salon.stripeCustomerId} />
+              <DetailCard label="Stripe subscription" value={salon.stripeSubscriptionId} />
+              <DetailCard label="Stripe price" value={salon.stripePriceId} />
               <DetailCard
-                label="Plan"
-                value={salonPlans[salon.planCode].name}
+                label="Cancel na kraju perioda"
+                value={salon.billingCancelAtPeriodEnd ? "Da" : "Ne"}
               />
-              <DetailCard
-                label="Status"
-                value={lifecycleLabel(salon.lifecycleStatus)}
-              />
-              <DetailCard
-                label="Trial počeo"
-                value={formatDateOnly(salon.trialStartedAt)}
-              />
-              <DetailCard
-                label="Trial završava"
-                value={formatDateOnly(salon.trialEndsAt)}
-              />
-              <DetailCard
-                label="Plan zadnje promijenjen"
-                value={formatDate(salon.planChangedAt)}
-              />
-              <DetailCard
-                label="Dashboard pristup"
-                value={salon.isActive ? "Omogućen" : "Blokiran"}
-              />
+              <DetailCard label="Period od" value={formatDate(salon.billingPeriodStart)} />
+              <DetailCard label="Period do" value={formatDate(salon.billingPeriodEnd)} />
+              <DetailCard label="Billing zadnje promijenjen" value={formatDate(salon.billingUpdatedAt)} />
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+              Stripe ID-evi se namjerno ne mogu ručno uređivati. Kasnije ih treba
+              postaviti isključivo Stripe checkout/webhook integracija kako bismo
+              izbjegli nekonzistentne pretplate.
             </div>
           </div>
 
@@ -258,6 +295,23 @@ export default async function PlatformSalonDetailPage({
             lifecycleStatus={salon.lifecycleStatus}
             trialEndsAt={salon.trialEndsAt}
           />
+
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+                Billing kontakt
+              </p>
+              <h2 className="mt-2 text-xl font-bold text-slate-950">
+                Administrativni email
+              </h2>
+            </div>
+            <div className="mt-5">
+              <SalonBillingContactControl
+                organizationId={salon.id}
+                billingEmail={salon.billingEmail}
+              />
+            </div>
+          </section>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between gap-4">
@@ -327,12 +381,13 @@ export default async function PlatformSalonDetailPage({
 
           <div className="rounded-3xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-600 shadow-sm">
             <div className="flex items-center gap-2 font-bold text-slate-900">
-              <Clock3 className="h-4 w-4" /> Lifecycle pravila
+              <Clock3 className="h-4 w-4" /> Lifecycle i billing pravila
             </div>
             <p className="mt-2">
               Trial i Past due trenutno ne blokiraju pristup. Suspended blokira
               salon dashboard svim članovima tenanta, bez brisanja podataka.
-              Automatski billing prijelazi još nisu uključeni.
+              Billing provider je zasad Manualno i Stripe još ne upravlja
+              lifecycleom automatski.
             </p>
             <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
               {salon.email ? (
