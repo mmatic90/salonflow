@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CheckCircle2, FlaskConical, Loader2, Save } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  FlaskConical,
+  Loader2,
+  Save,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updatePlatformSalonLifecycleAction } from "@/features/platform-admin/actions";
@@ -154,7 +160,7 @@ export default function SalonPlanLifecycleControl({
             <p className="mt-1 text-xs leading-5 text-slate-500">
               {status === "trial"
                 ? "Trial privremeno koristi puni Pro entitlement bez obzira na odabrani plaćeni plan."
-                : "Pregled funkcija koje centralni entitlement katalog pripisuje ovom planu."}
+                : "Pregled auditirane matrice funkcija za ovaj plan."}
             </p>
           </div>
           <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
@@ -162,34 +168,59 @@ export default function SalonPlanLifecycleControl({
           </span>
         </div>
 
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold">
+          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+            Dostupno = spremno za tenant korištenje
+          </span>
+          <span className="rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+            Djelomično = treba dovršiti prije enforcementa
+          </span>
+          <span className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-700">
+            Planirano = roadmap
+          </span>
+        </div>
+
         <div className="mt-4 grid gap-2">
-          {capabilities.map((capability) => (
-            <div
-              key={capability.code}
-              className="flex items-start gap-3 rounded-xl bg-slate-50 px-3 py-2.5"
-            >
-              {capability.availability === "available" ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
-              ) : (
-                <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-violet-700" />
-              )}
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {capability.name}
+          {capabilities.map((capability) => {
+            const isAvailable = capability.availability === "available";
+            const isPartial = capability.availability === "partial";
+
+            return (
+              <div
+                key={capability.code}
+                className="flex items-start gap-3 rounded-xl bg-slate-50 px-3 py-2.5"
+              >
+                {isAvailable ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+                ) : isPartial ? (
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                ) : (
+                  <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-violet-700" />
+                )}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-slate-800">
+                      {capability.name}
+                    </p>
+                    {!isAvailable ? (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          isPartial
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-violet-100 text-violet-700"
+                        }`}
+                      >
+                        {isPartial ? "Djelomično" : "Planirano"}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-0.5 text-xs leading-5 text-slate-500">
+                    {capability.description}
                   </p>
-                  {capability.availability === "planned" ? (
-                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
-                      Planirano
-                    </span>
-                  ) : null}
                 </div>
-                <p className="mt-0.5 text-xs leading-5 text-slate-500">
-                  {capability.description}
-                </p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
