@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireDashboardUser } from "@/lib/page-guards";
+import { refreshWaitlistEntryOpportunity } from "@/features/waitlist/opportunities";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -53,23 +54,30 @@ export async function createWaitlistEntryAction(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("waitlist_entries").insert({
-    organization_id: permissions.organizationId,
-    client_id: clientId,
-    service_id: serviceId,
-    preferred_employee_id: preferredEmployeeId,
-    preferred_date_from: dateFrom,
-    preferred_date_to: dateTo,
-    preferred_time_from: timeFrom,
-    preferred_time_to: timeTo,
-    notes,
-    status: "waiting",
-  });
+  const { data: entry, error } = await supabase
+    .from("waitlist_entries")
+    .insert({
+      organization_id: permissions.organizationId,
+      client_id: clientId,
+      service_id: serviceId,
+      preferred_employee_id: preferredEmployeeId,
+      preferred_date_from: dateFrom,
+      preferred_date_to: dateTo,
+      preferred_time_from: timeFrom,
+      preferred_time_to: timeTo,
+      notes,
+      status: "waiting",
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    throw new Error(error.message || "Nije moguće dodati klijenta na listu čekanja.");
+  if (error || !entry) {
+    throw new Error(
+      error?.message || "Nije moguće dodati klijenta na listu čekanja.",
+    );
   }
 
+  await refreshWaitlistEntryOpportunity(permissions.organizationId, entry.id);
   revalidateWaitlist();
 }
 
@@ -100,6 +108,12 @@ export async function updateWaitlistEntryAction(
       preferred_time_from: timeFrom,
       preferred_time_to: timeTo,
       notes,
+      matched_date: null,
+      matched_start_time: null,
+      matched_end_time: null,
+      matched_employee_id: null,
+      matched_room_id: null,
+      matched_at: null,
     })
     .eq("id", entryId)
     .eq("organization_id", permissions.organizationId)
@@ -109,6 +123,7 @@ export async function updateWaitlistEntryAction(
     throw new Error(error.message || "Nije moguće ažurirati listu čekanja.");
   }
 
+  await refreshWaitlistEntryOpportunity(permissions.organizationId, entryId);
   revalidateWaitlist();
 }
 
@@ -117,7 +132,16 @@ export async function cancelWaitlistEntryAction(entryId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("waitlist_entries")
-    .update({ status: "cancelled", booked_appointment_id: null })
+    .update({
+      status: "cancelled",
+      booked_appointment_id: null,
+      matched_date: null,
+      matched_start_time: null,
+      matched_end_time: null,
+      matched_employee_id: null,
+      matched_room_id: null,
+      matched_at: null,
+    })
     .eq("id", entryId)
     .eq("organization_id", permissions.organizationId)
     .eq("status", "waiting");
