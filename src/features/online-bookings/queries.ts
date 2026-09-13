@@ -433,17 +433,20 @@ export async function getOnlineBookingAcceptOptions(args: {
 
   const employeesWithAvailability = await Promise.all(
     mappedEmployees.map(async (employee) => {
-      const { data: scheduleRows, error: scheduleError } = await supabase.rpc(
-        "get_employee_effective_schedule",
-        {
+      const [scheduleResult, breakResult] = await Promise.all([
+        supabase.rpc("get_employee_effective_schedule", {
           p_employee_id: employee.id,
           p_date: args.date,
-        },
-      );
+        }),
+        supabase.rpc("get_employee_effective_break", {
+          p_employee_id: employee.id,
+          p_date: args.date,
+        }),
+      ]);
 
-      if (scheduleError) return null;
+      if (scheduleResult.error) return null;
 
-      const schedule = scheduleRows?.[0];
+      const schedule = scheduleResult.data?.[0];
 
       if (
         !schedule?.is_working ||
@@ -457,6 +460,20 @@ export async function getOnlineBookingAcceptOptions(args: {
       const employeeEnd = timeToMinutes(schedule.end_time);
 
       if (startMinutes < employeeStart || endMinutes > employeeEnd) {
+        return null;
+      }
+
+      const employeeBreak = breakResult.error ? null : breakResult.data?.[0];
+      if (
+        employeeBreak?.break_start_time &&
+        employeeBreak.break_end_time &&
+        overlaps(
+          startMinutes,
+          endMinutes,
+          timeToMinutes(employeeBreak.break_start_time),
+          timeToMinutes(employeeBreak.break_end_time),
+        )
+      ) {
         return null;
       }
 
