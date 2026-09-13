@@ -71,9 +71,10 @@ export default async function NewAppointmentPage({
     await Promise.all([
       supabase
         .from("services")
-        .select("id, name, duration_minutes")
+        .select("id, name, category, duration_minutes")
         .eq("organization_id", organizationId)
         .eq("is_active", true)
+        .order("category", { ascending: true })
         .order("name", { ascending: true }),
       supabase
         .from("employees")
@@ -110,6 +111,7 @@ export default async function NewAppointmentPage({
   const services = (servicesResult.data ?? []).map((service) => ({
     id: service.id,
     label: service.name,
+    category: service.category ?? null,
     durationMinutes: Number(service.duration_minutes ?? 0),
   }));
 
