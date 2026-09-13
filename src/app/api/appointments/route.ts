@@ -5,6 +5,7 @@ import {
   appointmentDatabaseErrorMessage,
   validateAppointmentRuntime,
 } from "@/features/appointments/runtime-validation";
+import { refreshWaitlistOpportunitiesAfterOccupiedSlot } from "@/features/waitlist/opportunities";
 
 function value(input: unknown) {
   return typeof input === "string" ? input.trim() : "";
@@ -26,7 +27,10 @@ function splitClientName(fullName: string) {
   return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
 }
 
-function waitlistIdFromRequest(request: Request) {
+function waitlistIdFromRequest(request: Request, body: Record<string, unknown>) {
+  const explicitId = value(body.waitlist_id);
+  if (explicitId) return explicitId;
+
   const referrer = request.headers.get("referer");
   if (!referrer) return null;
 
@@ -47,9 +51,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    const body = (await request.json()) as Record<string, unknown>;
     const organizationId = permissions.organizationId;
-    const waitlistId = waitlistIdFromRequest(request);
+    const waitlistId = waitlistIdFromRequest(request, body);
     const appointmentDate = value(body.appointment_date);
     const startTime = value(body.start_time);
     const clientName = value(body.client_name);
@@ -332,6 +336,12 @@ export async function POST(request: Request) {
         .update({
           status: "booked",
           booked_appointment_id: appointment.id,
+          matched_date: null,
+          matched_start_time: null,
+          matched_end_time: null,
+          matched_employee_id: null,
+          matched_room_id: null,
+          matched_at: null,
         })
         .eq("id", waitlistId)
         .eq("organization_id", organizationId)
@@ -345,6 +355,19 @@ export async function POST(request: Request) {
           waitlistError.message,
         );
       }
+    }
+
+    try {
+      await refreshWaitlistOpportunitiesAfterOccupiedSlot({
+        organizationId,
+        date: appointmentDate,
+        startTime,
+        endTime,
+        employeeId,
+        roomId,
+      });
+    } catch (waitlistSyncError) {
+      console.error("Waitlist opportunities could not be refreshed:", waitlistSyncError);
     }
 
     return NextResponse.json({
