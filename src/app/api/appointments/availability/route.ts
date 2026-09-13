@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
 
 type AvailabilityIssue =
+  | "salon_closed"
+  | "outside_salon_hours"
   | "no_employee_for_service"
   | "no_employee_available"
   | "no_room_for_service"
@@ -23,6 +25,11 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
 }
 
+function dayOfWeekForDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
 export async function GET(request: NextRequest) {
   const permissions = await getCurrentUserPermissions();
 
@@ -34,12 +41,14 @@ export async function GET(request: NextRequest) {
   const date = searchParams.get("date")?.trim() ?? "";
   const startTime = searchParams.get("start_time")?.trim() ?? "";
   const serviceId = searchParams.get("service_id")?.trim() ?? "";
-  const excludeAppointmentId = searchParams.get("exclude_appointment_id")?.trim() ?? "";
+  const excludeAppointmentId =
+    searchParams.get("exclude_appointment_id")?.trim() ?? "";
 
   if (!date || !startTime || !serviceId) {
     return NextResponse.json({
       employees: [],
       rooms: [],
+      general_issue: null,
       employee_issue: null,
       room_issue: null,
       available: false,
@@ -89,6 +98,47 @@ export async function GET(request: NextRequest) {
 
   const endMinutes = startMinutes + durationMinutes;
   const endTime = minutesToTime(endMinutes);
+
+  const { data: salonDay, error: salonHoursError } = await supabase
+    .from("salon_working_hours")
+    .select("opens_at, closes_at, is_closed")
+    .eq("organization_id", organizationId)
+    .eq("day_of_week", dayOfWeekForDate(date))
+    .maybeSingle();
+
+  if (salonHoursError) {
+    return NextResponse.json(
+      { error: salonHoursError.message },
+      { status: 400 },
+    );
+  }
+
+  if (!salonDay || salonDay.is_closed) {
+    return NextResponse.json({
+      employees: [],
+      rooms: [],
+      end_time: endTime,
+      general_issue: "salon_closed" satisfies AvailabilityIssue,
+      employee_issue: null,
+      room_issue: null,
+      available: false,
+    });
+  }
+
+  if (
+    startMinutes < timeToMinutes(salonDay.opens_at) ||
+    endMinutes > timeToMinutes(salonDay.closes_at)
+  ) {
+    return NextResponse.json({
+      employees: [],
+      rooms: [],
+      end_time: endTime,
+      general_issue: "outside_salon_hours" satisfies AvailabilityIssue,
+      employee_issue: null,
+      room_issue: null,
+      available: false,
+    });
+  }
 
   const [
     employeesResult,
@@ -247,6 +297,7 @@ export async function GET(request: NextRequest) {
     employees,
     rooms,
     end_time: endTime,
+    general_issue: null,
     employee_issue: employeeIssue,
     room_issue: roomIssue,
     available: employees.length > 0 && rooms.length > 0,
