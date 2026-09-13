@@ -20,30 +20,27 @@ using (user_id = auth.uid());
 -- No client-side INSERT/UPDATE/DELETE policies are intentionally provided.
 -- Platform-admin membership is maintained from the database/service-role side only.
 
--- Safe bootstrap for the current single-owner installation: only bootstrap when
--- there is exactly one distinct active salon owner in the entire database.
+-- Bootstrap only the owner of the existing Demo Salon used by this installation.
+-- Future salon owners are never promoted to platform admin automatically.
 do $$
 declare
-  owner_count integer;
   bootstrap_user_id uuid;
   bootstrap_display_name text;
 begin
   if not exists (select 1 from public.platform_admins) then
-    select count(distinct user_id)
-      into owner_count
-    from public.organization_members
-    where is_active = true
-      and role = 'owner'::public.organization_role;
+    select member.user_id, member.display_name
+      into bootstrap_user_id, bootstrap_display_name
+    from public.organization_members member
+    join public.organizations organization
+      on organization.id = member.organization_id
+    where organization.id = '7042e15c-1a1e-44e5-991e-bb8aa6266c08'::uuid
+      and organization.name = 'Demo Salon'
+      and member.is_active = true
+      and member.role = 'owner'::public.organization_role
+    order by member.created_at asc
+    limit 1;
 
-    if owner_count = 1 then
-      select user_id, display_name
-        into bootstrap_user_id, bootstrap_display_name
-      from public.organization_members
-      where is_active = true
-        and role = 'owner'::public.organization_role
-      order by created_at asc
-      limit 1;
-
+    if bootstrap_user_id is not null then
       insert into public.platform_admins (user_id, display_name)
       values (bootstrap_user_id, bootstrap_display_name)
       on conflict (user_id) do nothing;
