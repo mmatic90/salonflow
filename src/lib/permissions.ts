@@ -1,4 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  normalizeSalonLifecycleStatus,
+  normalizeSalonPlanCode,
+  type SalonLifecycleStatus,
+  type SalonPlanCode,
+} from "@/lib/plans";
+import {
+  getEffectiveEntitlementPlan,
+  organizationHasCapability,
+  type SalonCapabilityCode,
+} from "@/lib/entitlements";
 
 export type OrganizationRole = "owner" | "admin" | "manager" | "employee";
 export type AppRole = "admin" | "employee";
@@ -18,6 +29,9 @@ export type CurrentUserPermissions = {
   organizationLocale: "hr" | "en" | "it";
   organizationTheme: OrganizationTheme;
   organizationLogoUrl: string | null;
+  organizationPlanCode: SalonPlanCode;
+  organizationLifecycleStatus: SalonLifecycleStatus;
+  organizationEntitlementPlan: SalonPlanCode;
   organizationRole: OrganizationRole;
   role: AppRole;
   employeeId: string | null;
@@ -68,7 +82,7 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
       supabase
         .from("organization_members")
         .select(
-          "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active)",
+          "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active, plan_code, lifecycle_status)",
         )
         .eq("user_id", user.id)
         .eq("is_active", true)
@@ -109,6 +123,10 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
   const employeeName = employee
     ? [employee.first_name, employee.last_name].filter(Boolean).join(" ")
     : null;
+  const organizationPlanCode = normalizeSalonPlanCode(organization.plan_code);
+  const organizationLifecycleStatus = normalizeSalonLifecycleStatus(
+    organization.lifecycle_status,
+  );
 
   return {
     userId: user.id,
@@ -118,6 +136,12 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     organizationLocale: normalizeLocale(organization.locale),
     organizationTheme: normalizeTheme(organization.theme),
     organizationLogoUrl: organization.logo_url ?? null,
+    organizationPlanCode,
+    organizationLifecycleStatus,
+    organizationEntitlementPlan: getEffectiveEntitlementPlan(
+      organizationPlanCode,
+      organizationLifecycleStatus,
+    ),
     organizationRole,
     role: appRole,
     employeeId: employee?.id ?? null,
@@ -168,6 +192,20 @@ export async function getSuspendedOrganizationForCurrentUser(): Promise<Suspende
   }
 
   return null;
+}
+
+export function canUseCapability(
+  permissions: Pick<
+    CurrentUserPermissions,
+    "organizationPlanCode" | "organizationLifecycleStatus"
+  >,
+  capabilityCode: SalonCapabilityCode,
+) {
+  return organizationHasCapability(
+    permissions.organizationPlanCode,
+    permissions.organizationLifecycleStatus,
+    capabilityCode,
+  );
 }
 
 export function isAdmin(role: AppRole) {
