@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
+import { CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
 import PageShell from "@/components/page-shell";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { canUseCapability } from "@/lib/permissions";
@@ -65,8 +65,7 @@ function ui(locale: AppLocale) {
         "Self-service billing is not connected yet. Plan changes are currently activated through SalonFlow administration.",
       employeeHelp:
         "Ask the salon owner or administrator about changing the SalonFlow plan.",
-      back: "Back",
-      dashboard: "Open dashboard",
+      dashboard: "Back to dashboard",
       included: "Available from this plan upward",
     };
   }
@@ -85,8 +84,7 @@ function ui(locale: AppLocale) {
         "La fatturazione self-service non è ancora collegata. Le modifiche del piano vengono attivate tramite l'amministrazione SalonFlow.",
       employeeHelp:
         "Contatta il proprietario o l'amministratore del salone per informazioni sul cambio di piano SalonFlow.",
-      back: "Indietro",
-      dashboard: "Apri dashboard",
+      dashboard: "Torna alla dashboard",
       included: "Disponibile da questo piano in su",
     };
   }
@@ -104,8 +102,7 @@ function ui(locale: AppLocale) {
       "Self-service naplata još nije spojena. Promjena plana trenutno se aktivira kroz SalonFlow administraciju.",
     employeeHelp:
       "Za promjenu SalonFlow plana obratite se vlasniku ili administratoru salona.",
-    back: "Natrag",
-    dashboard: "Otvori dashboard",
+    dashboard: "Natrag na dashboard",
     included: "Dostupno od ovog plana nadalje",
   };
 }
@@ -192,20 +189,12 @@ export default async function UpgradePage({
         </p>
         <p className="mt-3 text-xs leading-5 text-app-muted">{t.trialNote}</p>
 
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-          <Link
-            href={returnTo === "/dashboard" ? "/dashboard" : "/dashboard"}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-bg"
-          >
-            <ArrowLeft className="h-4 w-4" /> {t.back}
-          </Link>
-          <Link
-            href="/dashboard"
-            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-          >
-            {t.dashboard}
-          </Link>
-        </div>
+        <Link
+          href="/dashboard"
+          className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto"
+        >
+          {t.dashboard}
+        </Link>
       </section>
     </PageShell>
   );
