@@ -18,6 +18,13 @@ as $$
     from public.organizations organization
     where organization.id = p_organization_id
       and organization.is_active = true
+      and exists (
+        select 1
+        from public.organization_members member
+        where member.organization_id = organization.id
+          and member.user_id = auth.uid()
+          and member.is_active = true
+      )
       and (
         case
           when organization.lifecycle_status = 'trial' then 2
@@ -40,7 +47,7 @@ revoke all on function public.organization_has_minimum_plan(uuid, text) from pub
 grant execute on function public.organization_has_minimum_plan(uuid, text) to authenticated;
 
 comment on function public.organization_has_minimum_plan(uuid, text) is
-  'Returns whether an active organization has at least the requested SalonFlow plan. Trial receives Pro-equivalent access.';
+  'Returns whether the current authenticated member has access to an active organization at or above the requested SalonFlow plan. Trial receives Pro-equivalent access.';
 
 -- Waitlist is a Growth capability. Existing rows are preserved on downgrade and
 -- become visible again when the organization returns to Growth/Pro or Trial.
