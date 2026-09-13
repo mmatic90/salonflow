@@ -91,13 +91,17 @@ export async function getEmployeeSchedulePageData(
       .maybeSingle(),
     supabase
       .from("employee_default_schedule")
-      .select("id, employee_id, day_of_week, start_time, end_time, is_working")
+      .select(
+        "id, employee_id, day_of_week, start_time, end_time, break_start_time, break_end_time, is_working",
+      )
       .eq("organization_id", organizationId)
       .eq("employee_id", employeeId)
       .order("day_of_week", { ascending: true }),
     supabase
       .from("employee_schedule_overrides")
-      .select("id, employee_id, schedule_date, is_working, start_time, end_time, reason")
+      .select(
+        "id, employee_id, schedule_date, is_working, start_time, end_time, break_start_time, break_end_time, reason",
+      )
       .eq("organization_id", organizationId)
       .eq("employee_id", employeeId)
       .order("schedule_date", { ascending: true }),
@@ -133,6 +137,12 @@ export async function getEmployeeSchedulePageData(
     day_of_week: Number(row.day_of_week),
     start_time: row.start_time ?? "",
     end_time: row.end_time ?? "",
+    break_start_time: row.break_start_time
+      ? String(row.break_start_time).slice(0, 5)
+      : null,
+    break_end_time: row.break_end_time
+      ? String(row.break_end_time).slice(0, 5)
+      : null,
     is_working: Boolean(row.is_working),
   }));
 
@@ -143,11 +153,18 @@ export async function getEmployeeSchedulePageData(
       employee_id: String(row.employee_id),
       override_date: String(row.schedule_date),
       override_type: overrideType,
-      start_time: row.start_time ?? null,
-      end_time: row.end_time ?? null,
-      note: row.reason && !["day_off", "vacation", "sick_leave"].includes(row.reason)
-        ? row.reason
+      start_time: row.start_time ? String(row.start_time).slice(0, 5) : null,
+      end_time: row.end_time ? String(row.end_time).slice(0, 5) : null,
+      break_start_time: row.break_start_time
+        ? String(row.break_start_time).slice(0, 5)
         : null,
+      break_end_time: row.break_end_time
+        ? String(row.break_end_time).slice(0, 5)
+        : null,
+      note:
+        row.reason && !["day_off", "vacation", "sick_leave"].includes(row.reason)
+          ? row.reason
+          : null,
     };
   });
 
@@ -176,6 +193,8 @@ export async function getEmployeeSchedulePageData(
           is_working: false,
           start_time: null,
           end_time: null,
+          break_start_time: null,
+          break_end_time: null,
           status_label: "Salon zatvoren",
           reason_label: "Salon je zatvoren",
           is_override: false,
@@ -192,6 +211,8 @@ export async function getEmployeeSchedulePageData(
           is_working: isWorking,
           start_time: isWorking ? override.start_time : null,
           end_time: isWorking ? override.end_time : null,
+          break_start_time: isWorking ? override.break_start_time : null,
+          break_end_time: isWorking ? override.break_end_time : null,
           status_label: isWorking ? "Radi" : "Ne radi",
           reason_label: override.note?.trim()
             ? override.note
@@ -211,6 +232,8 @@ export async function getEmployeeSchedulePageData(
           is_working: false,
           start_time: null,
           end_time: null,
+          break_start_time: null,
+          break_end_time: null,
           status_label: "Ne radi",
           reason_label: null,
           is_override: false,
@@ -223,6 +246,8 @@ export async function getEmployeeSchedulePageData(
         is_working: true,
         start_time: defaultItem.start_time,
         end_time: defaultItem.end_time,
+        break_start_time: defaultItem.break_start_time,
+        break_end_time: defaultItem.break_end_time,
         status_label: "Radi",
         reason_label: null,
         is_override: false,
