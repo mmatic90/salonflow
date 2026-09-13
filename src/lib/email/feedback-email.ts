@@ -25,6 +25,7 @@ function escapeHtml(value: string) {
 
 export async function sendFeedbackNotificationEmail(args: {
   feedbackId: string;
+  salonName: string;
   createdByName: string;
   createdByEmail: string | null;
   type: FeedbackType;
@@ -45,17 +46,18 @@ export async function sendFeedbackNotificationEmail(args: {
   const adminBaseUrl =
     process.env.NEXT_PUBLIC_ADMIN_URL || process.env.NEXT_PUBLIC_SITE_URL || "";
   const feedbackUrl = adminBaseUrl
-    ? `${adminBaseUrl.replace(/\/$/, "")}/dashboard/feedback/${args.feedbackId}`
+    ? `${adminBaseUrl.replace(/\/$/, "")}/platform/feedback/${args.feedbackId}`
     : "";
 
   const { error } = await resend.emails.send({
     from: fromEmail,
     to: [feedbackRecipient],
-    subject: `[SalonFlow feedback] ${args.title}`,
+    subject: `[SalonFlow feedback · ${args.salonName}] ${args.title}`,
     html: `
       <div style="font-family:Arial,Helvetica,sans-serif;max-width:680px;margin:0 auto;color:#2f2723;line-height:1.6;">
         <h1 style="font-size:24px;margin-bottom:20px;">Novi feedback</h1>
         <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:8px 0;font-weight:700;">Salon</td><td>${escapeHtml(args.salonName)}</td></tr>
           <tr><td style="padding:8px 0;font-weight:700;">Korisnik</td><td>${escapeHtml(args.createdByName)}</td></tr>
           <tr><td style="padding:8px 0;font-weight:700;">Email</td><td>${escapeHtml(args.createdByEmail ?? "Nije dostupan")}</td></tr>
           <tr><td style="padding:8px 0;font-weight:700;">Vrsta</td><td>${escapeHtml(args.type)}</td></tr>
