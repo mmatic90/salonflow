@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import DashboardSidebar from "@/components/dashboard-sidebar";
-import { getCurrentUserPermissions } from "@/lib/permissions";
+import {
+  getCurrentUserPermissions,
+  getSuspendedOrganizationForCurrentUser,
+} from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import AdminFooter from "@/components/admin-footer";
 import FeedbackWidget from "@/features/feedback/components/feedback-widget";
@@ -13,6 +16,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     process.env.NEXT_PUBLIC_HIDE_FEEDBACK_TOOLS === "true";
 
   if (!permissions) {
+    const suspendedOrganization =
+      await getSuspendedOrganizationForCurrentUser();
+
+    if (suspendedOrganization) {
+      redirect("/suspended");
+    }
+
     const supabase = await createClient();
     const {
       data: { user },
