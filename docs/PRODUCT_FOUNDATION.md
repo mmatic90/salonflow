@@ -15,7 +15,7 @@ Transform the existing single-salon Body & Soul application into a reusable comm
 - Replace production-like data with fictional demo data.
 - Provide a private Platform Admin surface for tenant metadata and central feedback without exposing salon operational data.
 - Track internal commercial plan (`starter`, `growth`, `pro`) and tenant lifecycle (`trial`, `active`, `past_due`, `suspended`) metadata.
-- Maintain a central capability-entitlement catalog for the three commercial tiers, without enforcing feature restrictions until packaging is finalized.
+- Maintain a central capability-entitlement catalog for the three commercial tiers and enforce finished premium capabilities in controlled stages.
 - Give Trial tenants the Pro entitlement set while keeping their stored paid plan separate.
 - Keep tenant suspension reversible and non-destructive.
 - Store billing-readiness metadata separately from salon operational data: billing contact, provider, Stripe references, billing period, and cancel-at-period-end state.
@@ -33,12 +33,14 @@ Capabilities are explicitly classified as:
 
 The matrix currently keeps core salon operation and client care/safety in Starter, utilization/retention insights in Growth, and governance/advanced automation in Pro. Pricing is intentionally not stored in code or database yet.
 
+The first enforcement stage covers Growth Waitlist, Growth Reports and Pro Audit Log. CRM insights, reminders, review automation and planned capabilities remain outside enforcement until their dedicated implementation stage.
+
 ## Non-goals for Phase 1
 
 - Automated subscription billing or payment processing (Stripe checkout/webhooks are not connected yet).
 - Manual editing of Stripe customer/subscription/price identifiers from Platform Admin.
 - Automatic lifecycle transitions when a trial or payment period expires.
-- Enforcing feature gates or hard commercial limits until pricing and packaging are finalized.
+- Hard employee/service/location commercial limits until pricing and packaging are finalized.
 - Treating `partial` or `planned` capabilities as production-ready paid promises.
 - Self-service signup.
 - Multiple locations per organization.
@@ -53,7 +55,8 @@ The matrix currently keeps core salon operation and client care/safety in Starte
 - Enforce tenant isolation in the database before onboarding multiple salons.
 - Platform Admin may access tenant/account metadata, billing metadata, plan entitlements and feedback, but not salon clients, appointments, treatment notes, or other operational records.
 - Stripe identifiers are platform metadata only and should be populated by the future Stripe integration, not by salon users.
-- When capability enforcement is activated, server-side entitlement checks must be authoritative; hiding UI controls alone is not sufficient.
+- Server-side entitlement checks are authoritative; hiding or locking UI controls alone is not sufficient.
+- Premium data surfaces should use database/RLS enforcement where direct tenant data access could otherwise bypass application guards.
 - Background jobs and public APIs must become tenant- and entitlement-aware before a premium capability is enforced commercially.
 
 ## Initial roadmap
@@ -69,7 +72,8 @@ The matrix currently keeps core salon operation and client care/safety in Starte
 9. Billing-readiness metadata and Platform Admin visibility.
 10. Three-tier plan and capability-entitlement foundation.
 11. Audited Starter/Growth/Pro capability matrix.
-12. Commercial pilot readiness and final pricing/package approval.
-13. Server-side entitlement enforcement in controlled stages.
-14. Tenant-hardening of partial background automations/reminders.
-15. Stripe checkout/webhooks when pricing and subscription rules are finalized.
+12. First staged enforcement: Growth Waitlist/Reports and Pro Audit Log.
+13. Commercial pilot readiness and final pricing/package approval.
+14. Further server-side entitlement enforcement in controlled stages.
+15. Tenant-hardening of partial background automations/reminders.
+16. Stripe checkout/webhooks when pricing and subscription rules are finalized.
