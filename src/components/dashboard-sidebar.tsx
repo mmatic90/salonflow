@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   BellRing,
   CalendarDays,
   LayoutDashboard,
+  ListPlus,
+  LockKeyhole,
   PanelLeft,
   PanelLeftClose,
   Settings,
@@ -17,6 +20,10 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import LogoutButton from "@/components/logout-button";
 import OnlineBookingBadge from "@/components/online-booking-badge";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
+import {
+  buildCapabilityUpgradePath,
+  type SalonCapabilityCode,
+} from "@/lib/entitlements";
 
 type AppRole = "admin" | "employee";
 
@@ -25,6 +32,8 @@ type Props = {
   displayName: string;
   organizationName: string;
   locale: AppLocale;
+  canUseWaitlist?: boolean;
+  canUseReports?: boolean;
   isSystemDeveloper?: boolean;
 };
 
@@ -35,10 +44,13 @@ type NavDefinition = {
     | "onlineBookings"
     | "calendar"
     | "clients"
+    | "waitlist"
     | "reports"
     | "settings";
   icon: typeof LayoutDashboard;
   roles: AppRole[];
+  capability?: SalonCapabilityCode;
+  requiredPlan?: "Growth" | "Pro";
 };
 
 const SIDEBAR_STORAGE_KEY = "dashboard-sidebar-collapsed";
@@ -70,10 +82,20 @@ const navDefinitions: NavDefinition[] = [
     roles: ["admin", "employee"],
   },
   {
+    href: "/dashboard/waitlist",
+    key: "waitlist",
+    icon: ListPlus,
+    roles: ["admin", "employee"],
+    capability: "waitlist",
+    requiredPlan: "Growth",
+  },
+  {
     href: "/dashboard/reports",
     key: "reports",
-    icon: LayoutDashboard,
+    icon: BarChart3,
     roles: ["admin"],
+    capability: "advanced_reports",
+    requiredPlan: "Growth",
   },
   {
     href: "/dashboard/settings",
@@ -99,6 +121,12 @@ function getInitials(name: string) {
   );
 }
 
+function waitlistLabel(locale: AppLocale) {
+  if (locale === "en") return "Waitlist";
+  if (locale === "it") return "Lista d'attesa";
+  return "Lista čekanja";
+}
+
 function subscribeToSidebarPreference(listener: () => void) {
   window.addEventListener("storage", listener);
   window.addEventListener(SIDEBAR_CHANGE_EVENT, listener);
@@ -122,6 +150,8 @@ export default function DashboardSidebar({
   displayName,
   organizationName,
   locale,
+  canUseWaitlist = true,
+  canUseReports = true,
   isSystemDeveloper = false,
 }: Props) {
   const pathname = usePathname();
@@ -137,11 +167,30 @@ export default function DashboardSidebar({
     () =>
       navDefinitions
         .filter((item) => item.roles.includes(role))
-        .map((item) => ({
-          ...item,
-          label: dictionary.nav[item.key],
-        })),
-    [dictionary, role],
+        .map((item) => {
+          const unlocked =
+            item.capability === "waitlist"
+              ? canUseWaitlist
+              : item.capability === "advanced_reports"
+                ? canUseReports
+                : true;
+          const locked = Boolean(item.capability && !unlocked);
+          const label =
+            item.key === "waitlist"
+              ? waitlistLabel(locale)
+              : dictionary.nav[item.key];
+
+          return {
+            ...item,
+            label,
+            locked,
+            targetHref:
+              locked && item.capability
+                ? buildCapabilityUpgradePath(item.capability, item.href)
+                : item.href,
+          };
+        }),
+    [canUseReports, canUseWaitlist, dictionary, locale, role],
   );
 
   function toggleDesktop() {
@@ -181,11 +230,11 @@ export default function DashboardSidebar({
             <nav className="space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;
-                const active = isActive(pathname, item.href);
+                const active = !item.locked && isActive(pathname, item.href);
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    href={item.targetHref}
                     onClick={() => setMobileOpen(false)}
                     className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
                       active
@@ -195,7 +244,11 @@ export default function DashboardSidebar({
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
-                    {item.href === "/dashboard/online-bookings" ? (
+                    {item.locked ? (
+                      <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-app-soft bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-app-muted">
+                        <LockKeyhole className="h-3 w-3" /> {item.requiredPlan}
+                      </span>
+                    ) : item.href === "/dashboard/online-bookings" ? (
                       <OnlineBookingBadge />
                     ) : null}
                   </Link>
@@ -278,11 +331,11 @@ export default function DashboardSidebar({
         <nav className="flex-1 space-y-2 overflow-y-auto px-3">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = isActive(pathname, item.href);
+            const active = !item.locked && isActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.targetHref}
                 className={`flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition ${
                   desktopCollapsed ? "justify-center" : "gap-3"
                 } ${
@@ -290,16 +343,26 @@ export default function DashboardSidebar({
                     ? "bg-app-accent text-white shadow-sm"
                     : "text-app-text hover:bg-app-card-alt"
                 }`}
-                title={desktopCollapsed ? item.label : undefined}
+                title={
+                  desktopCollapsed
+                    ? `${item.label}${item.locked ? ` · ${item.requiredPlan}` : ""}`
+                    : undefined
+                }
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {!desktopCollapsed ? (
                   <>
                     <span>{item.label}</span>
-                    {item.href === "/dashboard/online-bookings" ? (
+                    {item.locked ? (
+                      <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-app-soft bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-app-muted">
+                        <LockKeyhole className="h-3 w-3" /> {item.requiredPlan}
+                      </span>
+                    ) : item.href === "/dashboard/online-bookings" ? (
                       <OnlineBookingBadge />
                     ) : null}
                   </>
+                ) : item.locked ? (
+                  <LockKeyhole className="ml-1 h-3 w-3 shrink-0 text-app-muted" />
                 ) : item.href === "/dashboard/online-bookings" ? (
                   <OnlineBookingBadge />
                 ) : null}
