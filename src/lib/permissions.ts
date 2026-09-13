@@ -52,13 +52,23 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     return null;
   }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from("organization_members")
-    .select("organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active)")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
+  const [{ data: membership, error: membershipError }, { data: platformAdmin }] =
+    await Promise.all([
+      supabase
+        .from("organization_members")
+        .select(
+          "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active)",
+        )
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
 
   if (membershipError || !membership) {
     return null;
@@ -95,17 +105,23 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     organizationId: membership.organization_id,
     organizationName: organization.name,
     organizationLocale:
-      organization.locale === "en" || organization.locale === "it" ? organization.locale : "hr",
+      organization.locale === "en" || organization.locale === "it"
+        ? organization.locale
+        : "hr",
     organizationTheme: normalizeTheme(organization.theme),
     organizationLogoUrl: organization.logo_url ?? null,
     organizationRole,
     role: appRole,
     employeeId: employee?.id ?? null,
     displayName:
-      membership.display_name ?? employeeName ?? user.user_metadata?.display_name ?? user.email ?? "Korisnik",
+      membership.display_name ??
+      employeeName ??
+      user.user_metadata?.display_name ??
+      user.email ??
+      "Korisnik",
     colorHex: employee?.color ?? null,
     isEmployee: Boolean(employee),
-    isSystemDeveloper: organizationRole === "owner",
+    isSystemDeveloper: Boolean(platformAdmin),
   };
 }
 
