@@ -21,12 +21,25 @@ Transform the existing single-salon Body & Soul application into a reusable comm
 - Store billing-readiness metadata separately from salon operational data: billing contact, provider, Stripe references, billing period, and cancel-at-period-end state.
 - Keep lifecycle status as the SalonFlow access source of truth; future billing-provider events may synchronize lifecycle, but do not bypass it.
 
+## Commercial capability source of truth
+
+The audited feature split is documented in `docs/PLAN_CAPABILITY_MATRIX.md` and implemented centrally in `src/lib/entitlements.ts`.
+
+Capabilities are explicitly classified as:
+
+- `available` — implemented and suitable for current multi-tenant use;
+- `partial` — meaningful implementation exists but needs tenant-hardening or completion before enforcement;
+- `planned` — roadmap capability that must not be marketed as currently delivered.
+
+The matrix currently keeps core salon operation and client care/safety in Starter, utilization/retention insights in Growth, and governance/advanced automation in Pro. Pricing is intentionally not stored in code or database yet.
+
 ## Non-goals for Phase 1
 
 - Automated subscription billing or payment processing (Stripe checkout/webhooks are not connected yet).
 - Manual editing of Stripe customer/subscription/price identifiers from Platform Admin.
 - Automatic lifecycle transitions when a trial or payment period expires.
 - Enforcing feature gates or hard commercial limits until pricing and packaging are finalized.
+- Treating `partial` or `planned` capabilities as production-ready paid promises.
 - Self-service signup.
 - Multiple locations per organization.
 - Native mobile applications.
@@ -41,6 +54,7 @@ Transform the existing single-salon Body & Soul application into a reusable comm
 - Platform Admin may access tenant/account metadata, billing metadata, plan entitlements and feedback, but not salon clients, appointments, treatment notes, or other operational records.
 - Stripe identifiers are platform metadata only and should be populated by the future Stripe integration, not by salon users.
 - When capability enforcement is activated, server-side entitlement checks must be authoritative; hiding UI controls alone is not sufficient.
+- Background jobs and public APIs must become tenant- and entitlement-aware before a premium capability is enforced commercially.
 
 ## Initial roadmap
 
@@ -54,6 +68,8 @@ Transform the existing single-salon Body & Soul application into a reusable comm
 8. Platform Admin and tenant lifecycle foundation.
 9. Billing-readiness metadata and Platform Admin visibility.
 10. Three-tier plan and capability-entitlement foundation.
-11. Commercial pilot readiness and final pricing/package approval.
-12. Server-side entitlement enforcement.
-13. Stripe checkout/webhooks when pricing and subscription rules are finalized.
+11. Audited Starter/Growth/Pro capability matrix.
+12. Commercial pilot readiness and final pricing/package approval.
+13. Server-side entitlement enforcement in controlled stages.
+14. Tenant-hardening of partial background automations/reminders.
+15. Stripe checkout/webhooks when pricing and subscription rules are finalized.
