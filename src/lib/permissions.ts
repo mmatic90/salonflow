@@ -2,6 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 
 export type OrganizationRole = "owner" | "admin" | "manager" | "employee";
 export type AppRole = "admin" | "employee";
+export type OrganizationTheme =
+  | "sand"
+  | "rose"
+  | "slate"
+  | "sage"
+  | "ocean"
+  | "plum";
 
 export type CurrentUserPermissions = {
   userId: string;
@@ -9,7 +16,7 @@ export type CurrentUserPermissions = {
   organizationId: string;
   organizationName: string;
   organizationLocale: "hr" | "en" | "it";
-  organizationTheme: "sand" | "rose" | "slate";
+  organizationTheme: OrganizationTheme;
   organizationLogoUrl: string | null;
   organizationRole: OrganizationRole;
   role: AppRole;
@@ -19,6 +26,19 @@ export type CurrentUserPermissions = {
   isEmployee: boolean;
   isSystemDeveloper: boolean;
 };
+
+function normalizeTheme(value: string | null | undefined): OrganizationTheme {
+  if (
+    value === "rose" ||
+    value === "slate" ||
+    value === "sage" ||
+    value === "ocean" ||
+    value === "plum"
+  ) {
+    return value;
+  }
+  return "sand";
+}
 
 export async function getCurrentUserPermissions(): Promise<CurrentUserPermissions | null> {
   const supabase = await createClient();
@@ -76,8 +96,7 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     organizationName: organization.name,
     organizationLocale:
       organization.locale === "en" || organization.locale === "it" ? organization.locale : "hr",
-    organizationTheme:
-      organization.theme === "rose" || organization.theme === "slate" ? organization.theme : "sand",
+    organizationTheme: normalizeTheme(organization.theme),
     organizationLogoUrl: organization.logo_url ?? null,
     organizationRole,
     role: appRole,
