@@ -10,6 +10,8 @@ export type EmployeeDefaultScheduleItem = {
   day_of_week: number;
   start_time: string;
   end_time: string;
+  break_start_time: string | null;
+  break_end_time: string | null;
   is_working: boolean;
 };
 
@@ -20,6 +22,8 @@ export type EmployeeScheduleOverrideItem = {
   override_type: "custom_hours" | "day_off" | "vacation" | "sick_leave";
   start_time: string | null;
   end_time: string | null;
+  break_start_time: string | null;
+  break_end_time: string | null;
   note: string | null;
 };
 
@@ -29,6 +33,8 @@ export type EmployeeUpcomingScheduleItem = {
   is_working: boolean;
   start_time: string | null;
   end_time: string | null;
+  break_start_time: string | null;
+  break_end_time: string | null;
   status_label: string;
   reason_label: string | null;
   is_override: boolean;
