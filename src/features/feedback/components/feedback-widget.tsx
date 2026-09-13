@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useRef, useState, useTransition } from "react";
 import { MessageCircle, X, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { createFeedback } from "@/features/feedback/actions";
+import { FEEDBACK_OPEN_EVENT } from "@/features/feedback/constants";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 function detectBrowser(userAgent: string, locale: AppLocale) {
@@ -26,12 +27,27 @@ function detectOperatingSystem(userAgent: string, locale: AppLocale) {
   return t.unknownOs;
 }
 
-export default function FeedbackWidget({ locale = "hr" }: { locale?: AppLocale }) {
+export default function FeedbackWidget({
+  locale = "hr",
+  showFloatingTrigger = true,
+}: {
+  locale?: AppLocale;
+  showFloatingTrigger?: boolean;
+}) {
   const t = getDictionary(locale).feedback;
   const pathname = usePathname();
   const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    function openFeedback() {
+      setOpen(true);
+    }
+
+    window.addEventListener(FEEDBACK_OPEN_EVENT, openFeedback);
+    return () => window.removeEventListener(FEEDBACK_OPEN_EVENT, openFeedback);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -73,17 +89,19 @@ export default function FeedbackWidget({ locale = "hr" }: { locale?: AppLocale }
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-app-accent px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-        aria-label={t.sendFeedback}
-      >
-        <MessageCircle className="h-5 w-5" />
-        <span className="hidden sm:inline">Feedback</span>
-      </button>
+      {showFloatingTrigger ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-app-accent px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+          aria-label={t.sendFeedback}
+        >
+          <MessageCircle className="h-5 w-5" />
+          <span className="hidden sm:inline">Feedback</span>
+        </button>
+      ) : null}
 
-      {open && (
+      {open ? (
         <div className="fixed inset-0 z-[70]">
           <button
             type="button"
@@ -96,9 +114,7 @@ export default function FeedbackWidget({ locale = "hr" }: { locale?: AppLocale }
             <div className="flex items-start justify-between gap-4 border-b border-app-soft px-5 py-5 sm:px-7">
               <div>
                 <h2 className="text-xl font-bold text-app-text">Feedback</h2>
-                <p className="mt-1 text-sm leading-6 text-app-muted">
-                  {t.intro}
-                </p>
+                <p className="mt-1 text-sm leading-6 text-app-muted">{t.intro}</p>
               </div>
               <button
                 type="button"
@@ -203,14 +219,14 @@ export default function FeedbackWidget({ locale = "hr" }: { locale?: AppLocale }
                   disabled={isPending}
                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-app-accent px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
                 >
-                  {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   {isPending ? t.sending : t.sendFeedback}
                 </button>
               </div>
             </form>
           </aside>
         </div>
-      )}
+      ) : null}
     </>
   );
 }
