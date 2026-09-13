@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { LockKeyhole } from "lucide-react";
 import { requireAdminForSettings } from "@/lib/page-guards";
+import { canUseCapability } from "@/lib/permissions";
+import { buildCapabilityUpgradePath } from "@/lib/entitlements";
 import PageShell from "@/components/page-shell";
 import PageHeader from "@/components/page-header";
 import PageSection from "@/components/page-section";
@@ -9,17 +12,26 @@ function SettingsCard({
   href,
   title,
   description,
+  lockedPlan,
 }: {
   href: string;
   title: string;
   description: string;
+  lockedPlan?: string;
 }) {
   return (
     <Link
       href={href}
       className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm transition hover:-translate-y-0.5 hover:bg-app-card-alt hover:shadow-md"
     >
-      <h2 className="text-xl font-semibold text-app-text">{title}</h2>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-xl font-semibold text-app-text">{title}</h2>
+        {lockedPlan ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-app-soft bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-app-muted">
+            <LockKeyhole className="h-3 w-3" /> {lockedPlan}
+          </span>
+        ) : null}
+      </div>
       <p className="mt-2 text-app-muted">{description}</p>
     </Link>
   );
@@ -52,6 +64,13 @@ export default async function SettingsPage() {
   const t = dictionary.settings;
   const scheduleT = dictionary.schedule;
   const groups = groupLabels[permissions.organizationLocale];
+  const canUseAuditLog = canUseCapability(permissions, "audit_log");
+  const auditLogHref = canUseAuditLog
+    ? "/dashboard/settings/audit-log"
+    : buildCapabilityUpgradePath(
+        "audit_log",
+        "/dashboard/settings/audit-log",
+      );
 
   return (
     <PageShell maxWidth="max-w-7xl">
@@ -128,9 +147,10 @@ export default async function SettingsPage() {
       <PageSection title={groups.advanced}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SettingsCard
-            href="/dashboard/settings/audit-log"
+            href={auditLogHref}
             title={t.auditLogTitle}
             description={t.auditLogDescription}
+            lockedPlan={canUseAuditLog ? undefined : "Pro"}
           />
         </div>
       </PageSection>
