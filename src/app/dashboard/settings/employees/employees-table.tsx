@@ -127,7 +127,11 @@ export default function EmployeesTable({ locale = "hr", employees }: Props) {
           color: item.color.trim() || null,
         })),
       );
-      result.ok ? toast.success(result.message) : toast.error(result.message);
+      if (result.ok) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     });
   }
 
@@ -135,7 +139,11 @@ export default function EmployeesTable({ locale = "hr", employees }: Props) {
     setActionPendingId(employeeId);
     startTransition(async () => {
       const result = await resetEmployeePasswordAction(employeeId);
-      result.ok ? toast.success(result.message) : toast.error(result.message);
+      if (result.ok) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
       setActionPendingId(null);
     });
   }
