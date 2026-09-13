@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
 
+type AvailabilityIssue =
+  | "no_employee_for_service"
+  | "no_employee_available"
+  | "no_room_for_service"
+  | "no_room_available";
+
 function timeToMinutes(value: string) {
   const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
   return hours * 60 + minutes;
@@ -31,12 +37,21 @@ export async function GET(request: NextRequest) {
   const excludeAppointmentId = searchParams.get("exclude_appointment_id")?.trim() ?? "";
 
   if (!date || !startTime || !serviceId) {
-    return NextResponse.json({ employees: [], rooms: [] });
+    return NextResponse.json({
+      employees: [],
+      rooms: [],
+      employee_issue: null,
+      room_issue: null,
+      available: false,
+    });
   }
 
   const startMinutes = timeToMinutes(startTime);
   if (!Number.isFinite(startMinutes)) {
-    return NextResponse.json({ error: "Vrijeme početka nije valjano." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Vrijeme početka nije valjano." },
+      { status: 400 },
+    );
   }
 
   const supabase = await createClient();
@@ -51,52 +66,66 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (serviceResult.error) {
-    return NextResponse.json({ error: serviceResult.error.message }, { status: 400 });
+    return NextResponse.json(
+      { error: serviceResult.error.message },
+      { status: 400 },
+    );
   }
 
   if (!serviceResult.data) {
-    return NextResponse.json({ error: "Odabrana usluga nije pronađena." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Odabrana usluga nije pronađena." },
+      { status: 404 },
+    );
   }
 
   const durationMinutes = Number(serviceResult.data.duration_minutes ?? 0);
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
-    return NextResponse.json({ error: "Usluga nema valjano trajanje." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Usluga nema valjano trajanje." },
+      { status: 400 },
+    );
   }
 
   const endMinutes = startMinutes + durationMinutes;
   const endTime = minutesToTime(endMinutes);
 
-  const [employeesResult, roomsResult, employeeMappingsResult, roomMappingsResult, appointmentsResult] =
-    await Promise.all([
-      supabase
-        .from("employees")
-        .select("id, first_name, last_name")
-        .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .order("first_name", { ascending: true }),
-      supabase
-        .from("rooms")
-        .select("id, name")
-        .eq("organization_id", organizationId)
-        .eq("is_active", true)
-        .order("name", { ascending: true }),
-      supabase
-        .from("employee_services")
-        .select("employee_id")
-        .eq("organization_id", organizationId)
-        .eq("service_id", serviceId),
-      supabase
-        .from("service_rooms")
-        .select("room_id")
-        .eq("organization_id", organizationId)
-        .eq("service_id", serviceId),
-      supabase
-        .from("appointments")
-        .select("id, employee_id, room_id, start_time, end_time, status")
-        .eq("organization_id", organizationId)
-        .eq("appointment_date", date)
-        .in("status", ["scheduled", "confirmed", "completed"]),
-    ]);
+  const [
+    employeesResult,
+    roomsResult,
+    employeeMappingsResult,
+    roomMappingsResult,
+    appointmentsResult,
+  ] = await Promise.all([
+    supabase
+      .from("employees")
+      .select("id, first_name, last_name")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .order("first_name", { ascending: true }),
+    supabase
+      .from("rooms")
+      .select("id, name")
+      .eq("organization_id", organizationId)
+      .eq("is_active", true)
+      .order("name", { ascending: true }),
+    supabase
+      .from("employee_services")
+      .select("employee_id")
+      .eq("organization_id", organizationId)
+      .eq("service_id", serviceId),
+    supabase
+      .from("service_rooms")
+      .select("room_id")
+      .eq("organization_id", organizationId)
+      .eq("service_id", serviceId),
+    supabase
+      .from("appointments")
+      .select("id, employee_id, room_id, start_time, end_time, status")
+      .eq("organization_id", organizationId)
+      .eq("appointment_date", date)
+      .in("status", ["scheduled", "confirmed", "completed"]),
+  ]);
 
   const firstError =
     employeesResult.error ||
@@ -112,7 +141,9 @@ export async function GET(request: NextRequest) {
   const allowedEmployeeIds = new Set(
     (employeeMappingsResult.data ?? []).map((row) => row.employee_id),
   );
-  const allowedRoomIds = new Set((roomMappingsResult.data ?? []).map((row) => row.room_id));
+  const allowedRoomIds = new Set(
+    (roomMappingsResult.data ?? []).map((row) => row.room_id),
+  );
 
   const appointments = (appointmentsResult.data ?? []).filter(
     (appointment) => appointment.id !== excludeAppointmentId,
@@ -134,8 +165,12 @@ export async function GET(request: NextRequest) {
       }
 
       const schedule = data?.[0];
-      const scheduleStart = schedule?.start_time ? timeToMinutes(schedule.start_time) : null;
-      const scheduleEnd = schedule?.end_time ? timeToMinutes(schedule.end_time) : null;
+      const scheduleStart = schedule?.start_time
+        ? timeToMinutes(schedule.start_time)
+        : null;
+      const scheduleEnd = schedule?.end_time
+        ? timeToMinutes(schedule.end_time)
+        : null;
       const withinSchedule =
         Boolean(schedule?.is_working) &&
         scheduleStart !== null &&
@@ -154,7 +189,10 @@ export async function GET(request: NextRequest) {
           ),
       );
 
-      return { employeeId: employee.id, available: withinSchedule && !hasOverlap };
+      return {
+        employeeId: employee.id,
+        available: withinSchedule && !hasOverlap,
+      };
     }),
   );
 
@@ -167,11 +205,15 @@ export async function GET(request: NextRequest) {
     .map((employee) => ({
       id: employee.id,
       label:
-        [employee.first_name, employee.last_name].filter(Boolean).join(" ") || "Zaposlenik",
+        [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
+        "Zaposlenik",
     }));
 
-  const rooms = (roomsResult.data ?? [])
-    .filter((room) => allowedRoomIds.has(room.id))
+  const mappedRooms = (roomsResult.data ?? []).filter((room) =>
+    allowedRoomIds.has(room.id),
+  );
+
+  const rooms = mappedRooms
     .filter(
       (room) =>
         !appointments.some(
@@ -187,5 +229,26 @@ export async function GET(request: NextRequest) {
     )
     .map((room) => ({ id: room.id, label: room.name }));
 
-  return NextResponse.json({ employees, rooms, end_time: endTime });
+  const employeeIssue: AvailabilityIssue | null =
+    employeesWithService.length === 0
+      ? "no_employee_for_service"
+      : employees.length === 0
+        ? "no_employee_available"
+        : null;
+
+  const roomIssue: AvailabilityIssue | null =
+    mappedRooms.length === 0
+      ? "no_room_for_service"
+      : rooms.length === 0
+        ? "no_room_available"
+        : null;
+
+  return NextResponse.json({
+    employees,
+    rooms,
+    end_time: endTime,
+    employee_issue: employeeIssue,
+    room_issue: roomIssue,
+    available: employees.length > 0 && rooms.length > 0,
+  });
 }
