@@ -128,10 +128,10 @@ export default async function PlatformAdminPage() {
                         className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                           salon.isActive
                             ? "bg-emerald-100 text-emerald-800"
-                            : "bg-slate-200 text-slate-600"
+                            : "bg-amber-100 text-amber-800"
                         }`}
                       >
-                        {salon.isActive ? "Aktivan" : "Neaktivan"}
+                        {salon.isActive ? "Aktivan" : "Suspendiran"}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
@@ -183,6 +183,13 @@ export default async function PlatformAdminPage() {
                   </span>
                   <span>Kreiran {formatDate(salon.createdAt)}</span>
                 </div>
+
+                <Link
+                  href={`/platform/salons/${salon.id}`}
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
+                >
+                  Upravljaj tenant računom <ArrowRight className="h-4 w-4" />
+                </Link>
               </article>
             ))}
           </div>
