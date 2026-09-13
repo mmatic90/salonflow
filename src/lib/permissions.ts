@@ -27,6 +27,13 @@ export type CurrentUserPermissions = {
   isSystemDeveloper: boolean;
 };
 
+export type SuspendedOrganizationContext = {
+  organizationId: string;
+  organizationName: string;
+  organizationLocale: "hr" | "en" | "it";
+  organizationLogoUrl: string | null;
+};
+
 function normalizeTheme(value: string | null | undefined): OrganizationTheme {
   if (
     value === "rose" ||
@@ -38,6 +45,10 @@ function normalizeTheme(value: string | null | undefined): OrganizationTheme {
     return value;
   }
   return "sand";
+}
+
+function normalizeLocale(value: string | null | undefined) {
+  return value === "en" || value === "it" ? value : "hr";
 }
 
 export async function getCurrentUserPermissions(): Promise<CurrentUserPermissions | null> {
@@ -104,10 +115,7 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     email: user.email ?? null,
     organizationId: membership.organization_id,
     organizationName: organization.name,
-    organizationLocale:
-      organization.locale === "en" || organization.locale === "it"
-        ? organization.locale
-        : "hr",
+    organizationLocale: normalizeLocale(organization.locale),
     organizationTheme: normalizeTheme(organization.theme),
     organizationLogoUrl: organization.logo_url ?? null,
     organizationRole,
@@ -123,6 +131,43 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     isEmployee: Boolean(employee),
     isSystemDeveloper: Boolean(platformAdmin),
   };
+}
+
+export async function getSuspendedOrganizationForCurrentUser(): Promise<SuspendedOrganizationContext | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) return null;
+
+  const { data: memberships, error } = await supabase
+    .from("organization_members")
+    .select(
+      "organization_id, is_active, organizations(name, locale, logo_url, is_active)",
+    )
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+
+  if (error) return null;
+
+  for (const membership of memberships ?? []) {
+    const organization = Array.isArray(membership.organizations)
+      ? membership.organizations[0]
+      : membership.organizations;
+
+    if (!organization || organization.is_active !== false) continue;
+
+    return {
+      organizationId: String(membership.organization_id),
+      organizationName: String(organization.name),
+      organizationLocale: normalizeLocale(organization.locale),
+      organizationLogoUrl: organization.logo_url ?? null,
+    };
+  }
+
+  return null;
 }
 
 export function isAdmin(role: AppRole) {
