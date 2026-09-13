@@ -44,6 +44,53 @@ function isValidTimeRange(startTime: string, endTime: string) {
   return Boolean(startTime && endTime && endTime > startTime);
 }
 
+function breakCopy(locale: AppLocale) {
+  if (locale === "en") {
+    return {
+      invalid:
+        "The break must start after the shift starts and end before the shift ends.",
+    };
+  }
+  if (locale === "it") {
+    return {
+      invalid:
+        "La pausa deve iniziare dopo l'inizio del turno e terminare prima della fine del turno.",
+    };
+  }
+  return {
+    invalid:
+      "Pauza mora početi nakon početka smjene i završiti prije kraja smjene.",
+  };
+}
+
+function validateBreak(args: {
+  isWorking: boolean;
+  startTime: string | null;
+  endTime: string | null;
+  breakStartTime: string | null;
+  breakEndTime: string | null;
+  locale: AppLocale;
+}) {
+  const hasAnyBreak = Boolean(args.breakStartTime || args.breakEndTime);
+  if (!hasAnyBreak) return null;
+
+  const copy = breakCopy(args.locale);
+  if (
+    !args.isWorking ||
+    !args.startTime ||
+    !args.endTime ||
+    !args.breakStartTime ||
+    !args.breakEndTime ||
+    args.breakStartTime <= args.startTime ||
+    args.breakEndTime <= args.breakStartTime ||
+    args.breakEndTime >= args.endTime
+  ) {
+    return copy.invalid;
+  }
+
+  return null;
+}
+
 async function getSalonHoursByDay(
   supabase: Awaited<ReturnType<typeof createClient>>,
   organizationId: string,
@@ -83,7 +130,6 @@ function validateEmployeeHoursAgainstSalon(args: {
   if (!args.isWorking) return null;
 
   const salonDay = args.salonHours.get(args.dayOfWeek);
-
   const t = getDictionary(args.locale).schedule.actionErrors;
 
   if (!salonDay || salonDay.is_closed) {
@@ -161,6 +207,13 @@ export async function updateDefaultScheduleAction(
     const isWorking = formData.get(`is_working_${day}`) === "on";
     const startTime = String(formData.get(`start_time_${day}`) ?? "");
     const endTime = String(formData.get(`end_time_${day}`) ?? "");
+    const hasBreak = formData.get(`has_break_${day}`) === "on";
+    const breakStartTime = hasBreak
+      ? String(formData.get(`break_start_time_${day}`) ?? "")
+      : "";
+    const breakEndTime = hasBreak
+      ? String(formData.get(`break_end_time_${day}`) ?? "")
+      : "";
 
     return {
       organization_id: context.organizationId,
@@ -169,17 +222,33 @@ export async function updateDefaultScheduleAction(
       is_working: isWorking,
       start_time: isWorking ? startTime : null,
       end_time: isWorking ? endTime : null,
+      break_start_time: isWorking && hasBreak ? breakStartTime || null : null,
+      break_end_time: isWorking && hasBreak ? breakEndTime || null : null,
     };
   });
 
   const invalid = updates.find(
-    (item) => item.is_working && !isValidTimeRange(item.start_time ?? "", item.end_time ?? ""),
+    (item) =>
+      item.is_working &&
+      !isValidTimeRange(item.start_time ?? "", item.end_time ?? ""),
   );
   if (invalid) {
     return {
       error: `${context.t.invalidDayTime} (${invalid.day_of_week})`,
       success: "",
     };
+  }
+
+  for (const item of updates) {
+    const breakError = validateBreak({
+      isWorking: item.is_working,
+      startTime: item.start_time,
+      endTime: item.end_time,
+      breakStartTime: item.break_start_time,
+      breakEndTime: item.break_end_time,
+      locale: context.locale,
+    });
+    if (breakError) return { error: breakError, success: "" };
   }
 
   const salonHours = await getSalonHoursByDay(
@@ -225,6 +294,13 @@ export async function applyDefaultScheduleRangeAction(
   const isWorking = formData.get("range_is_working") === "on";
   const startTime = String(formData.get("range_start_time") ?? "");
   const endTime = String(formData.get("range_end_time") ?? "");
+  const hasBreak = formData.get("range_has_break") === "on";
+  const breakStartTime = hasBreak
+    ? String(formData.get("range_break_start_time") ?? "")
+    : "";
+  const breakEndTime = hasBreak
+    ? String(formData.get("range_break_end_time") ?? "")
+    : "";
 
   if (dayFrom < 0 || dayFrom > 6 || dayTo < 0 || dayTo > 6 || dayFrom > dayTo) {
     return { error: context.t.invalidDayRange, success: "" };
@@ -234,6 +310,16 @@ export async function applyDefaultScheduleRangeAction(
     return { error: context.t.invalidWorkingTime, success: "" };
   }
 
+  const breakError = validateBreak({
+    isWorking,
+    startTime: isWorking ? startTime : null,
+    endTime: isWorking ? endTime : null,
+    breakStartTime: isWorking && hasBreak ? breakStartTime || null : null,
+    breakEndTime: isWorking && hasBreak ? breakEndTime || null : null,
+    locale: context.locale,
+  });
+  if (breakError) return { error: breakError, success: "" };
+
   const updates = Array.from({ length: dayTo - dayFrom + 1 }, (_, index) => ({
     organization_id: context.organizationId,
     employee_id: employeeId,
@@ -241,6 +327,8 @@ export async function applyDefaultScheduleRangeAction(
     is_working: isWorking,
     start_time: isWorking ? startTime : null,
     end_time: isWorking ? endTime : null,
+    break_start_time: isWorking && hasBreak ? breakStartTime || null : null,
+    break_end_time: isWorking && hasBreak ? breakEndTime || null : null,
   }));
 
   const salonHours = await getSalonHoursByDay(
@@ -286,6 +374,13 @@ export async function createScheduleOverrideAction(
   const overrideType = String(formData.get("override_type") ?? "");
   const startTime = String(formData.get("start_time") ?? "");
   const endTime = String(formData.get("end_time") ?? "");
+  const hasBreak = formData.get("has_break") === "on";
+  const breakStartTime = hasBreak
+    ? String(formData.get("break_start_time") ?? "")
+    : "";
+  const breakEndTime = hasBreak
+    ? String(formData.get("break_end_time") ?? "")
+    : "";
   const note = String(formData.get("note") ?? "").trim();
 
   if (!dateFrom || !dateTo) {
@@ -300,6 +395,16 @@ export async function createScheduleOverrideAction(
   if (isWorking && !isValidTimeRange(startTime, endTime)) {
     return { error: context.t.invalidCustomHours, success: "" };
   }
+
+  const breakError = validateBreak({
+    isWorking,
+    startTime: isWorking ? startTime : null,
+    endTime: isWorking ? endTime : null,
+    breakStartTime: isWorking && hasBreak ? breakStartTime || null : null,
+    breakEndTime: isWorking && hasBreak ? breakEndTime || null : null,
+    locale: context.locale,
+  });
+  if (breakError) return { error: breakError, success: "" };
 
   const dates = buildDateRange(dateFrom, dateTo);
   if (dates.length === 0) {
@@ -337,6 +442,8 @@ export async function createScheduleOverrideAction(
     is_working: isWorking,
     start_time: isWorking ? startTime : null,
     end_time: isWorking ? endTime : null,
+    break_start_time: isWorking && hasBreak ? breakStartTime || null : null,
+    break_end_time: isWorking && hasBreak ? breakEndTime || null : null,
     reason,
   }));
 
