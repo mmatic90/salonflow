@@ -86,15 +86,29 @@ export async function updatePlatformSalonLifecycleAction(input: {
   const planChanged = current.plan_code !== input.planCode;
   const enteringTrial =
     input.lifecycleStatus === "trial" && current.lifecycle_status !== "trial";
+  const trialStartedAt =
+    enteringTrial && !current.trial_started_at ? now : current.trial_started_at;
+  const trialEndsAt = trialEndsOn
+    ? `${trialEndsOn}T23:59:59.999Z`
+    : current.trial_ends_at;
+
+  if (
+    input.lifecycleStatus === "trial" &&
+    trialStartedAt &&
+    trialEndsAt &&
+    new Date(trialEndsAt).getTime() <= new Date(trialStartedAt).getTime()
+  ) {
+    return {
+      ok: false,
+      error: "Završetak triala mora biti nakon početka triala.",
+    };
+  }
 
   const updatePayload = {
     plan_code: input.planCode,
     lifecycle_status: input.lifecycleStatus,
-    trial_started_at:
-      enteringTrial && !current.trial_started_at ? now : current.trial_started_at,
-    trial_ends_at: trialEndsOn
-      ? `${trialEndsOn}T23:59:59.999Z`
-      : current.trial_ends_at,
+    trial_started_at: trialStartedAt,
+    trial_ends_at: trialEndsAt,
     plan_changed_at: planChanged ? now : undefined,
   };
 
