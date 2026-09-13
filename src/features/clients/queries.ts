@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserPermissions } from "@/lib/permissions";
 import { getTodayLocalDate } from "@/lib/utils";
+import type { AppLocale } from "@/lib/i18n";
 
 type AppointmentStatus =
   | "scheduled"
@@ -49,6 +50,12 @@ type RawClientAppointment = {
   employee: RawEmployeeRelation | RawEmployeeRelation[] | null;
   room: RawRoomRelation | RawRoomRelation[] | null;
 };
+
+type ClientAlertSignal =
+  | { code: "no_show_risk"; count: number; rate: number }
+  | { code: "frequent_cancellations"; count: number; rate: number }
+  | { code: "inactive"; days: number }
+  | { code: "favorite_service"; service: string };
 
 export type ClientListItem = {
   id: string;
@@ -125,6 +132,14 @@ function daysBetween(dateA: string, dateB: string) {
   return Math.round(Math.abs(b.getTime() - a.getTime()) / 86400000);
 }
 
+function isResolvedStatus(status: AppointmentStatus) {
+  return ["completed", "cancelled", "no_show"].includes(status);
+}
+
+function isActiveStatus(status: AppointmentStatus) {
+  return status === "scheduled" || status === "confirmed";
+}
+
 function getClientSegment(args: {
   completed: number;
   cancelled: number;
@@ -132,14 +147,42 @@ function getClientSegment(args: {
   lastCompleted: string | null;
   today: string;
 }) {
-  if (args.completed <= 1) return "new" as const;
+  // Attendance risk must win over the "new" label. A client with one completed
+  // visit but repeated no-shows/cancellations is operationally at risk.
   if (args.cancelled + args.noShow >= 2) return "at_risk" as const;
+  if (args.completed <= 1) return "new" as const;
   if (!args.lastCompleted) return "lost" as const;
 
   const days = daysBetween(args.lastCompleted, args.today);
   if (args.completed >= 4 && days <= 90) return "regular" as const;
   if (days <= 60) return "active" as const;
   return "lost" as const;
+}
+
+function localizeClientAlerts(locale: AppLocale, signals: ClientAlertSignal[]) {
+  return signals.map((signal) => {
+    if (signal.code === "no_show_risk") {
+      if (locale === "en") return "Elevated no-show risk.";
+      if (locale === "it") return "Rischio elevato di no-show.";
+      return "Povišen no-show rizik.";
+    }
+
+    if (signal.code === "frequent_cancellations") {
+      if (locale === "en") return "The client frequently cancels appointments.";
+      if (locale === "it") return "Il cliente annulla spesso gli appuntamenti.";
+      return "Klijent često otkazuje termine.";
+    }
+
+    if (signal.code === "inactive") {
+      if (locale === "en") return `The client has not visited for ${signal.days} days.`;
+      if (locale === "it") return `Il cliente non viene da ${signal.days} giorni.`;
+      return `Klijent nije bio ${signal.days} dana.`;
+    }
+
+    if (locale === "en") return `Most frequently booked: ${signal.service}.`;
+    if (locale === "it") return `Servizio prenotato più spesso: ${signal.service}.`;
+    return `Najčešće rezervira: ${signal.service}.`;
+  });
 }
 
 export async function getClientsList(
@@ -176,7 +219,7 @@ export async function getClientsList(
 
   const { data: appointments, error: appointmentsError } = await supabase
     .from("appointments")
-    .select("client_id, appointment_date")
+    .select("client_id, appointment_date, status")
     .eq("organization_id", permissions.organizationId)
     .in("client_id", clientIds);
 
@@ -191,23 +234,36 @@ export async function getClientsList(
   const today = getTodayLocalDate();
   const appointmentsByClient = new Map<
     string,
-    Array<{ appointment_date: string }>
+    Array<{ appointment_date: string; status: AppointmentStatus }>
   >();
 
   for (const appointment of appointments ?? []) {
     if (!appointment.client_id || !appointment.appointment_date) continue;
     const current = appointmentsByClient.get(appointment.client_id) ?? [];
-    current.push({ appointment_date: appointment.appointment_date });
+    current.push({
+      appointment_date: appointment.appointment_date,
+      status: appointment.status as AppointmentStatus,
+    });
     appointmentsByClient.set(appointment.client_id, current);
   }
 
   return (clients ?? []).map((client) => {
     const clientAppointments = appointmentsByClient.get(client.id) ?? [];
-    const dates = clientAppointments
+    const past = clientAppointments
+      .filter(
+        (item) =>
+          item.appointment_date < today || isResolvedStatus(item.status),
+      )
       .map((item) => item.appointment_date)
-      .filter(Boolean);
-    const past = dates.filter((date) => date <= today).sort().reverse();
-    const future = dates.filter((date) => date >= today).sort();
+      .sort()
+      .reverse();
+    const future = clientAppointments
+      .filter(
+        (item) =>
+          item.appointment_date >= today && isActiveStatus(item.status),
+      )
+      .map((item) => item.appointment_date)
+      .sort();
 
     return {
       id: client.id,
@@ -336,10 +392,13 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
 
   const today = getTodayLocalDate();
   const pastAppointments = rows.filter(
-    (item) => item.appointment_date < today,
+    (item) => item.appointment_date < today || isResolvedStatus(item.status),
   );
   const upcomingAppointments = rows
-    .filter((item) => item.appointment_date >= today)
+    .filter(
+      (item) =>
+        item.appointment_date >= today && isActiveStatus(item.status),
+    )
     .sort((a, b) =>
       `${a.appointment_date}${a.start_time}`.localeCompare(
         `${b.appointment_date}${b.start_time}`,
@@ -350,6 +409,7 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
   const cancelled = rows.filter((item) => item.status === "cancelled");
   const noShow = rows.filter((item) => item.status === "no_show");
   const scheduled = rows.filter((item) => item.status === "scheduled");
+  const resolvedAppointments = rows.filter((item) => isResolvedStatus(item.status));
   const completedDates = [
     ...new Set(completed.map((item) => item.appointment_date)),
   ].sort();
@@ -368,7 +428,9 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
   const serviceCounts = new Map<string, number>();
   const employeeCounts = new Map<string, number>();
 
-  for (const appointment of rows) {
+  // Preferences should describe treatments the client actually received, not
+  // cancelled/no-show appointments or future bookings.
+  for (const appointment of completed) {
     for (const entry of appointment.appointment_services ?? []) {
       const name = entry.service?.name;
       if (name) serviceCounts.set(name, (serviceCounts.get(name) ?? 0) + 1);
@@ -384,28 +446,41 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
     [...serviceCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
   const favoriteEmployee =
     [...employeeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  const noShowRate = rows.length
-    ? Math.round((noShow.length / rows.length) * 100)
+  const resolvedCount = resolvedAppointments.length;
+  const noShowRate = resolvedCount
+    ? Math.round((noShow.length / resolvedCount) * 100)
     : 0;
-  const cancellationRate = rows.length
-    ? Math.round((cancelled.length / rows.length) * 100)
+  const cancellationRate = resolvedCount
+    ? Math.round((cancelled.length / resolvedCount) * 100)
     : 0;
 
-  const alerts: string[] = [];
-  if (noShow.length >= 2 || noShowRate >= 25) {
-    alerts.push("Povišen no-show rizik.");
+  const alertSignals: ClientAlertSignal[] = [];
+  if (noShow.length >= 2 || (resolvedCount >= 2 && noShowRate >= 25)) {
+    alertSignals.push({
+      code: "no_show_risk",
+      count: noShow.length,
+      rate: noShowRate,
+    });
   }
-  if (cancelled.length >= 2 || cancellationRate >= 25) {
-    alerts.push("Klijent često otkazuje termine.");
+  if (
+    cancelled.length >= 2 ||
+    (resolvedCount >= 2 && cancellationRate >= 25)
+  ) {
+    alertSignals.push({
+      code: "frequent_cancellations",
+      count: cancelled.length,
+      rate: cancellationRate,
+    });
   }
-  if (lastCompleted && daysBetween(lastCompleted, today) > 120) {
-    alerts.push(`Klijent nije bio ${daysBetween(lastCompleted, today)} dana.`);
+  if (lastCompleted) {
+    const inactiveDays = daysBetween(lastCompleted, today);
+    if (inactiveDays > 120) {
+      alertSignals.push({ code: "inactive", days: inactiveDays });
+    }
   }
   if (favoriteService) {
-    alerts.push(`Najčešće rezervira: ${favoriteService}.`);
+    alertSignals.push({ code: "favorite_service", service: favoriteService });
   }
-
-  const allDates = rows.map((item) => item.appointment_date);
 
   return {
     id: client.id,
@@ -415,9 +490,8 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
     note: client.notes,
     internal_note: null,
     appointments_count: rows.length,
-    last_appointment:
-      allDates.filter((date) => date <= today).sort().reverse()[0] ?? null,
-    next_appointment: allDates.filter((date) => date >= today).sort()[0] ?? null,
+    last_appointment: pastAppointments[0]?.appointment_date ?? null,
+    next_appointment: upcomingAppointments[0]?.appointment_date ?? null,
     pastAppointments,
     upcomingAppointments,
     insights: {
@@ -439,7 +513,7 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
         lastCompleted,
         today,
       }),
-      alerts,
+      alerts: localizeClientAlerts(permissions.organizationLocale, alertSignals),
     },
   };
 }
