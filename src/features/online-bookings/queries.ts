@@ -28,6 +28,19 @@ type ActiveRoom = {
   is_active?: boolean | null;
 };
 
+export type OnlineBookingAvailabilityIssue =
+  | "no_mapped_employee"
+  | "no_available_employee"
+  | "no_mapped_room"
+  | "no_available_room";
+
+export type OnlineBookingLiveAvailability = {
+  employee: NormalizedEmployee | null;
+  room: ActiveRoom | null;
+  employeeIssue: OnlineBookingAvailabilityIssue | null;
+  roomIssue: OnlineBookingAvailabilityIssue | null;
+};
+
 const onlineBookingSelect = `
   *,
   services (
@@ -125,7 +138,54 @@ export async function getOnlineBookings(status: OnlineBookingStatus = "pending")
     throw new Error(error.message);
   }
 
-  return (data ?? []).map(normalizeBookingRow);
+  const normalized = (data ?? []).map(normalizeBookingRow);
+
+  return Promise.all(
+    normalized.map(async (booking) => {
+      if (booking.status !== "pending") {
+        return {
+          ...booking,
+          live_availability: null as OnlineBookingLiveAvailability | null,
+        };
+      }
+
+      try {
+        const availability = await getOnlineBookingAcceptOptions({
+          serviceId: String(booking.service_id),
+          date: String(booking.requested_date),
+          startTime: String(booking.start_time),
+          durationMinutes: Number(
+            booking.final_duration_minutes ?? booking.duration_minutes ?? 0,
+          ),
+        });
+
+        return {
+          ...booking,
+          live_availability: {
+            employee: availability.employees[0] ?? null,
+            room: availability.rooms[0] ?? null,
+            employeeIssue: availability.employeeIssue,
+            roomIssue: availability.roomIssue,
+          } satisfies OnlineBookingLiveAvailability,
+        };
+      } catch (availabilityError) {
+        console.error(
+          "Online booking availability check failed:",
+          booking.id,
+          availabilityError,
+        );
+        return {
+          ...booking,
+          live_availability: {
+            employee: null,
+            room: null,
+            employeeIssue: "no_available_employee",
+            roomIssue: "no_available_room",
+          } satisfies OnlineBookingLiveAvailability,
+        };
+      }
+    }),
+  );
 }
 
 export async function getPendingOnlineBookings() {
@@ -393,9 +453,25 @@ export async function getOnlineBookingAcceptOptions(args: {
     return !hasConflict;
   });
 
+  const employeeIssue: OnlineBookingAvailabilityIssue | null =
+    mappedEmployees.length === 0
+      ? "no_mapped_employee"
+      : availableEmployees.length === 0
+        ? "no_available_employee"
+        : null;
+
+  const roomIssue: OnlineBookingAvailabilityIssue | null =
+    mappedRooms.length === 0
+      ? "no_mapped_room"
+      : availableRooms.length === 0
+        ? "no_available_room"
+        : null;
+
   return {
     employees: availableEmployees,
     rooms: availableRooms,
+    employeeIssue,
+    roomIssue,
   };
 }
 
