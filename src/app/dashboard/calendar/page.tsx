@@ -39,12 +39,15 @@ type SearchParams = Promise<{
 }>;
 
 function formatDateTitle(value: string, locale: AppLocale) {
-  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
+  return new Intl.DateTimeFormat(
+    locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    },
+  ).format(new Date(`${value}T00:00:00`));
 }
 
 function shiftDate(value: string, days: number) {
@@ -55,26 +58,41 @@ function shiftDate(value: string, days: number) {
 
 function statusClasses(status: string) {
   switch (status) {
-    case "confirmed":
-      return "border-emerald-200 bg-emerald-50/80";
     case "completed":
-      return "border-slate-200 bg-slate-50";
+      return "border-app-soft bg-app-card-alt/45";
     case "cancelled":
-      return "border-rose-200 bg-rose-50/70 opacity-75";
+      return "border-rose-200 bg-white opacity-70";
     case "no_show":
-      return "border-amber-200 bg-amber-50/80";
+      return "border-amber-200 bg-white";
     default:
       return "border-app-soft bg-white";
   }
 }
 
+function statusPillClasses(status: string) {
+  switch (status) {
+    case "confirmed":
+      return "border-emerald-200 bg-emerald-50 text-emerald-800";
+    case "completed":
+      return "border-slate-200 bg-slate-50 text-slate-700";
+    case "cancelled":
+      return "border-rose-200 bg-rose-50 text-rose-700";
+    case "no_show":
+      return "border-amber-200 bg-amber-50 text-amber-800";
+    default:
+      return "border-app-soft bg-app-card-alt text-app-text";
+  }
+}
+
 function getInitials(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toLocaleUpperCase("hr"))
-    .join("") || "SF";
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toLocaleUpperCase("hr"))
+      .join("") || "SF"
+  );
 }
 
 function appointmentCountLabel(
@@ -95,43 +113,67 @@ function EmployeeColumnHeader({
   t: ReturnType<typeof getDictionary>["calendar"];
 }) {
   const accent = group.colorHex || "#8a7d6f";
-  const workingHours = group.workStatus.isWorking && group.workStatus.label.includes("-")
-    ? group.workStatus.label.replace(" - ", " – ")
-    : null;
-  const statusText = group.workStatus.isWorking ? t.worksToday : group.workStatus.label;
+  const workingHours =
+    group.workStatus.isWorking && group.workStatus.label.includes("-")
+      ? group.workStatus.label.replace(" - ", " – ")
+      : null;
+  const statusText = group.workStatus.isWorking
+    ? t.worksToday
+    : group.workStatus.label;
 
   return (
-    <div className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}>
-      <div className="h-1.5 w-full" style={{ backgroundColor: accent }} />
+    <div
+      className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/95 shadow-[0_8px_20px_rgba(15,23,42,0.04)] backdrop-blur-xl`}
+    >
+      <div className="h-1 w-full" style={{ backgroundColor: accent }} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3.5">
-            <div
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-4 border-white text-sm font-bold text-white shadow-md ring-1 ring-black/5"
-              style={{ backgroundColor: accent }}
-              aria-hidden="true"
-            >
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-app-soft bg-app-card-alt text-sm font-bold text-app-text shadow-sm">
               {getInitials(group.employeeName)}
+              <span
+                className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white"
+                style={{ backgroundColor: accent }}
+                aria-hidden="true"
+              />
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-lg font-bold tracking-tight text-app-text">{group.employeeName}</h2>
+              <h2 className="truncate text-lg font-bold tracking-tight text-app-text">
+                {group.employeeName}
+              </h2>
               <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-app-muted">
                 <Clock3 className="h-3.5 w-3.5 shrink-0" />
                 {workingHours || t.noWorkingHours}
               </p>
             </div>
           </div>
-          <span className="shrink-0 rounded-full border border-app-soft bg-white/90 px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
-            {appointmentCountLabel(group.appointments.length, t.appointmentSingular, t.appointmentPlural)}
+          <span className="shrink-0 rounded-full border border-app-soft bg-white px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
+            {appointmentCountLabel(
+              group.appointments.length,
+              t.appointmentSingular,
+              t.appointmentPlural,
+            )}
           </span>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-app-soft/80 pt-3">
-          <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${getWorkStatusClasses(group.workStatus)}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${group.workStatus.isWorking ? "bg-emerald-500" : "bg-current"}`} />
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${getWorkStatusClasses(
+              group.workStatus,
+            )}`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                group.workStatus.isWorking ? "bg-emerald-500" : "bg-current"
+              }`}
+            />
             {statusText}
           </span>
-          {group.workStatus.isOverride ? <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-app-muted">{t.specialSchedule}</span> : null}
+          {group.workStatus.isOverride ? (
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-app-muted">
+              {t.specialSchedule}
+            </span>
+          ) : null}
         </div>
       </div>
     </div>
@@ -150,27 +192,45 @@ function RoomColumnHeader({
   t: ReturnType<typeof getDictionary>["calendar"];
 }) {
   return (
-    <div className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}>
-      <div className="h-1.5 w-full bg-app-accent" />
+    <div
+      className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}
+    >
+      <div className="h-1 w-full bg-app-accent" />
       <div className="flex items-center justify-between gap-4 p-5">
         <div className="flex min-w-0 items-center gap-3.5">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent shadow-sm ring-1 ring-app-accent/10">
             <DoorOpen className="h-5 w-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-app-muted">{t.roomLabel}</p>
-            <h2 className="mt-1 truncate text-lg font-bold tracking-tight text-app-text">{roomName}</h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-app-muted">
+              {t.roomLabel}
+            </p>
+            <h2 className="mt-1 truncate text-lg font-bold tracking-tight text-app-text">
+              {roomName}
+            </h2>
           </div>
         </div>
         <span className="shrink-0 rounded-full border border-app-soft bg-white/90 px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
-          {appointmentCountLabel(appointmentCount, t.appointmentSingular, t.appointmentPlural)}
+          {appointmentCountLabel(
+            appointmentCount,
+            t.appointmentSingular,
+            t.appointmentPlural,
+          )}
         </span>
       </div>
     </div>
   );
 }
 
-function ViewChip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
+function ViewChip({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <Link
       href={href}
@@ -185,13 +245,25 @@ function ViewChip({ href, active, children }: { href: string; active: boolean; c
   );
 }
 
-function StatCard({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  detail: string;
+}) {
   return (
     <div className="rounded-2xl border border-app-soft bg-white p-3.5 shadow-sm sm:p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-app-muted">{label}</p>
-          <p className="mt-2 text-xl font-bold tracking-tight text-app-text sm:text-2xl">{value}</p>
+          <p className="mt-2 text-xl font-bold tracking-tight text-app-text sm:text-2xl">
+            {value}
+          </p>
           <p className="mt-1 text-xs text-app-muted">{detail}</p>
         </div>
         <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent xs:flex sm:flex">
@@ -216,17 +288,27 @@ function CalendarCard({
   untilLabel: string;
 }) {
   const serviceLabel = formatAppointmentServicesLabel(
-    appointment.appointment_services?.slice().sort((a, b) => a.sort_order - b.sort_order),
+    appointment.appointment_services
+      ?.slice()
+      .sort((a, b) => a.sort_order - b.sort_order),
   );
   const accent = colorHex || appointment.employee?.color_hex || "#8a7d6f";
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-3xl border shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.10)] ${statusClasses(appointment.status)}`}
+      className={`group relative overflow-hidden rounded-3xl border shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.09)] ${statusClasses(
+        appointment.status,
+      )}`}
     >
-      <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: accent }} />
+      <span
+        className="absolute inset-y-0 left-0 w-1"
+        style={{ backgroundColor: accent }}
+      />
 
-      <Link href={`/dashboard/appointments/${appointment.id}/edit`} className="block p-4 pl-5 sm:p-5 sm:pl-6">
+      <Link
+        href={`/dashboard/appointments/${appointment.id}/edit`}
+        className="block p-4 pl-5 sm:p-5 sm:pl-6"
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-xl font-extrabold leading-none tracking-tight text-app-text sm:text-2xl">
@@ -238,15 +320,21 @@ function CalendarCard({
             </div>
           </div>
 
-          <span className="shrink-0 rounded-full border border-white/80 bg-white/90 px-3 py-1 text-[11px] font-bold text-app-text shadow-sm backdrop-blur">
+          <span
+            className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold shadow-sm ${statusPillClasses(
+              appointment.status,
+            )}`}
+          >
             {statusLabel(appointment.status, locale)}
           </span>
         </div>
 
         <div className="mt-4 sm:mt-5">
-          <p className="truncate text-base font-bold text-app-text">{appointment.client_name}</p>
+          <p className="truncate text-base font-bold text-app-text">
+            {appointment.client_name}
+          </p>
           <div className="mt-2 flex min-w-0 items-center gap-2 text-sm font-medium text-app-text">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/85 text-app-accent shadow-sm">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-app-soft bg-app-card-alt text-app-muted">
               <Shapes className="h-4 w-4" />
             </div>
             <span className="truncate">{serviceLabel}</span>
@@ -254,17 +342,17 @@ function CalendarCard({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-app-muted sm:mt-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-app-soft bg-white px-3 py-1.5 shadow-sm">
             <Timer className="h-3.5 w-3.5" />
             {appointment.duration_minutes} min
           </span>
           {metaLabel ? (
-            <span className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+            <span className="rounded-full border border-app-soft bg-white px-3 py-1.5 shadow-sm">
               {metaLabel}
             </span>
           ) : null}
           {appointment.client_phone ? (
-            <span className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 shadow-sm">
+            <span className="rounded-full border border-app-soft bg-white px-3 py-1.5 shadow-sm">
               {appointment.client_phone}
             </span>
           ) : null}
@@ -280,48 +368,90 @@ function CalendarCard({
         />
       </Link>
 
-      <div className="border-t border-black/5 bg-white/35 px-4 py-3 pl-5 backdrop-blur-sm sm:px-5 sm:pl-6">
-        <AppointmentStatusActions locale={locale} appointmentId={appointment.id} currentStatus={appointment.status} compact />
+      <div className="border-t border-app-soft bg-app-card-alt/35 px-4 py-3 pl-5 sm:px-5 sm:pl-6">
+        <AppointmentStatusActions
+          locale={locale}
+          appointmentId={appointment.id}
+          currentStatus={appointment.status}
+          compact
+        />
       </div>
     </div>
   );
 }
 
-export default async function CalendarPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const permissions = await requireDashboardUser();
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.calendar;
   const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
   if (userError || !user) redirect("/login");
 
   const resolvedSearchParams = await searchParams;
   const today = getTodayLocalDate();
   const selectedDate = resolvedSearchParams.date || today;
-  const selectedView = resolvedSearchParams.view === "rooms" ? "rooms" : "employees";
+  const selectedView =
+    resolvedSearchParams.view === "rooms" ? "rooms" : "employees";
 
   const [roomGroups, employeeGroups] = await Promise.all([
-    selectedView === "rooms" ? getCalendarDayDataByRooms(selectedDate) : Promise.resolve([]),
-    selectedView === "employees" ? getCalendarDayDataByEmployees(selectedDate) : Promise.resolve([]),
+    selectedView === "rooms"
+      ? getCalendarDayDataByRooms(selectedDate)
+      : Promise.resolve([]),
+    selectedView === "employees"
+      ? getCalendarDayDataByEmployees(selectedDate)
+      : Promise.resolve([]),
   ]);
 
   const selectedEmployeeId = resolvedSearchParams.employee || "";
   const selectedRoomId = resolvedSearchParams.room || "";
-  const mobileEmployeeGroups = selectedView === "employees" && employeeGroups.length
-    ? [employeeGroups.find((group) => group.employeeId === selectedEmployeeId) || employeeGroups[0]]
-    : employeeGroups;
-  const mobileRoomGroups = selectedView === "rooms" && roomGroups.length
-    ? [roomGroups.find((group) => group.roomId === selectedRoomId) || roomGroups[0]]
-    : roomGroups;
+  const mobileEmployeeGroups =
+    selectedView === "employees" && employeeGroups.length
+      ? [
+          employeeGroups.find(
+            (group) => group.employeeId === selectedEmployeeId,
+          ) || employeeGroups[0],
+        ]
+      : employeeGroups;
+  const mobileRoomGroups =
+    selectedView === "rooms" && roomGroups.length
+      ? [
+          roomGroups.find((group) => group.roomId === selectedRoomId) ||
+            roomGroups[0],
+        ]
+      : roomGroups;
 
-  const appointments = selectedView === "employees"
-    ? employeeGroups.flatMap((group) => group.appointments)
-    : roomGroups.flatMap((group) => group.appointments);
-  const uniqueAppointments = Array.from(new Map(appointments.map((appointment) => [appointment.id, appointment])).values());
-  const activeAppointments = uniqueAppointments.filter((appointment) => appointment.status !== "cancelled");
-  const uniqueClients = new Set(activeAppointments.map((appointment) => appointment.client_name.trim().toLocaleLowerCase("hr"))).size;
-  const bookedMinutes = activeAppointments.reduce((sum, appointment) => sum + appointment.duration_minutes, 0);
-  const workingEmployees = employeeGroups.filter((group) => group.workStatus.isWorking).length;
+  const appointments =
+    selectedView === "employees"
+      ? employeeGroups.flatMap((group) => group.appointments)
+      : roomGroups.flatMap((group) => group.appointments);
+  const uniqueAppointments = Array.from(
+    new Map(
+      appointments.map((appointment) => [appointment.id, appointment]),
+    ).values(),
+  );
+  const activeAppointments = uniqueAppointments.filter(
+    (appointment) => appointment.status !== "cancelled",
+  );
+  const uniqueClients = new Set(
+    activeAppointments.map((appointment) =>
+      appointment.client_name.trim().toLocaleLowerCase("hr"),
+    ),
+  ).size;
+  const bookedMinutes = activeAppointments.reduce(
+    (sum, appointment) => sum + appointment.duration_minutes,
+    0,
+  );
+  const workingEmployees = employeeGroups.filter(
+    (group) => group.workStatus.isWorking,
+  ).length;
   const hours = Math.floor(bookedMinutes / 60);
   const minutes = bookedMinutes % 60;
 
@@ -337,7 +467,12 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-xl font-bold capitalize tracking-tight text-app-text sm:text-2xl md:text-3xl">{formatDateTitle(selectedDate, permissions.organizationLocale)}</h1>
+                  <h1 className="text-xl font-bold capitalize tracking-tight text-app-text sm:text-2xl md:text-3xl">
+                    {formatDateTitle(
+                      selectedDate,
+                      permissions.organizationLocale,
+                    )}
+                  </h1>
                   <CalendarCurrentTime
                     selectedDate={selectedDate}
                     today={today}
@@ -347,21 +482,46 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
                 </div>
 
                 <div className="mt-4 w-full max-w-xs">
-                  <DateQueryPicker locale={permissions.organizationLocale} value={selectedDate} basePath="/dashboard/calendar" extraParams={{ view: selectedView }} />
+                  <DateQueryPicker
+                    locale={permissions.organizationLocale}
+                    value={selectedDate}
+                    basePath="/dashboard/calendar"
+                    extraParams={{ view: selectedView }}
+                  />
                 </div>
               </div>
 
               <div className="flex w-full shrink-0 flex-col items-stretch gap-3 self-start sm:w-auto sm:items-end xl:self-center">
-                <Link href={`/dashboard/appointments/new?date=${selectedDate}`} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-auto">
+                <Link
+                  href={`/dashboard/appointments/new?date=${selectedDate}`}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-auto"
+                >
                   <Plus className="h-4 w-4" /> {t.newAppointment}
                 </Link>
 
                 <div className="inline-flex w-full self-end rounded-xl border border-app-soft bg-white p-1 shadow-sm sm:w-auto">
-                  <Link href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label={t.previousDay}>
+                  <Link
+                    href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`}
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none"
+                    aria-label={t.previousDay}
+                  >
                     <ArrowLeft className="h-4 w-4" />
                   </Link>
-                  <Link href={`/dashboard/calendar?date=${today}&view=${selectedView}`} className={`flex min-h-11 flex-[1.3] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${isToday ? "bg-app-accent text-white shadow-sm" : "text-app-text hover:bg-app-bg"}`}>{t.today}</Link>
-                  <Link href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`} className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none" aria-label={t.nextDay}>
+                  <Link
+                    href={`/dashboard/calendar?date=${today}&view=${selectedView}`}
+                    className={`flex min-h-11 flex-[1.3] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${
+                      isToday
+                        ? "bg-app-accent text-white shadow-sm"
+                        : "text-app-text hover:bg-app-bg"
+                    }`}
+                  >
+                    {t.today}
+                  </Link>
+                  <Link
+                    href={`/dashboard/calendar?date=${nextDate}&view=${selectedView}`}
+                    className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none"
+                    aria-label={t.nextDay}
+                  >
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -369,42 +529,168 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
             </div>
 
             <div className="mt-5 flex w-full gap-2 sm:mt-6 sm:w-auto sm:flex-wrap sm:gap-3">
-              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=employees`} active={selectedView === "employees"}>{t.byEmployees}</ViewChip>
-              <ViewChip href={`/dashboard/calendar?date=${selectedDate}&view=rooms`} active={selectedView === "rooms"}>{t.byRooms}</ViewChip>
+              <ViewChip
+                href={`/dashboard/calendar?date=${selectedDate}&view=employees`}
+                active={selectedView === "employees"}
+              >
+                {t.byEmployees}
+              </ViewChip>
+              <ViewChip
+                href={`/dashboard/calendar?date=${selectedDate}&view=rooms`}
+                active={selectedView === "rooms"}
+              >
+                {t.byRooms}
+              </ViewChip>
             </div>
 
             <div className="mt-4 rounded-2xl border border-app-soft bg-white/80 p-3 shadow-sm lg:hidden">
               {selectedView === "employees" ? (
-                <AutoSubmitSelect label={t.employee} action="/dashboard/calendar" name="employee" value={selectedEmployeeId || employeeGroups[0]?.employeeId || ""} hiddenFields={{ date: selectedDate, view: "employees" }} options={employeeGroups.map((group) => ({ value: group.employeeId, label: group.employeeName }))} />
+                <AutoSubmitSelect
+                  label={t.employee}
+                  action="/dashboard/calendar"
+                  name="employee"
+                  value={
+                    selectedEmployeeId || employeeGroups[0]?.employeeId || ""
+                  }
+                  hiddenFields={{ date: selectedDate, view: "employees" }}
+                  options={employeeGroups.map((group) => ({
+                    value: group.employeeId,
+                    label: group.employeeName,
+                  }))}
+                />
               ) : (
-                <AutoSubmitSelect label={t.room} action="/dashboard/calendar" name="room" value={selectedRoomId || roomGroups[0]?.roomId || ""} hiddenFields={{ date: selectedDate, view: "rooms" }} options={roomGroups.map((group) => ({ value: group.roomId, label: group.roomName }))} />
+                <AutoSubmitSelect
+                  label={t.room}
+                  action="/dashboard/calendar"
+                  name="room"
+                  value={selectedRoomId || roomGroups[0]?.roomId || ""}
+                  hiddenFields={{ date: selectedDate, view: "rooms" }}
+                  options={roomGroups.map((group) => ({
+                    value: group.roomId,
+                    label: group.roomName,
+                  }))}
+                />
               )}
             </div>
           </div>
         </section>
 
         <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-          <StatCard icon={<CalendarDays className="h-5 w-5" />} label={t.appointments} value={String(activeAppointments.length)} detail={`${uniqueAppointments.length - activeAppointments.length} {t.cancelled}`} />
-          <StatCard icon={<UserRound className="h-5 w-5" />} label={t.clients} value={String(uniqueClients)} detail={t.uniqueClients} />
-          <StatCard icon={<Timer className="h-5 w-5" />} label={t.bookedTime} value={`${hours} h ${minutes} min`} detail={t.totalDuration} />
-          <StatCard icon={<UsersRound className="h-5 w-5" />} label={t.activeCapacity} value={selectedView === "employees" ? `${workingEmployees}/${employeeGroups.length}` : String(roomGroups.length)} detail={selectedView === "employees" ? t.employeesWorking : t.activeRooms} />
+          <StatCard
+            icon={<CalendarDays className="h-5 w-5" />}
+            label={t.appointments}
+            value={String(activeAppointments.length)}
+            detail={`${uniqueAppointments.length - activeAppointments.length} ${t.cancelled}`}
+          />
+          <StatCard
+            icon={<UserRound className="h-5 w-5" />}
+            label={t.clients}
+            value={String(uniqueClients)}
+            detail={t.uniqueClients}
+          />
+          <StatCard
+            icon={<Timer className="h-5 w-5" />}
+            label={t.bookedTime}
+            value={`${hours} h ${minutes} min`}
+            detail={t.totalDuration}
+          />
+          <StatCard
+            icon={<UsersRound className="h-5 w-5" />}
+            label={t.activeCapacity}
+            value={
+              selectedView === "employees"
+                ? `${workingEmployees}/${employeeGroups.length}`
+                : String(roomGroups.length)
+            }
+            detail={
+              selectedView === "employees"
+                ? t.employeesWorking
+                : t.activeRooms
+            }
+          />
         </section>
 
         {selectedView === "rooms" ? (
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileRoomGroups.map((group) => (
-                <section key={group.roomId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-16" t={t} />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} metaLabel={appointment.employee ? t.employee + ": " + appointment.employee.display_name : t.noEmployee} />)}</div> : <EmptyStateCard title={t.noAppointmentsInRoom} description={t.noAppointmentsInRoomDescription} />}</div>
+                <section
+                  key={group.roomId}
+                  className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                >
+                  <RoomColumnHeader
+                    roomName={group.roomName}
+                    appointmentCount={group.appointments.length}
+                    stickyTop="top-16"
+                    t={t}
+                  />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                    {group.appointments.length ? (
+                      <div className="space-y-3.5 sm:space-y-4">
+                        {group.appointments.map((appointment) => (
+                          <CalendarCard
+                            key={appointment.id}
+                            appointment={appointment}
+                            locale={permissions.organizationLocale}
+                            untilLabel={t.until}
+                            metaLabel={
+                              appointment.employee
+                                ? t.employee +
+                                  ": " +
+                                  appointment.employee.display_name
+                                : t.noEmployee
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyStateCard
+                        title={t.noAppointmentsInRoom}
+                        description={t.noAppointmentsInRoomDescription}
+                      />
+                    )}
+                  </div>
                 </section>
               ))}
             </div>
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {roomGroups.map((group) => (
-                <section key={group.roomId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-                  <RoomColumnHeader roomName={group.roomName} appointmentCount={group.appointments.length} stickyTop="top-4" t={t} />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} metaLabel={appointment.employee ? t.employee + ": " + appointment.employee.display_name : t.noEmployee} />)}</div> : <EmptyStateCard title={t.noAppointmentsInRoom} description={t.noAppointmentsInRoomDescription} />}</div>
+                <section
+                  key={group.roomId}
+                  className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                >
+                  <RoomColumnHeader
+                    roomName={group.roomName}
+                    appointmentCount={group.appointments.length}
+                    stickyTop="top-4"
+                    t={t}
+                  />
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                    {group.appointments.length ? (
+                      <div className="space-y-3.5 sm:space-y-4">
+                        {group.appointments.map((appointment) => (
+                          <CalendarCard
+                            key={appointment.id}
+                            appointment={appointment}
+                            locale={permissions.organizationLocale}
+                            untilLabel={t.until}
+                            metaLabel={
+                              appointment.employee
+                                ? t.employee +
+                                  ": " +
+                                  appointment.employee.display_name
+                                : t.noEmployee
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyStateCard
+                        title={t.noAppointmentsInRoom}
+                        description={t.noAppointmentsInRoomDescription}
+                      />
+                    )}
+                  </div>
                 </section>
               ))}
             </div>
@@ -413,17 +699,71 @@ export default async function CalendarPage({ searchParams }: { searchParams: Sea
           <>
             <div className="grid gap-6 lg:hidden">
               {mobileEmployeeGroups.map((group) => (
-                <section key={group.employeeId} className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                <section
+                  key={group.employeeId}
+                  className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                >
                   <EmployeeColumnHeader group={group} stickyTop="top-16" t={t} />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} colorHex={group.colorHex} metaLabel={appointment.room ? t.room + ": " + appointment.room.name : t.noRoom} />)}</div> : <EmptyStateCard title={t.noAppointmentsForEmployee} description={t.noAppointmentsForEmployeeDescription} />}</div>
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                    {group.appointments.length ? (
+                      <div className="space-y-3.5 sm:space-y-4">
+                        {group.appointments.map((appointment) => (
+                          <CalendarCard
+                            key={appointment.id}
+                            appointment={appointment}
+                            locale={permissions.organizationLocale}
+                            untilLabel={t.until}
+                            colorHex={group.colorHex}
+                            metaLabel={
+                              appointment.room
+                                ? t.room + ": " + appointment.room.name
+                                : t.noRoom
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyStateCard
+                        title={t.noAppointmentsForEmployee}
+                        description={t.noAppointmentsForEmployeeDescription}
+                      />
+                    )}
+                  </div>
                 </section>
               ))}
             </div>
             <div className="hidden gap-6 lg:grid xl:grid-cols-3">
               {employeeGroups.map((group) => (
-                <section key={group.employeeId} className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+                <section
+                  key={group.employeeId}
+                  className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                >
                   <EmployeeColumnHeader group={group} stickyTop="top-4" t={t} />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">{group.appointments.length ? <div className="space-y-3.5 sm:space-y-4">{group.appointments.map((appointment) => <CalendarCard key={appointment.id} appointment={appointment} locale={permissions.organizationLocale} untilLabel={t.until} colorHex={group.colorHex} metaLabel={appointment.room ? t.room + ": " + appointment.room.name : t.noRoom} />)}</div> : <EmptyStateCard title={t.noAppointmentsForEmployee} description={t.noAppointmentsForEmployeeDescription} />}</div>
+                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                    {group.appointments.length ? (
+                      <div className="space-y-3.5 sm:space-y-4">
+                        {group.appointments.map((appointment) => (
+                          <CalendarCard
+                            key={appointment.id}
+                            appointment={appointment}
+                            locale={permissions.organizationLocale}
+                            untilLabel={t.until}
+                            colorHex={group.colorHex}
+                            metaLabel={
+                              appointment.room
+                                ? t.room + ": " + appointment.room.name
+                                : t.noRoom
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyStateCard
+                        title={t.noAppointmentsForEmployee}
+                        description={t.noAppointmentsForEmployeeDescription}
+                      />
+                    )}
+                  </div>
                 </section>
               ))}
             </div>
