@@ -22,26 +22,24 @@ export type SalonPlanDefinition = {
   };
 };
 
+const unlimitedFoundationLimits = {
+  maxEmployees: null,
+  maxServices: null,
+  maxLocations: null,
+} as const;
+
 export const salonPlans: Record<SalonPlanCode, SalonPlanDefinition> = {
   starter: {
     code: "starter",
     name: "Starter",
     description: "Osnovni plan za manje salone i početak rada u SalonFlowu.",
-    limits: {
-      maxEmployees: null,
-      maxServices: null,
-      maxLocations: 1,
-    },
+    limits: { ...unlimitedFoundationLimits },
   },
   pro: {
     code: "pro",
     name: "Pro",
     description: "Napredni plan za salone kojima treba puni SalonFlow workflow.",
-    limits: {
-      maxEmployees: null,
-      maxServices: null,
-      maxLocations: null,
-    },
+    limits: { ...unlimitedFoundationLimits },
   },
 };
 
