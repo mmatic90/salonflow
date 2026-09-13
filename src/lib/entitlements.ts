@@ -8,24 +8,29 @@ export const salonCapabilityCodes = [
   "calendar",
   "appointments",
   "clients",
+  "client_care_safety",
   "services_resources",
   "employee_schedules",
+  "appearance_branding",
   "online_booking",
-  "notifications",
+  "booking_notifications",
   "basic_reports",
   "waitlist",
   "smart_waitlist",
   "crm_insights",
   "attendance_insights",
   "advanced_reports",
+  "appointment_reminders",
+  "audit_log",
   "advanced_crm",
+  "review_requests",
   "automations",
   "integrations",
   "priority_support",
 ] as const;
 
 export type SalonCapabilityCode = (typeof salonCapabilityCodes)[number];
-export type SalonCapabilityAvailability = "available" | "planned";
+export type SalonCapabilityAvailability = "available" | "partial" | "planned";
 
 export type SalonCapabilityDefinition = {
   code: SalonCapabilityCode;
@@ -42,112 +47,168 @@ export const salonCapabilities: Record<
   calendar: {
     code: "calendar",
     name: "Kalendar",
-    description: "Pregled i organizacija radnog kalendara salona.",
+    description:
+      "Dnevni, tjedni i time-grid pregled termina i raspoloživosti.",
     minimumPlan: "starter",
     availability: "available",
   },
   appointments: {
     code: "appointments",
     name: "Upravljanje terminima",
-    description: "Kreiranje, uređivanje i statusi termina.",
+    description:
+      "Kreiranje, uređivanje, više usluga, statusi i provjera raspoloživosti termina.",
     minimumPlan: "starter",
     availability: "available",
   },
   clients: {
     code: "clients",
-    name: "Klijenti",
-    description: "Baza klijenata i osnovni profil klijenta.",
+    name: "Klijenti i povijest",
+    description:
+      "Baza klijenata, kontaktni podaci, povijest termina i ponovno rezerviranje.",
+    minimumPlan: "starter",
+    availability: "available",
+  },
+  client_care_safety: {
+    code: "client_care_safety",
+    name: "Njega i sigurnost klijenta",
+    description:
+      "Alergije, osjetljivosti, kontraindikacije, preferencije i tretmanske bilješke po posjetu.",
     minimumPlan: "starter",
     availability: "available",
   },
   services_resources: {
     code: "services_resources",
     name: "Usluge, sobe i oprema",
-    description: "Upravljanje uslugama i resursima potrebnima za rezervaciju.",
+    description:
+      "Upravljanje uslugama, sobama, opremom i pravilima mapiranja resursa.",
     minimumPlan: "starter",
     availability: "available",
   },
   employee_schedules: {
     code: "employee_schedules",
     name: "Djelatnici i rasporedi",
-    description: "Rasporedi, pauze i iznimke radnog vremena djelatnika.",
+    description:
+      "Djelatnici, radni rasporedi, pauze, iznimke i mapiranje usluga.",
+    minimumPlan: "starter",
+    availability: "available",
+  },
+  appearance_branding: {
+    code: "appearance_branding",
+    name: "Izgled i osnovni branding",
+    description:
+      "Tema, logo i tenant postavke koje prilagođavaju SalonFlow pojedinom salonu.",
     minimumPlan: "starter",
     availability: "available",
   },
   online_booking: {
     code: "online_booking",
     name: "Online rezervacije",
-    description: "Zaprimanje i obrada online booking zahtjeva.",
+    description:
+      "Javna booking stranica, provjera raspoloživosti i obrada online zahtjeva.",
     minimumPlan: "starter",
     availability: "available",
   },
-  notifications: {
-    code: "notifications",
-    name: "Osnovne obavijesti",
-    description: "Email/SMS i reminder infrastruktura za termine.",
+  booking_notifications: {
+    code: "booking_notifications",
+    name: "Booking obavijesti",
+    description:
+      "Tenant-aware potvrde i odbijanja online rezervacija te osnovne SMS poruke vezane uz termin.",
     minimumPlan: "starter",
     availability: "available",
   },
   basic_reports: {
     code: "basic_reports",
-    name: "Osnovni izvještaji",
-    description: "Osnovni operativni pregled rada salona.",
+    name: "Osnovni operativni pregled",
+    description:
+      "Dashboard pokazatelji za današnje i sutrašnje termine, završene termine i no-show pregled.",
     minimumPlan: "starter",
     availability: "available",
   },
   waitlist: {
     code: "waitlist",
     name: "Lista čekanja",
-    description: "Evidencija klijenata koji čekaju odgovarajući termin.",
+    description:
+      "Evidencija klijenata koji čekaju raniji ili trenutno nedostupan termin.",
     minimumPlan: "growth",
     availability: "available",
   },
   smart_waitlist: {
     code: "smart_waitlist",
     name: "Automatska lista čekanja",
-    description: "Automatsko prepoznavanje oslobođenog kompatibilnog termina.",
+    description:
+      "Automatsko prepoznavanje oslobođenog kompatibilnog termina i dashboard prilika za rezervaciju.",
     minimumPlan: "growth",
     availability: "available",
   },
   crm_insights: {
     code: "crm_insights",
     name: "CRM uvidi",
-    description: "Segmentacija klijenata i korisni CRM signali.",
+    description:
+      "Segmentacija klijenata, omiljene usluge/djelatnici, ritam dolazaka i CRM signali.",
     minimumPlan: "growth",
     availability: "available",
   },
   attendance_insights: {
     code: "attendance_insights",
     name: "No-show i cancellation analiza",
-    description: "Praćenje dolaznosti, no-show i otkazivanja klijenata.",
+    description:
+      "Stope dolaznosti, no-show i otkazivanja iz stvarno razriješenih termina.",
     minimumPlan: "growth",
     availability: "available",
   },
   advanced_reports: {
     code: "advanced_reports",
     name: "Napredni izvještaji",
-    description: "Dublji pregled rezultata i ponašanja klijenata.",
+    description:
+      "Puni Reports modul: trendovi, statusi, online conversion, zaposlenici, usluge i zauzetost po danima.",
     minimumPlan: "growth",
+    availability: "available",
+  },
+  appointment_reminders: {
+    code: "appointment_reminders",
+    name: "Automatski podsjetnici za termin",
+    description:
+      "24h reminder infrastruktura postoji, ali email cron još treba potpuno tenant-aware dovršavanje prije enforcementa.",
+    minimumPlan: "growth",
+    availability: "partial",
+  },
+  audit_log: {
+    code: "audit_log",
+    name: "Audit log i export",
+    description:
+      "Tenant-scoped, nepromjenjiva povijest aktivnosti s filtrima i izvozom za napredniju kontrolu tima.",
+    minimumPlan: "pro",
     availability: "available",
   },
   advanced_crm: {
     code: "advanced_crm",
-    name: "Napredni CRM",
-    description: "Napredniji CRM signali i workflow za zadržavanje klijenata.",
+    name: "Napredni CRM workflow",
+    description:
+      "Budući retention workflow, akcijske liste i napredni follow-up iz CRM signala.",
     minimumPlan: "pro",
-    availability: "available",
+    availability: "planned",
+  },
+  review_requests: {
+    code: "review_requests",
+    name: "Automatski zahtjevi za recenziju",
+    description:
+      "Postoji prototip slanja nakon posjeta, ali još sadrži single-salon pretpostavke i mora se tenantizirati.",
+    minimumPlan: "pro",
+    availability: "partial",
   },
   automations: {
     code: "automations",
     name: "Napredne automatizacije",
-    description: "Budući automatizirani follow-up i operativni workflowi.",
+    description:
+      "Budući automatizirani follow-up i operativni workflowi izvan postojećih booking procesa.",
     minimumPlan: "pro",
     availability: "planned",
   },
   integrations: {
     code: "integrations",
     name: "Napredne integracije",
-    description: "Buduće integracije s vanjskim servisima i alatima.",
+    description:
+      "Buduće integracije s vanjskim servisima i alatima.",
     minimumPlan: "pro",
     availability: "planned",
   },
@@ -164,8 +225,8 @@ export function getEffectiveEntitlementPlan(
   planCode: SalonPlanCode,
   lifecycleStatus: SalonLifecycleStatus,
 ): SalonPlanCode {
-  // Trial intentionally unlocks the complete Pro feature set so a new salon can
-  // evaluate SalonFlow before selecting its paid plan.
+  // Trial intentionally unlocks the complete Pro entitlement set so a new salon
+  // can evaluate SalonFlow before selecting its paid plan.
   return lifecycleStatus === "trial" ? "pro" : planCode;
 }
 
