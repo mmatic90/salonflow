@@ -115,7 +115,7 @@ export async function getWaitlistPageData(organizationId: string) {
             name,
             duration_minutes
           ),
-          preferred_employee:employees (
+          preferred_employee:employees!waitlist_entries_preferred_employee_id_fkey (
             id,
             first_name,
             last_name
