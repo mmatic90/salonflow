@@ -41,9 +41,9 @@ function copy(locale: AppLocale) {
     return {
       search: "Search employees...",
       active: "Active employee",
+      inactive: "Inactive",
       activeHelp: "Available in scheduling and appointments",
       noResults: "No employees match your search.",
-      contact: "Contact",
       identity: "Profile",
     };
   }
@@ -51,18 +51,18 @@ function copy(locale: AppLocale) {
     return {
       search: "Cerca operatori...",
       active: "Operatore attivo",
+      inactive: "Inattivo",
       activeHelp: "Disponibile nei turni e negli appuntamenti",
       noResults: "Nessun operatore corrisponde alla ricerca.",
-      contact: "Contatto",
       identity: "Profilo",
     };
   }
   return {
     search: "Pretraži djelatnike...",
     active: "Aktivan djelatnik",
+    inactive: "Neaktivan",
     activeHelp: "Dostupan u rasporedu i terminima",
     noResults: "Nema djelatnika koji odgovaraju pretrazi.",
-    contact: "Kontakt",
     identity: "Profil",
   };
 }
@@ -224,7 +224,7 @@ export default function EmployeesTable({ locale = "hr", employees }: Props) {
                       : "border-app-soft bg-app-card-alt text-app-muted"
                   }`}
                 >
-                  {employee.is_active ? t.active : t.inactive}
+                  {employee.is_active ? t.active : ui.inactive}
                 </span>
               </div>
 
