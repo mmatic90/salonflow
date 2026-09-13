@@ -152,7 +152,11 @@ export default function ServicesTable({ locale = "hr", services }: Props) {
           is_online_bookable: item.is_online_bookable,
         })),
       );
-      result.ok ? toast.success(result.message) : toast.error(result.message);
+      if (result.ok) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     });
   }
 
