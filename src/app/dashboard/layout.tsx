@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import DashboardSidebar from "@/components/dashboard-sidebar";
 import {
+  canUseCapability,
   getCurrentUserPermissions,
   getSuspendedOrganizationForCurrentUser,
 } from "@/lib/permissions";
@@ -31,6 +32,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   const dictionary = getDictionary(permissions.organizationLocale);
+  const canUseWaitlist = canUseCapability(permissions, "waitlist");
+  const canUseReports = canUseCapability(permissions, "advanced_reports");
 
   return (
     <div
@@ -44,6 +47,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           displayName={permissions.displayName}
           organizationName={permissions.organizationName}
           locale={permissions.organizationLocale}
+          canUseWaitlist={canUseWaitlist}
+          canUseReports={canUseReports}
           isSystemDeveloper={permissions.isSystemDeveloper}
         />
 
