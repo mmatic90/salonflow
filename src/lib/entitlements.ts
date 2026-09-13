@@ -221,11 +221,31 @@ export const salonCapabilities: Record<
   },
 };
 
+export function isSalonCapabilityCode(
+  value: unknown,
+): value is SalonCapabilityCode {
+  return (
+    typeof value === "string" &&
+    salonCapabilityCodes.includes(value as SalonCapabilityCode)
+  );
+}
+
+export function buildCapabilityUpgradePath(
+  capabilityCode: SalonCapabilityCode,
+  returnTo = "/dashboard",
+) {
+  const params = new URLSearchParams({ capability: capabilityCode });
+  if (returnTo.startsWith("/dashboard")) {
+    params.set("returnTo", returnTo);
+  }
+  return `/dashboard/upgrade?${params.toString()}`;
+}
+
 export function getEffectiveEntitlementPlan(
   planCode: SalonPlanCode,
   lifecycleStatus: SalonLifecycleStatus,
 ): SalonPlanCode {
-  // Trial intentionally unlocks the complete Pro entitlement set so a new salon
+  // Trial intentionally unlocks the complete Pro feature set so a new salon
   // can evaluate SalonFlow before selecting its paid plan.
   return lifecycleStatus === "trial" ? "pro" : planCode;
 }
