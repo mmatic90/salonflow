@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock3, Search, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { AppLocale } from "@/lib/i18n";
 
 export type ServiceSearchOption = {
@@ -57,11 +57,6 @@ export default function ServiceSearchPicker({
   const selected = services.find((service) => service.id === value) ?? null;
   const [query, setQuery] = useState(selected?.label ?? "");
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const nextSelected = services.find((service) => service.id === value) ?? null;
-    setQuery(nextSelected?.label ?? "");
-  }, [services, value]);
 
   const groups = useMemo(() => {
     const rawQuery = selected && query === selected.label ? "" : query.trim();
