@@ -13,6 +13,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { getPlatformOverview } from "@/features/platform-admin/queries";
+import { billingProviderLabel } from "@/lib/billing";
 import {
   lifecycleLabel,
   salonPlans,
@@ -81,9 +82,9 @@ export default async function PlatformAdminPage() {
               Platform Admin
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              Tenant računi, planovi, lifecycle i centralni feedback. Ovdje se
-              namjerno ne prikazuju klijenti, termini, tretmanske bilješke ni
-              poslovni podaci salona.
+              Tenant računi, planovi, lifecycle, billing metadata i centralni
+              feedback. Ovdje se namjerno ne prikazuju klijenti, termini,
+              tretmanske bilješke ni poslovni podaci salona.
             </p>
           </div>
           <Link
@@ -133,8 +134,8 @@ export default async function PlatformAdminPage() {
         <div className="flex flex-col gap-2 border-b border-slate-200 px-5 py-5 sm:px-6">
           <h2 className="text-xl font-bold text-slate-950">Saloni</h2>
           <p className="text-sm text-slate-500">
-            Samo podaci potrebni za upravljanje tenant računom, lifecycleom i
-            kontaktom s vlasnikom.
+            Samo podaci potrebni za upravljanje tenant računom, lifecycleom,
+            billingom i kontaktom s vlasnikom.
           </p>
         </div>
 
@@ -164,6 +165,9 @@ export default async function PlatformAdminPage() {
                         )}`}
                       >
                         {lifecycleLabel(salon.lifecycleStatus)}
+                      </span>
+                      <span className="rounded-full bg-violet-100 px-2.5 py-1 text-xs font-bold text-violet-800">
+                        {billingProviderLabel(salon.billingProvider)} billing
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-slate-500">
@@ -199,10 +203,11 @@ export default async function PlatformAdminPage() {
                   </div>
                   <div className="rounded-xl bg-white p-3">
                     <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-400">
-                      Salon kontakt
+                      Billing kontakt
                     </p>
                     <p className="mt-1 flex items-center gap-2 text-slate-700">
-                      <Mail className="h-3.5 w-3.5" /> {salon.email || "-"}
+                      <Mail className="h-3.5 w-3.5" />
+                      {salon.billingEmail || salon.email || "-"}
                     </p>
                     <p className="mt-1 flex items-center gap-2 text-slate-700">
                       <Phone className="h-3.5 w-3.5" /> {salon.phone || "-"}
