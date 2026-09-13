@@ -84,7 +84,11 @@ export default function SalonHoursTable({ locale = "hr", hours }: Props) {
   function saveChanges() {
     startTransition(async () => {
       const result = await bulkUpdateSalonWorkingHoursAction(items);
-      result.ok ? toast.success(result.message) : toast.error(result.message);
+      if (result.ok) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     });
   }
 
