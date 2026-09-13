@@ -11,12 +11,14 @@ import {
 } from "lucide-react";
 import { requireDashboardUser } from "@/lib/page-guards";
 import OverdueAppointmentsPanel from "@/components/overdue-appointments-panel";
+import WaitlistOpportunityPanel from "@/components/waitlist-opportunity-panel";
 import { getOverdueScheduledAppointments } from "@/features/appointments/overdue-queries";
 import DashboardOverviewWidget from "@/components/dashboard-overview-widget";
 import { getDashboardOverviewStats } from "@/features/dashboard/overview-queries";
 import { getAppointmentsByDate } from "@/features/appointments/queries";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
 import { getWaitingWaitlistCount } from "@/features/waitlist/queries";
+import { getWaitlistOpportunityAlerts } from "@/features/waitlist/opportunity-queries";
 import {
   formatDateLabel,
   formatTime,
@@ -49,15 +51,21 @@ export default async function DashboardPage() {
         ? "Lista d'attesa"
         : "Lista čekanja";
 
-  const [overdueAppointments, overviewStats, todayAppointments, waitlistCount] =
-    await Promise.all([
-      getOverdueScheduledAppointments(permissions.organizationId).catch(() => []),
-      getDashboardOverviewStats(permissions.organizationId).catch(
-        () => EMPTY_OVERVIEW,
-      ),
-      getAppointmentsByDate(today).catch(() => []),
-      getWaitingWaitlistCount(permissions.organizationId).catch(() => 0),
-    ]);
+  const [
+    overdueAppointments,
+    overviewStats,
+    todayAppointments,
+    waitlistCount,
+    waitlistOpportunities,
+  ] = await Promise.all([
+    getOverdueScheduledAppointments(permissions.organizationId).catch(() => []),
+    getDashboardOverviewStats(permissions.organizationId).catch(
+      () => EMPTY_OVERVIEW,
+    ),
+    getAppointmentsByDate(today).catch(() => []),
+    getWaitingWaitlistCount(permissions.organizationId).catch(() => 0),
+    getWaitlistOpportunityAlerts(permissions.organizationId).catch(() => []),
+  ]);
 
   const visibleTodayAppointments = todayAppointments
     .filter((appointment) => appointment.status !== "cancelled")
@@ -69,6 +77,11 @@ export default async function DashboardPage() {
       <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
         <OverdueAppointmentsPanel
           items={overdueAppointments}
+          locale={permissions.organizationLocale}
+        />
+
+        <WaitlistOpportunityPanel
+          items={waitlistOpportunities}
           locale={permissions.organizationLocale}
         />
 
