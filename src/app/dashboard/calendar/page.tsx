@@ -58,8 +58,6 @@ function shiftDate(value: string, days: number) {
 
 function statusClasses(status: string) {
   switch (status) {
-    case "completed":
-      return "border-app-soft bg-app-card-alt/45";
     case "cancelled":
       return "border-rose-200 bg-white opacity-70";
     case "no_show":
@@ -80,7 +78,7 @@ function statusPillClasses(status: string) {
     case "no_show":
       return "border-amber-200 bg-amber-50 text-amber-800";
     default:
-      return "border-app-soft bg-app-card-alt text-app-text";
+      return "border-app-soft bg-white text-app-text";
   }
 }
 
@@ -123,31 +121,32 @@ function EmployeeColumnHeader({
 
   return (
     <div
-      className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/95 shadow-[0_8px_20px_rgba(15,23,42,0.04)] backdrop-blur-xl`}
+      className={`sticky ${stickyTop} z-20 rounded-t-3xl border-b border-app-soft bg-white/95 backdrop-blur-xl`}
     >
-      <div className="h-1 w-full" style={{ backgroundColor: accent }} />
       <div className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3.5">
-            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-app-soft bg-app-card-alt text-sm font-bold text-app-text shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-app-soft bg-white text-sm font-bold text-app-text">
               {getInitials(group.employeeName)}
-              <span
-                className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white"
-                style={{ backgroundColor: accent }}
-                aria-hidden="true"
-              />
             </div>
             <div className="min-w-0">
-              <h2 className="truncate text-lg font-bold tracking-tight text-app-text">
-                {group.employeeName}
-              </h2>
+              <div className="flex min-w-0 items-center gap-2">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: accent }}
+                  aria-hidden="true"
+                />
+                <h2 className="truncate text-lg font-bold tracking-tight text-app-text">
+                  {group.employeeName}
+                </h2>
+              </div>
               <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-app-muted">
                 <Clock3 className="h-3.5 w-3.5 shrink-0" />
                 {workingHours || t.noWorkingHours}
               </p>
             </div>
           </div>
-          <span className="shrink-0 rounded-full border border-app-soft bg-white px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
+          <span className="shrink-0 rounded-full border border-app-soft bg-white px-3 py-1.5 text-xs font-bold text-app-text">
             {appointmentCountLabel(
               group.appointments.length,
               t.appointmentSingular,
@@ -158,7 +157,7 @@ function EmployeeColumnHeader({
 
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-app-soft/80 pt-3">
           <span
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold shadow-sm ${getWorkStatusClasses(
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${getWorkStatusClasses(
               group.workStatus,
             )}`}
           >
@@ -193,12 +192,11 @@ function RoomColumnHeader({
 }) {
   return (
     <div
-      className={`sticky ${stickyTop} z-20 overflow-hidden rounded-t-3xl border-b border-app-soft bg-white/90 shadow-[0_8px_20px_rgba(15,23,42,0.05)] backdrop-blur-xl`}
+      className={`sticky ${stickyTop} z-20 rounded-t-3xl border-b border-app-soft bg-white/95 backdrop-blur-xl`}
     >
-      <div className="h-1 w-full bg-app-accent" />
       <div className="flex items-center justify-between gap-4 p-5">
         <div className="flex min-w-0 items-center gap-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent shadow-sm ring-1 ring-app-accent/10">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-app-soft bg-white text-app-muted">
             <DoorOpen className="h-5 w-5" />
           </div>
           <div className="min-w-0">
@@ -210,7 +208,7 @@ function RoomColumnHeader({
             </h2>
           </div>
         </div>
-        <span className="shrink-0 rounded-full border border-app-soft bg-white/90 px-3 py-1.5 text-xs font-bold text-app-text shadow-sm">
+        <span className="shrink-0 rounded-full border border-app-soft bg-white px-3 py-1.5 text-xs font-bold text-app-text">
           {appointmentCountLabel(
             appointmentCount,
             t.appointmentSingular,
@@ -266,7 +264,7 @@ function StatCard({
           </p>
           <p className="mt-1 text-xs text-app-muted">{detail}</p>
         </div>
-        <div className="hidden h-10 w-10 items-center justify-center rounded-xl bg-app-accent/10 text-app-accent xs:flex sm:flex">
+        <div className="hidden h-10 w-10 items-center justify-center rounded-xl border border-app-soft bg-white text-app-muted xs:flex sm:flex">
           {icon}
         </div>
       </div>
@@ -296,32 +294,34 @@ function CalendarCard({
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-3xl border shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(15,23,42,0.09)] ${statusClasses(
+      className={`group relative overflow-hidden rounded-2xl border shadow-[0_5px_18px_rgba(15,23,42,0.035)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(15,23,42,0.07)] ${statusClasses(
         appointment.status,
       )}`}
     >
-      <span
-        className="absolute inset-y-0 left-0 w-1"
-        style={{ backgroundColor: accent }}
-      />
-
       <Link
         href={`/dashboard/appointments/${appointment.id}/edit`}
-        className="block p-4 pl-5 sm:p-5 sm:pl-6"
+        className="block p-4 sm:p-5"
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-xl font-extrabold leading-none tracking-tight text-app-text sm:text-2xl">
-              {formatTime(appointment.start_time)}
-            </div>
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-app-muted">
-              <Clock3 className="h-3.5 w-3.5" />
-              {untilLabel} {formatTime(appointment.end_time)}
+          <div className="flex items-start gap-2.5">
+            <span
+              className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: accent }}
+              aria-hidden="true"
+            />
+            <div>
+              <div className="text-xl font-extrabold leading-none tracking-tight text-app-text sm:text-2xl">
+                {formatTime(appointment.start_time)}
+              </div>
+              <div className="mt-1 flex items-center gap-1.5 text-xs font-medium text-app-muted">
+                <Clock3 className="h-3.5 w-3.5" />
+                {untilLabel} {formatTime(appointment.end_time)}
+              </div>
             </div>
           </div>
 
           <span
-            className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold shadow-sm ${statusPillClasses(
+            className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-bold ${statusPillClasses(
               appointment.status,
             )}`}
           >
@@ -334,7 +334,7 @@ function CalendarCard({
             {appointment.client_name}
           </p>
           <div className="mt-2 flex min-w-0 items-center gap-2 text-sm font-medium text-app-text">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-app-soft bg-app-card-alt text-app-muted">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-app-soft bg-white text-app-muted">
               <Shapes className="h-4 w-4" />
             </div>
             <span className="truncate">{serviceLabel}</span>
@@ -342,17 +342,17 @@ function CalendarCard({
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-medium text-app-muted sm:mt-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-app-soft bg-white px-3 py-1.5 shadow-sm">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-app-soft bg-white px-3 py-1.5">
             <Timer className="h-3.5 w-3.5" />
             {appointment.duration_minutes} min
           </span>
           {metaLabel ? (
-            <span className="rounded-full border border-app-soft bg-white px-3 py-1.5 shadow-sm">
+            <span className="rounded-full border border-app-soft bg-white px-3 py-1.5">
               {metaLabel}
             </span>
           ) : null}
           {appointment.client_phone ? (
-            <span className="rounded-full border border-app-soft bg-white px-3 py-1.5 shadow-sm">
+            <span className="rounded-full border border-app-soft bg-white px-3 py-1.5">
               {appointment.client_phone}
             </span>
           ) : null}
@@ -368,7 +368,7 @@ function CalendarCard({
         />
       </Link>
 
-      <div className="border-t border-app-soft bg-app-card-alt/35 px-4 py-3 pl-5 sm:px-5 sm:pl-6">
+      <div className="border-t border-app-soft bg-white px-4 py-3 sm:px-5">
         <AppointmentStatusActions
           locale={locale}
           appointmentId={appointment.id}
@@ -462,8 +462,8 @@ export default async function CalendarPage({
   return (
     <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl space-y-5 md:space-y-6">
-        <section className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-          <div className="border-b border-app-soft bg-gradient-to-br from-white to-app-bg p-4 sm:p-5 md:p-7">
+        <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+          <div className="p-4 sm:p-5 md:p-7">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
@@ -499,7 +499,7 @@ export default async function CalendarPage({
                   <Plus className="h-4 w-4" /> {t.newAppointment}
                 </Link>
 
-                <div className="inline-flex w-full self-end rounded-xl border border-app-soft bg-white p-1 shadow-sm sm:w-auto">
+                <div className="inline-flex w-full self-end rounded-xl border border-app-soft bg-white p-1 sm:w-auto">
                   <Link
                     href={`/dashboard/calendar?date=${previousDate}&view=${selectedView}`}
                     className="flex min-h-11 flex-1 items-center justify-center rounded-lg p-2.5 text-app-muted transition hover:bg-app-bg hover:text-app-text sm:flex-none"
@@ -511,7 +511,7 @@ export default async function CalendarPage({
                     href={`/dashboard/calendar?date=${today}&view=${selectedView}`}
                     className={`flex min-h-11 flex-[1.3] items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition sm:flex-none ${
                       isToday
-                        ? "bg-app-accent text-white shadow-sm"
+                        ? "bg-app-accent text-white"
                         : "text-app-text hover:bg-app-bg"
                     }`}
                   >
@@ -543,7 +543,7 @@ export default async function CalendarPage({
               </ViewChip>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-app-soft bg-white/80 p-3 shadow-sm lg:hidden">
+            <div className="mt-4 rounded-2xl border border-app-soft bg-white p-3 lg:hidden">
               {selectedView === "employees" ? (
                 <AutoSubmitSelect
                   label={t.employee}
@@ -616,7 +616,7 @@ export default async function CalendarPage({
               {mobileRoomGroups.map((group) => (
                 <section
                   key={group.roomId}
-                  className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                  className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.035)]"
                 >
                   <RoomColumnHeader
                     roomName={group.roomName}
@@ -624,7 +624,7 @@ export default async function CalendarPage({
                     stickyTop="top-16"
                     t={t}
                   />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                  <div className="bg-white p-3.5 sm:p-5">
                     {group.appointments.length ? (
                       <div className="space-y-3.5 sm:space-y-4">
                         {group.appointments.map((appointment) => (
@@ -635,9 +635,7 @@ export default async function CalendarPage({
                             untilLabel={t.until}
                             metaLabel={
                               appointment.employee
-                                ? t.employee +
-                                  ": " +
-                                  appointment.employee.display_name
+                                ? t.employee + ": " + appointment.employee.display_name
                                 : t.noEmployee
                             }
                           />
@@ -657,7 +655,7 @@ export default async function CalendarPage({
               {roomGroups.map((group) => (
                 <section
                   key={group.roomId}
-                  className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                  className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.035)]"
                 >
                   <RoomColumnHeader
                     roomName={group.roomName}
@@ -665,7 +663,7 @@ export default async function CalendarPage({
                     stickyTop="top-4"
                     t={t}
                   />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                  <div className="bg-white p-3.5 sm:p-5">
                     {group.appointments.length ? (
                       <div className="space-y-3.5 sm:space-y-4">
                         {group.appointments.map((appointment) => (
@@ -676,9 +674,7 @@ export default async function CalendarPage({
                             untilLabel={t.until}
                             metaLabel={
                               appointment.employee
-                                ? t.employee +
-                                  ": " +
-                                  appointment.employee.display_name
+                                ? t.employee + ": " + appointment.employee.display_name
                                 : t.noEmployee
                             }
                           />
@@ -701,10 +697,10 @@ export default async function CalendarPage({
               {mobileEmployeeGroups.map((group) => (
                 <section
                   key={group.employeeId}
-                  className="overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                  className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.035)]"
                 >
                   <EmployeeColumnHeader group={group} stickyTop="top-16" t={t} />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                  <div className="bg-white p-3.5 sm:p-5">
                     {group.appointments.length ? (
                       <div className="space-y-3.5 sm:space-y-4">
                         {group.appointments.map((appointment) => (
@@ -736,10 +732,10 @@ export default async function CalendarPage({
               {employeeGroups.map((group) => (
                 <section
                   key={group.employeeId}
-                  className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-app-card shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                  className="min-w-0 overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.035)]"
                 >
                   <EmployeeColumnHeader group={group} stickyTop="top-4" t={t} />
-                  <div className="bg-gradient-to-b from-white/60 to-app-bg/40 p-3.5 sm:p-5">
+                  <div className="bg-white p-3.5 sm:p-5">
                     {group.appointments.length ? (
                       <div className="space-y-3.5 sm:space-y-4">
                         {group.appointments.map((appointment) => (
