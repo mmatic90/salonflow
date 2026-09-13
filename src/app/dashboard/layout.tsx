@@ -46,6 +46,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <AdminFooter
             organizationName={permissions.organizationName}
             locale={permissions.organizationLocale}
+            showFeedback={!hideFeedbackTools}
           />
         </main>
       </div>
