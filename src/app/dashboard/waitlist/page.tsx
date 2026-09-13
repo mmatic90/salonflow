@@ -462,244 +462,241 @@ export default async function WaitlistPage({
           defaultDate={today}
         />
 
-        {resolvedSearchParams?.open === "1" ? (
-          <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
-            <div className="flex items-start justify-between gap-4">
+        <details
+          open={hasAppointmentPrefill}
+          className="group rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-app-accent text-white">
+                <ListPlus className="h-5 w-5" />
+              </span>
               <div>
-                <div className="flex items-center gap-2 text-sm font-bold text-app-accent">
-                  <ListPlus className="h-4 w-4" />
-                  {t.add}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-app-muted">
-                  {hasAppointmentPrefill ? t.prefillHelp : t.addHelp}
-                </p>
+                <p className="font-bold text-app-text">{t.add}</p>
+                <p className="mt-1 text-sm text-app-muted">{t.addHelp}</p>
               </div>
-              <Link
-                href="/dashboard/waitlist"
-                className="rounded-xl border border-app-soft bg-white p-2 text-app-muted transition hover:bg-app-bg hover:text-app-text"
-                aria-label={t.back}
-              >
-                <X className="h-4 w-4" />
-              </Link>
             </div>
-
+            <ChevronDown className="h-5 w-5 text-app-muted transition group-open:rotate-180" />
+          </summary>
+          <form
+            action={createWaitlistEntryAction}
+            className="border-t border-app-soft p-5 sm:p-6"
+          >
             {hasAppointmentPrefill ? (
-              <div className="mt-4 rounded-2xl border border-app-accent/20 bg-app-accent/5 p-4 text-sm text-app-text">
-                <div className="flex items-start gap-2">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-app-accent" />
-                  <div>
-                    <p className="font-semibold">{t.prefillTitle}</p>
-                    <p className="mt-1 text-app-muted">{t.prefillHelp}</p>
-                  </div>
+              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-app-accent/20 bg-app-accent/5 p-4 text-sm">
+                <Info className="mt-0.5 h-5 w-5 shrink-0 text-app-accent" />
+                <div>
+                  <p className="font-semibold text-app-text">{t.prefillTitle}</p>
+                  <p className="mt-1 leading-6 text-app-muted">{t.prefillHelp}</p>
                 </div>
               </div>
             ) : null}
-
-            <form action={createWaitlistEntryAction} className="mt-5 space-y-5">
-              <WaitlistFields
-                defaults={draftDefaults}
-                requireRangeEnd={hasAppointmentPrefill}
-                clients={clients}
-                services={services}
-                employees={employees}
-                locale={locale}
-              />
-              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                <Link
-                  href="/dashboard/waitlist"
-                  className="inline-flex min-h-11 items-center justify-center rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-bg"
-                >
-                  {t.back}
-                </Link>
-                <button
-                  type="submit"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
-                >
-                  <ListPlus className="h-4 w-4" /> {t.save}
-                </button>
-              </div>
-            </form>
-          </section>
-        ) : (
-          <section className="rounded-3xl border border-dashed border-app-soft bg-white/70 p-5 sm:p-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="font-semibold text-app-text">{t.add}</p>
-                <p className="mt-1 text-sm text-app-muted">{t.addHelp}</p>
-              </div>
+            <WaitlistFields
+              defaults={hasAppointmentPrefill ? draftDefaults : undefined}
+              requireRangeEnd={hasAppointmentPrefill}
+              clients={clients}
+              services={services}
+              employees={employees}
+              locale={locale}
+            />
+            <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Link
-                href="/dashboard/waitlist?open=1"
-                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+                href="/dashboard/clients/new"
+                className="text-sm font-semibold text-app-accent"
               >
-                <ListPlus className="h-4 w-4" /> {t.add}
+                + {t.newClient}
               </Link>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-3 font-semibold text-white transition hover:opacity-90"
+              >
+                <ListPlus className="h-4 w-4" /> {t.save}
+              </button>
             </div>
-          </section>
-        )}
+          </form>
+        </details>
 
-        <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-app-muted">{t.active}</p>
-              <h2 className="mt-1 text-xl font-bold text-app-text">
-                {t.activeHelp}
-              </h2>
+        <section className="rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+          <div className="border-b border-app-soft p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-app-text">{t.active}</h2>
+                <p className="mt-1 text-sm text-app-muted">{t.activeHelp}</p>
+              </div>
+              <UsersRound className="h-5 w-5 text-app-accent" />
             </div>
-            <UsersRound className="h-5 w-5 text-app-accent" />
           </div>
 
-          {waiting.length ? (
-            <div className="mt-5 space-y-3">
-              {waiting.map((entry) => (
-                <details
-                  key={entry.id}
-                  className="group rounded-2xl border border-app-soft bg-app-bg/35"
-                >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-bold text-app-text">{entry.client_name}</p>
-                        <span className="rounded-full bg-app-accent/10 px-2.5 py-1 text-xs font-bold text-app-accent">
-                          {entry.service_name}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-app-muted">
-                        {entry.preferred_employee_name || t.anyEmployee}
-                      </p>
-                    </div>
-                    <ChevronDown className="h-4 w-4 shrink-0 text-app-muted transition group-open:rotate-180" />
-                  </summary>
+          {waiting.length === 0 ? (
+            <div className="p-8 text-center">
+              <CalendarClock className="mx-auto h-10 w-10 text-app-muted" />
+              <p className="mt-3 font-semibold text-app-text">{t.empty}</p>
+            </div>
+          ) : (
+            <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2">
+              {waiting.map((entry) => {
+                const dateFrom = formatDate(entry.preferred_date_from, locale);
+                const dateTo = formatDate(entry.preferred_date_to, locale);
+                const timeFrom = time(entry.preferred_time_from);
+                const timeTo = time(entry.preferred_time_to);
+                const updateAction = updateWaitlistEntryAction.bind(null, entry.id);
+                const cancelAction = cancelWaitlistEntryAction.bind(null, entry.id);
 
-                  <div className="border-t border-app-soft bg-white p-4 sm:p-5">
-                    <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                      <div className="rounded-xl bg-app-bg p-3">
-                        <p className="text-xs font-bold uppercase tracking-[0.08em] text-app-muted">
+                return (
+                  <article
+                    key={entry.id}
+                    className="rounded-2xl border border-app-soft bg-app-bg/35 p-4 sm:p-5"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <UserRound className="h-4 w-4 shrink-0 text-app-accent" />
+                          <h3 className="truncate font-bold text-app-text">
+                            {entry.client?.name ?? t.client}
+                          </h3>
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-app-accent">
+                          {entry.service?.name ?? t.service}
+                        </p>
+                        {entry.client?.phone || entry.client?.email ? (
+                          <p className="mt-1 truncate text-xs text-app-muted">
+                            {[entry.client.phone, entry.client.email]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-app-muted">
+                        {t.created} {formatCreated(entry.created_at, locale)}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                      <div className="rounded-xl bg-white px-3 py-2.5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-app-muted">
                           {t.preferences}
                         </p>
-                        <p className="mt-2 font-medium text-app-text">
-                          {formatDate(entry.preferred_date_from, locale) || t.anyDate}
-                          {entry.preferred_date_to
-                            ? ` – ${formatDate(entry.preferred_date_to, locale)}`
-                            : ""}
+                        <p className="mt-1 font-medium text-app-text">
+                          {dateFrom
+                            ? dateTo && dateTo !== dateFrom
+                              ? `${dateFrom} – ${dateTo}`
+                              : dateFrom
+                            : t.anyDate}
                         </p>
-                        <p className="mt-1 text-app-muted">
-                          {time(entry.preferred_time_from) || t.anyTime}
-                          {entry.preferred_time_to
-                            ? ` – ${time(entry.preferred_time_to)}`
-                            : ""}
+                        <p className="mt-1 text-xs text-app-muted">
+                          {timeFrom && timeTo
+                            ? `${timeFrom} – ${timeTo}`
+                            : t.anyTime}
                         </p>
                       </div>
-                      <div className="rounded-xl bg-app-bg p-3">
-                        <p className="text-xs font-bold uppercase tracking-[0.08em] text-app-muted">
-                          {t.notes}
+                      <div className="rounded-xl bg-white px-3 py-2.5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-app-muted">
+                          {t.employee}
                         </p>
-                        <p className="mt-2 whitespace-pre-wrap text-app-text">
+                        <p className="mt-1 font-medium text-app-text">
+                          {entry.preferred_employee?.name ?? t.anyEmployee}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-xs text-app-muted">
                           {entry.notes || t.noNotes}
-                        </p>
-                      </div>
-                      <div className="rounded-xl bg-app-bg p-3">
-                        <p className="text-xs font-bold uppercase tracking-[0.08em] text-app-muted">
-                          {t.created}
-                        </p>
-                        <p className="mt-2 font-medium text-app-text">
-                          {formatCreated(entry.created_at, locale)}
                         </p>
                       </div>
                     </div>
 
                     <WaitlistMatchFinder
                       entryId={entry.id}
+                      clientId={entry.client_id}
+                      serviceId={entry.service_id}
                       locale={locale}
                     />
 
                     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       <Link
                         href={buildBookingHref(entry, today)}
-                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
                       >
                         <CalendarPlus className="h-4 w-4" /> {t.book}
                       </Link>
-                      <details className="group/edit flex-1 sm:min-w-[280px]">
-                        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-bg">
+
+                      <details className="group/edit sm:relative">
+                        <summary className="inline-flex w-full cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-bg sm:w-auto">
                           <Pencil className="h-4 w-4" /> {t.edit}
                         </summary>
-                        <form
-                          action={updateWaitlistEntryAction.bind(null, entry.id)}
-                          className="mt-4 rounded-2xl border border-app-soft bg-white p-4"
-                        >
-                          <WaitlistFields
-                            entry={entry}
-                            clients={clients}
-                            services={services}
-                            employees={employees}
-                            locale={locale}
-                          />
-                          <button
-                            type="submit"
-                            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
-                          >
-                            {t.update}
-                          </button>
-                        </form>
+                        <div className="mt-3 rounded-2xl border border-app-soft bg-white p-4 shadow-lg sm:absolute sm:right-0 sm:z-20 sm:w-[34rem]">
+                          <form action={updateAction}>
+                            <WaitlistFields
+                              entry={entry}
+                              clients={clients}
+                              services={services}
+                              employees={employees}
+                              locale={locale}
+                            />
+                            <button
+                              type="submit"
+                              className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white"
+                            >
+                              {t.update}
+                            </button>
+                          </form>
+                        </div>
                       </details>
-                      <form action={cancelWaitlistEntryAction.bind(null, entry.id)}>
+
+                      <form action={cancelAction}>
                         <button
                           type="submit"
-                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50 sm:w-auto"
                         >
                           <X className="h-4 w-4" /> {t.remove}
                         </button>
                       </form>
                     </div>
-                  </div>
-                </details>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-5 rounded-2xl border border-dashed border-app-soft p-8 text-center">
-              <UserRound className="mx-auto h-8 w-8 text-app-muted" />
-              <p className="mt-3 font-semibold text-app-text">{t.empty}</p>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
 
         {history.length ? (
-          <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
-            <div>
-              <p className="text-sm font-semibold text-app-muted">{t.history}</p>
-              <h2 className="mt-1 text-xl font-bold text-app-text">
-                {t.historyHelp}
-              </h2>
-            </div>
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <details className="group rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6">
+              <div>
+                <h2 className="font-bold text-app-text">{t.history}</h2>
+                <p className="mt-1 text-sm text-app-muted">{t.historyHelp}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-app-bg px-2.5 py-1 text-xs font-bold text-app-muted">
+                  {history.length}
+                </span>
+                <ChevronDown className="h-4 w-4 text-app-muted transition group-open:rotate-180" />
+              </div>
+            </summary>
+            <div className="divide-y divide-app-soft border-t border-app-soft">
               {history.map((entry) => (
                 <div
                   key={entry.id}
-                  className="rounded-2xl border border-app-soft bg-app-bg/35 p-4"
+                  className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-bold text-app-text">{entry.client_name}</p>
-                      <p className="mt-1 text-sm text-app-muted">
-                        {entry.service_name}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-app-text">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-app-text">
+                      {entry.client?.name ?? t.client}
+                    </p>
+                    <p className="mt-1 text-sm text-app-muted">
+                      {entry.service?.name ?? t.service} ·{" "}
                       {entry.status === "booked" ? t.booked : t.cancelled}
-                    </span>
+                    </p>
                   </div>
-                  {entry.booked_appointment_id ? (
+                  {entry.status === "booked" && entry.booked_appointment_id ? (
                     <Link
                       href={`/dashboard/appointments/${entry.booked_appointment_id}/edit`}
-                      className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-app-accent"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-app-accent"
                     >
-                      <CalendarPlus className="h-4 w-4" /> {t.openAppointment}
+                      <Clock3 className="h-4 w-4" /> {t.openAppointment}
                     </Link>
                   ) : null}
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         ) : null}
 
         <Link
