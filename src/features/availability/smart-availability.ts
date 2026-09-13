@@ -30,6 +30,12 @@ type EffectiveScheduleRow = {
   end_time: string | null;
 };
 
+type EffectiveBreakRow = {
+  employee_id: string;
+  break_start_time: string | null;
+  break_end_time: string | null;
+};
+
 export type SmartAvailabilitySuggestion = {
   start_time: string;
   end_time: string;
@@ -298,32 +304,49 @@ export async function getSmartAvailability(options: {
     };
   }
 
-  const effectiveSchedules = await Promise.all(
-    allowedEmployees.map(async (employee) => {
-      const { data, error } = await supabase.rpc("get_employee_effective_schedule", {
-        p_employee_id: employee.id,
-        p_date: date,
-      });
+  const [effectiveSchedules, effectiveBreaks] = await Promise.all([
+    Promise.all(
+      allowedEmployees.map(async (employee) => {
+        const { data, error } = await supabase.rpc("get_employee_effective_schedule", {
+          p_employee_id: employee.id,
+          p_date: date,
+        });
 
-      if (error) {
+        if (error) {
+          return {
+            employee_id: employee.id,
+            is_working: false,
+            start_time: null,
+            end_time: null,
+          } satisfies EffectiveScheduleRow;
+        }
+
+        const row = data?.[0];
+
         return {
           employee_id: employee.id,
-          is_working: false,
-          start_time: null,
-          end_time: null,
+          is_working: row?.is_working ?? false,
+          start_time: row?.start_time ?? null,
+          end_time: row?.end_time ?? null,
         } satisfies EffectiveScheduleRow;
-      }
+      }),
+    ),
+    Promise.all(
+      allowedEmployees.map(async (employee) => {
+        const { data, error } = await supabase.rpc("get_employee_effective_break", {
+          p_employee_id: employee.id,
+          p_date: date,
+        });
 
-      const row = data?.[0];
-
-      return {
-        employee_id: employee.id,
-        is_working: row?.is_working ?? false,
-        start_time: row?.start_time ?? null,
-        end_time: row?.end_time ?? null,
-      } satisfies EffectiveScheduleRow;
-    }),
-  );
+        const row = error ? null : data?.[0];
+        return {
+          employee_id: employee.id,
+          break_start_time: row?.break_start_time ?? null,
+          break_end_time: row?.break_end_time ?? null,
+        } satisfies EffectiveBreakRow;
+      }),
+    ),
+  ]);
 
   const workingEmployees = allowedEmployees.filter((employee) => {
     const schedule = effectiveSchedules.find(
@@ -367,6 +390,22 @@ export async function getSmartAvailability(options: {
       const employeeEnd = timeToMinutes(schedule.end_time);
 
       if (start < employeeStart || end > employeeEnd) continue;
+
+      const employeeBreak = effectiveBreaks.find(
+        (row) => row.employee_id === employee.id,
+      );
+      if (
+        employeeBreak?.break_start_time &&
+        employeeBreak.break_end_time &&
+        overlaps(
+          start,
+          end,
+          timeToMinutes(employeeBreak.break_start_time),
+          timeToMinutes(employeeBreak.break_end_time),
+        )
+      ) {
+        continue;
+      }
 
       const employeeConflict = typedAppointments.some((appointment) => {
         if (appointment.employee_id !== employee.id) return false;
