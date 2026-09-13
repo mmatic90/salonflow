@@ -5,6 +5,10 @@ import {
   appointmentDatabaseErrorMessage,
   validateAppointmentRuntime,
 } from "@/features/appointments/runtime-validation";
+import {
+  refreshWaitlistOpportunitiesAfterOccupiedSlot,
+  refreshWaitlistOpportunitiesForFreedSlot,
+} from "@/features/waitlist/opportunities";
 
 function value(input: unknown) {
   return typeof input === "string" ? input.trim() : "";
@@ -24,6 +28,10 @@ function splitClientName(fullName: string) {
     first_name: parts.shift() || fullName.trim(),
     last_name: parts.join(" ") || null,
   };
+}
+
+function blocksAvailability(status: string | null | undefined) {
+  return ["scheduled", "confirmed", "completed"].includes(status ?? "");
 }
 
 export async function PATCH(
@@ -87,7 +95,9 @@ export async function PATCH(
     const { data: existingAppointment, error: existingAppointmentError } =
       await supabase
         .from("appointments")
-        .select("id")
+        .select(
+          "id, appointment_date, start_time, end_time, employee_id, room_id, status",
+        )
         .eq("id", id)
         .eq("organization_id", organizationId)
         .maybeSingle();
@@ -212,7 +222,7 @@ export async function PATCH(
     }
 
     const endTime = addMinutes(startTime, durationMinutes);
-    if (["scheduled", "confirmed", "completed"].includes(status)) {
+    if (blocksAvailability(status)) {
       const runtimeValidation = await validateAppointmentRuntime({
         organizationId,
         appointmentId: id,
@@ -333,6 +343,48 @@ export async function PATCH(
         { error: insertServiceError.message },
         { status: 400 },
       );
+    }
+
+    const previousStart = existingAppointment.start_time?.slice(0, 5) ?? "";
+    const previousEnd = existingAppointment.end_time?.slice(0, 5) ?? "";
+    const previousWasBlocking = blocksAvailability(existingAppointment.status);
+    const nextIsBlocking = blocksAvailability(status);
+    const oldSlotChanged =
+      existingAppointment.appointment_date !== appointmentDate ||
+      previousStart !== startTime.slice(0, 5) ||
+      previousEnd !== endTime.slice(0, 5) ||
+      existingAppointment.employee_id !== employeeId ||
+      existingAppointment.room_id !== roomId;
+
+    try {
+      if (
+        previousWasBlocking &&
+        existingAppointment.employee_id &&
+        previousStart &&
+        previousEnd &&
+        (oldSlotChanged || !nextIsBlocking)
+      ) {
+        await refreshWaitlistOpportunitiesForFreedSlot({
+          organizationId,
+          date: existingAppointment.appointment_date,
+          startTime: previousStart,
+          endTime: previousEnd,
+          employeeId: existingAppointment.employee_id,
+        });
+      }
+
+      if (nextIsBlocking) {
+        await refreshWaitlistOpportunitiesAfterOccupiedSlot({
+          organizationId,
+          date: appointmentDate,
+          startTime,
+          endTime,
+          employeeId,
+          roomId,
+        });
+      }
+    } catch (waitlistSyncError) {
+      console.error("Waitlist opportunities could not be synchronized:", waitlistSyncError);
     }
 
     return NextResponse.json({
