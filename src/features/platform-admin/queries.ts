@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
+import type {
+  SalonLifecycleStatus,
+  SalonPlanCode,
+} from "@/lib/plans";
 
 export type PlatformSalon = {
   id: string;
@@ -12,6 +16,11 @@ export type PlatformSalon = {
   city: string | null;
   countryCode: string;
   isActive: boolean;
+  planCode: SalonPlanCode;
+  lifecycleStatus: SalonLifecycleStatus;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  planChangedAt: string;
   createdAt: string;
   ownerName: string | null;
   ownerEmail: string | null;
@@ -25,7 +34,9 @@ export type PlatformOverview = {
   stats: {
     totalSalons: number;
     activeSalons: number;
-    inactiveSalons: number;
+    trialSalons: number;
+    pastDueSalons: number;
+    suspendedSalons: number;
     openFeedback: number;
     totalFeedback: number;
   };
@@ -56,6 +67,11 @@ export type PlatformSalonDetail = {
   countryCode: string;
   logoUrl: string | null;
   isActive: boolean;
+  planCode: SalonPlanCode;
+  lifecycleStatus: SalonLifecycleStatus;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  planChangedAt: string;
   createdAt: string;
   updatedAt: string;
   ownerName: string | null;
@@ -73,6 +89,21 @@ function isOpenFeedbackStatus(status: string) {
   return status !== "done" && status !== "rejected";
 }
 
+function planCode(value: unknown): SalonPlanCode {
+  return value === "starter" ? "starter" : "pro";
+}
+
+function lifecycleStatus(value: unknown): SalonLifecycleStatus {
+  if (
+    value === "trial" ||
+    value === "past_due" ||
+    value === "suspended"
+  ) {
+    return value;
+  }
+  return "active";
+}
+
 export async function getPlatformOverview(): Promise<PlatformOverview> {
   await requirePlatformAdmin();
   const supabase = createAdminClient();
@@ -82,7 +113,7 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
       supabase
         .from("organizations")
         .select(
-          "id, name, slug, locale, currency, phone, email, city, country_code, is_active, created_at",
+          "id, name, slug, locale, currency, phone, email, city, country_code, is_active, plan_code, lifecycle_status, trial_started_at, trial_ends_at, plan_changed_at, created_at",
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -130,6 +161,11 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
         city: organization.city ?? null,
         countryCode: String(organization.country_code ?? "HR"),
         isActive: organization.is_active !== false,
+        planCode: planCode(organization.plan_code),
+        lifecycleStatus: lifecycleStatus(organization.lifecycle_status),
+        trialStartedAt: organization.trial_started_at ?? null,
+        trialEndsAt: organization.trial_ends_at ?? null,
+        planChangedAt: String(organization.plan_changed_at ?? organization.created_at),
         createdAt: String(organization.created_at),
         ownerName: owner?.display_name ?? null,
         ownerEmail: owner ? usersById.get(owner.user_id) ?? null : null,
@@ -147,8 +183,17 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
     salons,
     stats: {
       totalSalons: salons.length,
-      activeSalons: salons.filter((salon) => salon.isActive).length,
-      inactiveSalons: salons.filter((salon) => !salon.isActive).length,
+      activeSalons: salons.filter(
+        (salon) => salon.lifecycleStatus === "active",
+      ).length,
+      trialSalons: salons.filter((salon) => salon.lifecycleStatus === "trial")
+        .length,
+      pastDueSalons: salons.filter(
+        (salon) => salon.lifecycleStatus === "past_due",
+      ).length,
+      suspendedSalons: salons.filter(
+        (salon) => salon.lifecycleStatus === "suspended",
+      ).length,
       openFeedback: feedback.filter((item) =>
         isOpenFeedbackStatus(String(item.status)),
       ).length,
@@ -168,7 +213,7 @@ export async function getPlatformSalonById(
       supabase
         .from("organizations")
         .select(
-          "id, name, slug, timezone, locale, currency, phone, email, address_line_1, address_line_2, city, postal_code, country_code, logo_url, is_active, created_at, updated_at",
+          "id, name, slug, timezone, locale, currency, phone, email, address_line_1, address_line_2, city, postal_code, country_code, logo_url, is_active, plan_code, lifecycle_status, trial_started_at, trial_ends_at, plan_changed_at, created_at, updated_at",
         )
         .eq("id", organizationId)
         .maybeSingle(),
@@ -228,6 +273,11 @@ export async function getPlatformSalonById(
     countryCode: String(organization.country_code ?? "HR"),
     logoUrl: organization.logo_url ?? null,
     isActive: organization.is_active !== false,
+    planCode: planCode(organization.plan_code),
+    lifecycleStatus: lifecycleStatus(organization.lifecycle_status),
+    trialStartedAt: organization.trial_started_at ?? null,
+    trialEndsAt: organization.trial_ends_at ?? null,
+    planChangedAt: String(organization.plan_changed_at ?? organization.created_at),
     createdAt: String(organization.created_at),
     updatedAt: String(organization.updated_at),
     ownerName: owner?.displayName ?? null,
