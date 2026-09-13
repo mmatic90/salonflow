@@ -25,6 +25,7 @@ import {
   updateWaitlistEntryAction,
 } from "@/features/waitlist/actions";
 import WaitlistMatchFinder from "@/features/waitlist/waitlist-match-finder";
+import WaitlistSlotMatcher from "@/features/waitlist/waitlist-slot-matcher";
 import type { AppLocale } from "@/lib/i18n";
 
 const fieldClass =
@@ -451,6 +452,12 @@ export default async function WaitlistPage({
             </span>
           </div>
         </section>
+
+        <WaitlistSlotMatcher
+          locale={locale}
+          services={services}
+          defaultDate={today}
+        />
 
         <details
           open={hasAppointmentPrefill}
