@@ -29,6 +29,8 @@ type ActiveRoom = {
 };
 
 export type OnlineBookingAvailabilityIssue =
+  | "salon_closed"
+  | "outside_salon_hours"
   | "no_mapped_employee"
   | "no_available_employee"
   | "no_mapped_room"
@@ -37,6 +39,7 @@ export type OnlineBookingAvailabilityIssue =
 export type OnlineBookingLiveAvailability = {
   employee: NormalizedEmployee | null;
   room: ActiveRoom | null;
+  generalIssue: OnlineBookingAvailabilityIssue | null;
   employeeIssue: OnlineBookingAvailabilityIssue | null;
   roomIssue: OnlineBookingAvailabilityIssue | null;
 };
@@ -164,6 +167,7 @@ export async function getOnlineBookings(status: OnlineBookingStatus = "pending")
           live_availability: {
             employee: availability.employees[0] ?? null,
             room: availability.rooms[0] ?? null,
+            generalIssue: availability.generalIssue,
             employeeIssue: availability.employeeIssue,
             roomIssue: availability.roomIssue,
           } satisfies OnlineBookingLiveAvailability,
@@ -179,6 +183,7 @@ export async function getOnlineBookings(status: OnlineBookingStatus = "pending")
           live_availability: {
             employee: null,
             room: null,
+            generalIssue: null,
             employeeIssue: "no_available_employee",
             roomIssue: "no_available_room",
           } satisfies OnlineBookingLiveAvailability,
@@ -293,6 +298,11 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
 }
 
+function dayOfWeekForDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
 export async function getOnlineBookingAcceptOptions(args: {
   serviceId: string;
   date: string;
@@ -304,9 +314,40 @@ export async function getOnlineBookingAcceptOptions(args: {
 
   const startTime = args.startTime.slice(0, 5);
   const endTime = addMinutesToTimeString(startTime, args.durationMinutes);
-
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
+
+  const { data: salonDay, error: salonHoursError } = await supabase
+    .from("salon_working_hours")
+    .select("opens_at, closes_at, is_closed")
+    .eq("organization_id", organizationId)
+    .eq("day_of_week", dayOfWeekForDate(args.date))
+    .maybeSingle();
+
+  if (salonHoursError) throw new Error(salonHoursError.message);
+
+  if (!salonDay || salonDay.is_closed) {
+    return {
+      employees: [] as NormalizedEmployee[],
+      rooms: [] as ActiveRoom[],
+      generalIssue: "salon_closed" as OnlineBookingAvailabilityIssue,
+      employeeIssue: null as OnlineBookingAvailabilityIssue | null,
+      roomIssue: null as OnlineBookingAvailabilityIssue | null,
+    };
+  }
+
+  if (
+    startMinutes < timeToMinutes(salonDay.opens_at) ||
+    endMinutes > timeToMinutes(salonDay.closes_at)
+  ) {
+    return {
+      employees: [] as NormalizedEmployee[],
+      rooms: [] as ActiveRoom[],
+      generalIssue: "outside_salon_hours" as OnlineBookingAvailabilityIssue,
+      employeeIssue: null as OnlineBookingAvailabilityIssue | null,
+      roomIssue: null as OnlineBookingAvailabilityIssue | null,
+    };
+  }
 
   const [
     { data: employeeMappings, error: employeeMappingsError },
@@ -470,6 +511,7 @@ export async function getOnlineBookingAcceptOptions(args: {
   return {
     employees: availableEmployees,
     rooms: availableRooms,
+    generalIssue: null as OnlineBookingAvailabilityIssue | null,
     employeeIssue,
     roomIssue,
   };
