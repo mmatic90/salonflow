@@ -9,7 +9,8 @@ import { getDictionary } from "@/lib/i18n";
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const permissions = await getCurrentUserPermissions();
-  const hideFeedbackTools = process.env.NEXT_PUBLIC_HIDE_FEEDBACK_TOOLS === "true";
+  const hideFeedbackTools =
+    process.env.NEXT_PUBLIC_HIDE_FEEDBACK_TOOLS === "true";
 
   if (!permissions) {
     const supabase = await createClient();
@@ -33,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           displayName={permissions.displayName}
           organizationName={permissions.organizationName}
           locale={permissions.organizationLocale}
+          isSystemDeveloper={permissions.isSystemDeveloper}
         />
 
         <main className="flex min-w-0 flex-1 flex-col transition-all duration-200">
