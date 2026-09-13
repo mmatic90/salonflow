@@ -80,7 +80,11 @@ export default function RoomsTable({ locale = "hr", rooms }: Props) {
   function saveChanges() {
     startTransition(async () => {
       const result = await bulkUpdateRoomsAction(items);
-      result.ok ? toast.success(result.message) : toast.error(result.message);
+      if (result.ok) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
     });
   }
 
