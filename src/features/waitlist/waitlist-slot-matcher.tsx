@@ -192,8 +192,7 @@ export default function WaitlistSlotMatcher({
     setMatchError("");
   }
 
-  useEffect(() => {
-    resetMatches();
+  function resetAvailability() {
     setEmployeeId("");
     setRoomId("");
     setEmployees([]);
@@ -202,7 +201,10 @@ export default function WaitlistSlotMatcher({
     setEmployeeIssue(null);
     setRoomIssue(null);
     setAvailabilityError("");
+    resetMatches();
+  }
 
+  useEffect(() => {
     if (!availabilityReady) return;
 
     const controller = new AbortController();
@@ -306,7 +308,10 @@ export default function WaitlistSlotMatcher({
               type="date"
               min={defaultDate}
               value={date}
-              onChange={(event) => setDate(event.target.value)}
+              onChange={(event) => {
+                setDate(event.target.value);
+                resetAvailability();
+              }}
               className={fieldClass}
             />
           </label>
@@ -316,7 +321,10 @@ export default function WaitlistSlotMatcher({
             <AppointmentTimeSelect
               locale={locale}
               value={startTime}
-              onChange={setStartTime}
+              onChange={(nextTime) => {
+                setStartTime(nextTime);
+                resetAvailability();
+              }}
               startHour={5}
               endHour={23}
             />
@@ -326,7 +334,10 @@ export default function WaitlistSlotMatcher({
             <span>{t.service}</span>
             <select
               value={serviceId}
-              onChange={(event) => setServiceId(event.target.value)}
+              onChange={(event) => {
+                setServiceId(event.target.value);
+                resetAvailability();
+              }}
               className={fieldClass}
             >
               <option value="">{t.chooseService}</option>
