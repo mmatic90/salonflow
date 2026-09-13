@@ -2,11 +2,10 @@
 
 import { Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-
-type ThemeValue = "sand" | "rose" | "slate";
+import type { OrganizationTheme } from "@/lib/permissions";
 
 type ThemeOption = {
-  value: ThemeValue;
+  value: OrganizationTheme;
   name: string;
   description: string;
   swatches: readonly string[];
@@ -14,13 +13,13 @@ type ThemeOption = {
 
 type Props = {
   themes: readonly ThemeOption[];
-  initialTheme: ThemeValue;
+  initialTheme: OrganizationTheme;
 };
 
 export default function ThemePreviewPicker({ themes, initialTheme }: Props) {
-  const [selectedTheme, setSelectedTheme] = useState<ThemeValue>(initialTheme);
-  const originalTheme = useRef<ThemeValue>(initialTheme);
-  const selectedThemeRef = useRef<ThemeValue>(initialTheme);
+  const [selectedTheme, setSelectedTheme] = useState<OrganizationTheme>(initialTheme);
+  const originalTheme = useRef<OrganizationTheme>(initialTheme);
+  const selectedThemeRef = useRef<OrganizationTheme>(initialTheme);
   const savedRef = useRef(false);
 
   useEffect(() => {
@@ -48,7 +47,7 @@ export default function ThemePreviewPicker({ themes, initialTheme }: Props) {
     };
   }, []);
 
-  function previewTheme(theme: ThemeValue) {
+  function previewTheme(theme: OrganizationTheme) {
     setSelectedTheme(theme);
     selectedThemeRef.current = theme;
 
@@ -59,17 +58,17 @@ export default function ThemePreviewPicker({ themes, initialTheme }: Props) {
   }
 
   return (
-    <div className="mt-5 grid gap-4 md:grid-cols-3">
+    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {themes.map((theme) => {
         const active = selectedTheme === theme.value;
 
         return (
           <label
             key={theme.value}
-            className={`relative cursor-pointer rounded-2xl border p-4 transition ${
+            className={`relative cursor-pointer rounded-2xl border bg-white p-4 transition ${
               active
                 ? "border-app-accent ring-2 ring-app-accent/15"
-                : "border-app-soft hover:bg-app-bg"
+                : "border-app-soft hover:-translate-y-0.5 hover:shadow-sm"
             }`}
           >
             <input
