@@ -24,8 +24,12 @@ export async function validateAppointmentRuntime(args: ValidationArgs) {
   const startMinutes = timeToMinutes(args.startTime);
   const endMinutes = timeToMinutes(args.endTime);
 
-  const [scheduleResult, appointmentsResult] = await Promise.all([
+  const [scheduleResult, breakResult, appointmentsResult] = await Promise.all([
     supabase.rpc("get_employee_effective_schedule", {
+      p_employee_id: args.employeeId,
+      p_date: args.appointmentDate,
+    }),
+    supabase.rpc("get_employee_effective_break", {
       p_employee_id: args.employeeId,
       p_date: args.appointmentDate,
     }),
@@ -39,6 +43,10 @@ export async function validateAppointmentRuntime(args: ValidationArgs) {
 
   if (scheduleResult.error) {
     return { ok: false as const, message: scheduleResult.error.message };
+  }
+
+  if (breakResult.error) {
+    return { ok: false as const, message: breakResult.error.message };
   }
 
   if (appointmentsResult.error) {
@@ -59,6 +67,23 @@ export async function validateAppointmentRuntime(args: ValidationArgs) {
     return {
       ok: false as const,
       message: "Termin mora biti unutar radnog vremena zaposlenika.",
+    };
+  }
+
+  const employeeBreak = breakResult.data?.[0];
+  if (
+    employeeBreak?.break_start_time &&
+    employeeBreak.break_end_time &&
+    overlaps(
+      startMinutes,
+      endMinutes,
+      timeToMinutes(employeeBreak.break_start_time),
+      timeToMinutes(employeeBreak.break_end_time),
+    )
+  ) {
+    return {
+      ok: false as const,
+      message: "Termin se preklapa s pauzom zaposlenika.",
     };
   }
 
@@ -108,6 +133,9 @@ export async function validateAppointmentRuntime(args: ValidationArgs) {
 }
 
 export function appointmentDatabaseErrorMessage(message: string) {
+  if (message.includes("EMPLOYEE_BREAK_OVERLAP")) {
+    return "Termin se preklapa s pauzom zaposlenika.";
+  }
   if (message.includes("EMPLOYEE_NOT_WORKING")) {
     return "Odabrani zaposlenik ne radi na odabrani datum ili termin nije unutar njegovog radnog vremena.";
   }
