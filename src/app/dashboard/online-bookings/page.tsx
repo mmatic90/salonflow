@@ -75,13 +75,18 @@ function availabilityIssueText(
 
   const copy = {
     hr: {
+      salon_closed: "Salon je zatvoren na traženi datum.",
+      outside_salon_hours: "Traženi termin je izvan radnog vremena salona.",
       no_mapped_employee: "Nijedan djelatnik nije povezan s ovom uslugom.",
       no_available_employee:
         "Nijedan djelatnik za ovu uslugu nije slobodan u traženo vrijeme.",
       no_mapped_room: "Nijedna soba nije povezana s ovom uslugom.",
-      no_available_room: "Nijedna odgovarajuća soba nije slobodna u traženo vrijeme.",
+      no_available_room:
+        "Nijedna odgovarajuća soba nije slobodna u traženo vrijeme.",
     },
     en: {
+      salon_closed: "The salon is closed on the requested date.",
+      outside_salon_hours: "The requested slot is outside salon opening hours.",
       no_mapped_employee: "No employee is assigned to this service.",
       no_available_employee:
         "No employee for this service is available at the requested time.",
@@ -89,6 +94,9 @@ function availabilityIssueText(
       no_available_room: "No suitable room is available at the requested time.",
     },
     it: {
+      salon_closed: "Il salone è chiuso nella data richiesta.",
+      outside_salon_hours:
+        "L'orario richiesto è fuori dall'orario di apertura del salone.",
       no_mapped_employee: "Nessun operatore è associato a questo servizio.",
       no_available_employee:
         "Nessun operatore per questo servizio è libero nell'orario richiesto.",
@@ -216,8 +224,10 @@ export default async function OnlineBookingsPage({
               const liveAvailability = booking.live_availability;
               const quickEmployee = liveAvailability?.employee ?? null;
               const quickRoom = liveAvailability?.room ?? null;
-              const canQuickAccept =
-                booking.status === "pending" && quickEmployee && quickRoom;
+              const generalIssue = availabilityIssueText(
+                liveAvailability?.generalIssue ?? null,
+                permissions.organizationLocale,
+              );
               const employeeIssue = availabilityIssueText(
                 liveAvailability?.employeeIssue ?? null,
                 permissions.organizationLocale,
@@ -226,6 +236,11 @@ export default async function OnlineBookingsPage({
                 liveAvailability?.roomIssue ?? null,
                 permissions.organizationLocale,
               );
+              const canQuickAccept =
+                booking.status === "pending" &&
+                !generalIssue &&
+                quickEmployee &&
+                quickRoom;
 
               return (
                 <article
@@ -403,6 +418,7 @@ export default async function OnlineBookingsPage({
                               {availabilityCopy.unavailable}
                             </div>
                             <div className="mt-2 space-y-1 text-amber-800">
+                              {generalIssue ? <p>• {generalIssue}</p> : null}
                               {employeeIssue ? <p>• {employeeIssue}</p> : null}
                               {roomIssue ? <p>• {roomIssue}</p> : null}
                             </div>
