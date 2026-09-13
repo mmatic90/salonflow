@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
+import {
+  normalizeBillingProvider,
+  type BillingProvider,
+} from "@/lib/billing";
 import type {
   SalonLifecycleStatus,
   SalonPlanCode,
@@ -21,6 +25,8 @@ export type PlatformSalon = {
   trialStartedAt: string | null;
   trialEndsAt: string | null;
   planChangedAt: string;
+  billingProvider: BillingProvider;
+  billingEmail: string | null;
   createdAt: string;
   ownerName: string | null;
   ownerEmail: string | null;
@@ -72,6 +78,15 @@ export type PlatformSalonDetail = {
   trialStartedAt: string | null;
   trialEndsAt: string | null;
   planChangedAt: string;
+  billingProvider: BillingProvider;
+  billingEmail: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  stripePriceId: string | null;
+  billingPeriodStart: string | null;
+  billingPeriodEnd: string | null;
+  billingCancelAtPeriodEnd: boolean;
+  billingUpdatedAt: string;
   createdAt: string;
   updatedAt: string;
   ownerName: string | null;
@@ -113,7 +128,7 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
       supabase
         .from("organizations")
         .select(
-          "id, name, slug, locale, currency, phone, email, city, country_code, is_active, plan_code, lifecycle_status, trial_started_at, trial_ends_at, plan_changed_at, created_at",
+          "id, name, slug, locale, currency, phone, email, city, country_code, is_active, plan_code, lifecycle_status, trial_started_at, trial_ends_at, plan_changed_at, billing_provider, billing_email, created_at",
         )
         .order("created_at", { ascending: false }),
       supabase
@@ -166,6 +181,8 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
         trialStartedAt: organization.trial_started_at ?? null,
         trialEndsAt: organization.trial_ends_at ?? null,
         planChangedAt: String(organization.plan_changed_at ?? organization.created_at),
+        billingProvider: normalizeBillingProvider(organization.billing_provider),
+        billingEmail: organization.billing_email ?? null,
         createdAt: String(organization.created_at),
         ownerName: owner?.display_name ?? null,
         ownerEmail: owner ? usersById.get(owner.user_id) ?? null : null,
@@ -213,7 +230,7 @@ export async function getPlatformSalonById(
       supabase
         .from("organizations")
         .select(
-          "id, name, slug, timezone, locale, currency, phone, email, address_line_1, address_line_2, city, postal_code, country_code, logo_url, is_active, plan_code, lifecycle_status, trial_started_at, trial_ends_at, plan_changed_at, created_at, updated_at",
+          "id, name, slug, timezone, locale, currency, phone, email, address_line_1, address_line_2, city, postal_code, country_code, logo_url, is_active, plan_code, lifecycle_status, trial_started_at, trial_ends_at, plan_changed_at, billing_provider, billing_email, stripe_customer_id, stripe_subscription_id, stripe_price_id, billing_period_start, billing_period_end, billing_cancel_at_period_end, billing_updated_at, created_at, updated_at",
         )
         .eq("id", organizationId)
         .maybeSingle(),
@@ -278,6 +295,17 @@ export async function getPlatformSalonById(
     trialStartedAt: organization.trial_started_at ?? null,
     trialEndsAt: organization.trial_ends_at ?? null,
     planChangedAt: String(organization.plan_changed_at ?? organization.created_at),
+    billingProvider: normalizeBillingProvider(organization.billing_provider),
+    billingEmail: organization.billing_email ?? null,
+    stripeCustomerId: organization.stripe_customer_id ?? null,
+    stripeSubscriptionId: organization.stripe_subscription_id ?? null,
+    stripePriceId: organization.stripe_price_id ?? null,
+    billingPeriodStart: organization.billing_period_start ?? null,
+    billingPeriodEnd: organization.billing_period_end ?? null,
+    billingCancelAtPeriodEnd: organization.billing_cancel_at_period_end === true,
+    billingUpdatedAt: String(
+      organization.billing_updated_at ?? organization.updated_at ?? organization.created_at,
+    ),
     createdAt: String(organization.created_at),
     updatedAt: String(organization.updated_at),
     ownerName: owner?.displayName ?? null,
