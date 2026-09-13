@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
+import { Coffee } from "lucide-react";
 import AppointmentTimeSelect from "@/components/appointment-time-select";
 import {
   createScheduleOverrideAction,
@@ -23,14 +24,43 @@ function getTodayLocalDate() {
   return `${year}-${month}-${day}`;
 }
 
+function copy(locale: AppLocale) {
+  if (locale === "en") {
+    return {
+      break: "Break / split shift",
+      breakHelp: "Appointments will be blocked during this interval.",
+      breakStart: "Break starts",
+      breakEnd: "Break ends",
+    };
+  }
+  if (locale === "it") {
+    return {
+      break: "Pausa / turno spezzato",
+      breakHelp: "Gli appuntamenti saranno bloccati durante questo intervallo.",
+      breakStart: "Inizio pausa",
+      breakEnd: "Fine pausa",
+    };
+  }
+  return {
+    break: "Pauza / dvokratno",
+    breakHelp: "Termini će biti blokirani tijekom ovog raspona.",
+    breakStart: "Početak pauze",
+    breakEnd: "Kraj pauze",
+  };
+}
+
 export default function OverrideForm({ locale = "hr", employeeId, salonHours }: Props) {
   const t = getDictionary(locale).schedule;
+  const ui = copy(locale);
   const [overrideType, setOverrideType] = useState("custom_hours");
   const today = useMemo(() => getTodayLocalDate(), []);
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("16:00");
+  const [hasBreak, setHasBreak] = useState(false);
+  const [breakStartTime, setBreakStartTime] = useState("12:00");
+  const [breakEndTime, setBreakEndTime] = useState("13:00");
   const initialState: ScheduleActionState = { error: "", success: "" };
   const boundAction = createScheduleOverrideAction.bind(null, employeeId);
   const [state, formAction, pending] = useActionState(boundAction, initialState);
@@ -108,7 +138,10 @@ export default function OverrideForm({ locale = "hr", employeeId, salonHours }: 
                   name="override_type"
                   value={option.value}
                   checked={active}
-                  onChange={() => setOverrideType(option.value)}
+                  onChange={() => {
+                    setOverrideType(option.value);
+                    if (option.value !== "custom_hours") setHasBreak(false);
+                  }}
                   className="sr-only"
                 />
                 {option.label}
@@ -125,32 +158,92 @@ export default function OverrideForm({ locale = "hr", employeeId, salonHours }: 
       ) : null}
 
       {overrideType === "custom_hours" ? (
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-1.5 text-sm font-medium text-app-text">
-            <span>{t.start}</span>
-            <AppointmentTimeSelect
-              locale={locale}
-              name="start_time"
-              value={startTime}
-              onChange={setStartTime}
-              required
-              startHour={5}
-              endHour={22}
-            />
-          </label>
-          <label className="space-y-1.5 text-sm font-medium text-app-text">
-            <span>{t.end}</span>
-            <AppointmentTimeSelect
-              locale={locale}
-              name="end_time"
-              value={endTime}
-              onChange={setEndTime}
-              required
-              startHour={6}
-              endHour={23}
-            />
-          </label>
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-1.5 text-sm font-medium text-app-text">
+              <span>{t.start}</span>
+              <AppointmentTimeSelect
+                locale={locale}
+                name="start_time"
+                value={startTime}
+                onChange={setStartTime}
+                required
+                startHour={5}
+                endHour={22}
+              />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium text-app-text">
+              <span>{t.end}</span>
+              <AppointmentTimeSelect
+                locale={locale}
+                name="end_time"
+                value={endTime}
+                onChange={setEndTime}
+                required
+                startHour={6}
+                endHour={23}
+              />
+            </label>
+          </div>
+
+          <div className="rounded-xl border border-app-soft bg-app-card-alt/45 p-4">
+            <label className="flex cursor-pointer items-center justify-between gap-4">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-app-text">
+                  <Coffee className="h-4 w-4 text-app-muted" /> {ui.break}
+                </p>
+                <p className="mt-1 text-xs text-app-muted">{ui.breakHelp}</p>
+              </div>
+              <input
+                type="checkbox"
+                name="has_break"
+                checked={hasBreak}
+                onChange={(event) => setHasBreak(event.target.checked)}
+                className="sr-only"
+              />
+              <span
+                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+                  hasBreak ? "bg-app-accent" : "bg-app-soft"
+                }`}
+              >
+                <span
+                  className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                    hasBreak ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </span>
+            </label>
+
+            {hasBreak ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <label className="space-y-1.5 text-sm font-medium text-app-text">
+                  <span>{ui.breakStart}</span>
+                  <AppointmentTimeSelect
+                    locale={locale}
+                    name="break_start_time"
+                    value={breakStartTime}
+                    onChange={setBreakStartTime}
+                    required
+                    startHour={5}
+                    endHour={22}
+                  />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium text-app-text">
+                  <span>{ui.breakEnd}</span>
+                  <AppointmentTimeSelect
+                    locale={locale}
+                    name="break_end_time"
+                    value={breakEndTime}
+                    onChange={setBreakEndTime}
+                    required
+                    startHour={5}
+                    endHour={22}
+                  />
+                </label>
+              </div>
+            ) : null}
+          </div>
+        </>
       ) : null}
 
       <label className="block space-y-1.5 text-sm font-medium text-app-text">
