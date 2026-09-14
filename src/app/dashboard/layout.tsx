@@ -120,16 +120,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                     trialActive,
                   )}
                 </span>
-                <Link
-                  href="/dashboard/upgrade"
-                  className="font-bold underline decoration-current/30 underline-offset-4 hover:decoration-current"
-                >
-                  {permissions.organizationLocale === "it"
-                    ? "Vedi i piani"
-                    : permissions.organizationLocale === "en"
-                      ? "View plans"
-                      : "Pogledaj planove"}
-                </Link>
+                {!trialActive ? (
+                  <Link
+                    href="/dashboard/upgrade?capability=advanced_crm&returnTo=/dashboard"
+                    className="font-bold underline decoration-current/30 underline-offset-4 hover:decoration-current"
+                  >
+                    {permissions.organizationLocale === "it"
+                      ? "Vedi Pro"
+                      : permissions.organizationLocale === "en"
+                        ? "View Pro"
+                        : "Pogledaj Pro"}
+                  </Link>
+                ) : null}
               </div>
             </div>
           ) : null}
