@@ -143,10 +143,6 @@ export default async function DashboardPage() {
                     <span className="rounded-full bg-app-accent/10 px-2 py-0.5 text-xs font-bold text-app-accent">
                       {waitlistCount}
                     </span>
-                  ) : !canUseWaitlist ? (
-                    <span className="rounded-full bg-app-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-app-muted">
-                      Growth
-                    </span>
                   ) : null}
                 </Link>
               </div>
