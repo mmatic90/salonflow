@@ -2,12 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { CheckCircle2, HelpCircle, Loader2, MailCheck, MailX, ShieldCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateClientMarketingPreferenceAction } from "@/features/clients/marketing-preference-actions";
 import type {
   ClientMarketingPreference,
   MarketingEmailStatus,
-  MarketingPreferenceSource,
 } from "@/features/clients/marketing-preferences";
 import type { AppLocale } from "@/lib/i18n";
 
@@ -139,7 +139,11 @@ export default function MarketingPreferenceCard({
   preference: ClientMarketingPreference;
 }) {
   const t = copy(locale);
+  const router = useRouter();
   const [status, setStatus] = useState<MarketingEmailStatus>(preference.status);
+  const [savedStatus, setSavedStatus] = useState<MarketingEmailStatus>(
+    preference.status,
+  );
   const [pending, startTransition] = useTransition();
   const Icon = statusIcon(status);
 
@@ -151,7 +155,9 @@ export default function MarketingPreferenceCard({
         return;
       }
       setStatus(result.status);
+      setSavedStatus(result.status);
       toast.success(t.saved);
+      router.refresh();
     });
   }
 
@@ -212,7 +218,7 @@ export default function MarketingPreferenceCard({
           <button
             type="button"
             onClick={save}
-            disabled={pending || status === preference.status}
+            disabled={pending || status === savedStatus}
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
@@ -240,7 +246,7 @@ export default function MarketingPreferenceCard({
                         ? t.notAllowed
                         : t.unknown}
                   </strong>{" "}
-                  · {t.source}: {t.sources[event.source as MarketingPreferenceSource]}
+                  · {t.source}: {t.sources[event.source]}
                 </span>
                 <span className="shrink-0">
                   {t.changed}: {formatDate(event.createdAt, locale)}
