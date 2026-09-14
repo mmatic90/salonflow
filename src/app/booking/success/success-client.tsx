@@ -19,7 +19,7 @@ const content = {
   hr: {
     status: "Zahtjev poslan",
     title: "Hvala na rezervaciji ✨",
-    text: "Vaš zahtjev za rezervaciju je uspješno poslan. Salon će provjeriti dostupnost termina i poslati vam potvrdu ili povratnu informaciju.",
+    text: "Vaš zahtjev za rezervaciju je uspješno poslan. Salon će provjeriti dostupnost termina i poslati vam potvrdu ili povratnu informaciju emailom.",
     details: "Detalji zahtjeva",
     service: "Usluga",
     date: "Datum",
@@ -31,7 +31,7 @@ const content = {
   en: {
     status: "Request sent",
     title: "Thank you for your booking ✨",
-    text: "Your booking request has been sent successfully. The salon will review the appointment availability and send you a confirmation or feedback.",
+    text: "Your booking request has been sent successfully. The salon will review availability and send confirmation or feedback by email.",
     details: "Request details",
     service: "Service",
     date: "Date",
@@ -43,7 +43,7 @@ const content = {
   it: {
     status: "Richiesta inviata",
     title: "Grazie per la prenotazione ✨",
-    text: "La tua richiesta è stata inviata. Il salone verificherà la disponibilità e ti invierà una conferma o un aggiornamento.",
+    text: "La tua richiesta è stata inviata. Il salone verificherà la disponibilità e ti invierà una conferma o un aggiornamento via email.",
     details: "Dettagli della richiesta",
     service: "Servizio",
     date: "Data",
