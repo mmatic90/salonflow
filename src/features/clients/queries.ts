@@ -1,5 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUserPermissions } from "@/lib/permissions";
+import {
+  canUseCapability,
+  getCurrentUserPermissions,
+} from "@/lib/permissions";
 import { getTodayLocalDate } from "@/lib/utils";
 import type { AppLocale } from "@/lib/i18n";
 
@@ -94,26 +97,32 @@ export type ClientAppointmentRow = {
   room: { id: string; name: string } | null;
 };
 
-export type ClientInsights = {
-  total_appointments: number;
+export type ClientBasicStats = {
   completed_appointments: number;
-  cancelled_appointments: number;
-  no_show_appointments: number;
-  scheduled_appointments: number;
-  no_show_rate: number;
-  cancellation_rate: number;
+  last_completed_appointment: string | null;
+};
+
+export type ClientCrmInsights = {
   favorite_service: string | null;
   favorite_employee: string | null;
-  last_completed_appointment: string | null;
   average_days_between_visits: number | null;
   segment: "new" | "active" | "regular" | "at_risk" | "lost";
   alerts: string[];
 };
 
+export type ClientAttendanceInsights = {
+  cancelled_appointments: number;
+  no_show_appointments: number;
+  no_show_rate: number;
+  cancellation_rate: number;
+};
+
 export type ClientDetails = ClientListItem & {
   pastAppointments: ClientAppointmentRow[];
   upcomingAppointments: ClientAppointmentRow[];
-  insights: ClientInsights;
+  basic_stats: ClientBasicStats;
+  crm_insights: ClientCrmInsights | null;
+  attendance_insights: ClientAttendanceInsights | null;
 };
 
 function fullName(firstName: string | null, lastName: string | null) {
@@ -283,6 +292,13 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
   const permissions = await getCurrentUserPermissions();
   if (!permissions) return null;
 
+  const canUseCrmInsights = canUseCapability(permissions, "crm_insights");
+  const canUseAttendanceInsights = canUseCapability(
+    permissions,
+    "attendance_insights",
+  );
+  const needsBehaviorAnalysis = canUseCrmInsights || canUseAttendanceInsights;
+
   const supabase = await createClient();
   const { data: client, error: clientError } = await supabase
     .from("clients")
@@ -406,80 +422,116 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
     );
 
   const completed = rows.filter((item) => item.status === "completed");
-  const cancelled = rows.filter((item) => item.status === "cancelled");
-  const noShow = rows.filter((item) => item.status === "no_show");
-  const scheduled = rows.filter((item) => item.status === "scheduled");
-  const resolvedAppointments = rows.filter((item) => isResolvedStatus(item.status));
   const completedDates = [
     ...new Set(completed.map((item) => item.appointment_date)),
   ].sort();
   const lastCompleted = completedDates.at(-1) ?? null;
 
-  let averageDaysBetweenVisits: number | null = null;
-  if (completedDates.length > 1) {
-    const gaps = completedDates
-      .slice(1)
-      .map((date, index) => daysBetween(completedDates[index], date));
-    averageDaysBetweenVisits = Math.round(
-      gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length,
-    );
-  }
+  let crmInsights: ClientCrmInsights | null = null;
+  let attendanceInsights: ClientAttendanceInsights | null = null;
 
-  const serviceCounts = new Map<string, number>();
-  const employeeCounts = new Map<string, number>();
+  if (needsBehaviorAnalysis) {
+    const cancelled = rows.filter((item) => item.status === "cancelled");
+    const noShow = rows.filter((item) => item.status === "no_show");
+    const resolvedAppointments = rows.filter((item) => isResolvedStatus(item.status));
+    const resolvedCount = resolvedAppointments.length;
+    const noShowRate = resolvedCount
+      ? Math.round((noShow.length / resolvedCount) * 100)
+      : 0;
+    const cancellationRate = resolvedCount
+      ? Math.round((cancelled.length / resolvedCount) * 100)
+      : 0;
 
-  // Preferences should describe treatments the client actually received, not
-  // cancelled/no-show appointments or future bookings.
-  for (const appointment of completed) {
-    for (const entry of appointment.appointment_services ?? []) {
-      const name = entry.service?.name;
-      if (name) serviceCounts.set(name, (serviceCounts.get(name) ?? 0) + 1);
+    if (canUseAttendanceInsights) {
+      attendanceInsights = {
+        cancelled_appointments: cancelled.length,
+        no_show_appointments: noShow.length,
+        no_show_rate: noShowRate,
+        cancellation_rate: cancellationRate,
+      };
     }
 
-    if (appointment.employee?.display_name) {
-      const name = appointment.employee.display_name;
-      employeeCounts.set(name, (employeeCounts.get(name) ?? 0) + 1);
-    }
-  }
+    if (canUseCrmInsights) {
+      let averageDaysBetweenVisits: number | null = null;
+      if (completedDates.length > 1) {
+        const gaps = completedDates
+          .slice(1)
+          .map((date, index) => daysBetween(completedDates[index], date));
+        averageDaysBetweenVisits = Math.round(
+          gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length,
+        );
+      }
 
-  const favoriteService =
-    [...serviceCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  const favoriteEmployee =
-    [...employeeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-  const resolvedCount = resolvedAppointments.length;
-  const noShowRate = resolvedCount
-    ? Math.round((noShow.length / resolvedCount) * 100)
-    : 0;
-  const cancellationRate = resolvedCount
-    ? Math.round((cancelled.length / resolvedCount) * 100)
-    : 0;
+      const serviceCounts = new Map<string, number>();
+      const employeeCounts = new Map<string, number>();
 
-  const alertSignals: ClientAlertSignal[] = [];
-  if (noShow.length >= 2 || (resolvedCount >= 2 && noShowRate >= 25)) {
-    alertSignals.push({
-      code: "no_show_risk",
-      count: noShow.length,
-      rate: noShowRate,
-    });
-  }
-  if (
-    cancelled.length >= 2 ||
-    (resolvedCount >= 2 && cancellationRate >= 25)
-  ) {
-    alertSignals.push({
-      code: "frequent_cancellations",
-      count: cancelled.length,
-      rate: cancellationRate,
-    });
-  }
-  if (lastCompleted) {
-    const inactiveDays = daysBetween(lastCompleted, today);
-    if (inactiveDays > 120) {
-      alertSignals.push({ code: "inactive", days: inactiveDays });
+      // Preferences should describe treatments the client actually received, not
+      // cancelled/no-show appointments or future bookings.
+      for (const appointment of completed) {
+        for (const entry of appointment.appointment_services ?? []) {
+          const name = entry.service?.name;
+          if (name) serviceCounts.set(name, (serviceCounts.get(name) ?? 0) + 1);
+        }
+
+        if (appointment.employee?.display_name) {
+          const name = appointment.employee.display_name;
+          employeeCounts.set(name, (employeeCounts.get(name) ?? 0) + 1);
+        }
+      }
+
+      const favoriteService =
+        [...serviceCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+      const favoriteEmployee =
+        [...employeeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
+      const alertSignals: ClientAlertSignal[] = [];
+      if (noShow.length >= 2 || (resolvedCount >= 2 && noShowRate >= 25)) {
+        alertSignals.push({
+          code: "no_show_risk",
+          count: noShow.length,
+          rate: noShowRate,
+        });
+      }
+      if (
+        cancelled.length >= 2 ||
+        (resolvedCount >= 2 && cancellationRate >= 25)
+      ) {
+        alertSignals.push({
+          code: "frequent_cancellations",
+          count: cancelled.length,
+          rate: cancellationRate,
+        });
+      }
+      if (lastCompleted) {
+        const inactiveDays = daysBetween(lastCompleted, today);
+        if (inactiveDays > 120) {
+          alertSignals.push({ code: "inactive", days: inactiveDays });
+        }
+      }
+      if (favoriteService) {
+        alertSignals.push({
+          code: "favorite_service",
+          service: favoriteService,
+        });
+      }
+
+      crmInsights = {
+        favorite_service: favoriteService,
+        favorite_employee: favoriteEmployee,
+        average_days_between_visits: averageDaysBetweenVisits,
+        segment: getClientSegment({
+          completed: completed.length,
+          cancelled: cancelled.length,
+          noShow: noShow.length,
+          lastCompleted,
+          today,
+        }),
+        alerts: localizeClientAlerts(
+          permissions.organizationLocale,
+          alertSignals,
+        ),
+      };
     }
-  }
-  if (favoriteService) {
-    alertSignals.push({ code: "favorite_service", service: favoriteService });
   }
 
   return {
@@ -494,27 +546,12 @@ export async function getClientById(id: string): Promise<ClientDetails | null> {
     next_appointment: upcomingAppointments[0]?.appointment_date ?? null,
     pastAppointments,
     upcomingAppointments,
-    insights: {
-      total_appointments: rows.length,
+    basic_stats: {
       completed_appointments: completed.length,
-      cancelled_appointments: cancelled.length,
-      no_show_appointments: noShow.length,
-      scheduled_appointments: scheduled.length,
-      no_show_rate: noShowRate,
-      cancellation_rate: cancellationRate,
-      favorite_service: favoriteService,
-      favorite_employee: favoriteEmployee,
       last_completed_appointment: lastCompleted,
-      average_days_between_visits: averageDaysBetweenVisits,
-      segment: getClientSegment({
-        completed: completed.length,
-        cancelled: cancelled.length,
-        noShow: noShow.length,
-        lastCompleted,
-        today,
-      }),
-      alerts: localizeClientAlerts(permissions.organizationLocale, alertSignals),
     },
+    crm_insights: crmInsights,
+    attendance_insights: attendanceInsights,
   };
 }
 
