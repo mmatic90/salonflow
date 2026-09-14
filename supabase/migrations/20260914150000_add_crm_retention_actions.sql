@@ -38,7 +38,7 @@ on public.crm_retention_actions (organization_id, client_id, created_at desc);
 
 alter table public.crm_retention_actions enable row level security;
 
-create policy "Managers can view retention actions"
+create policy "Pro managers can view retention actions"
 on public.crm_retention_actions
 for select
 to authenticated
@@ -47,9 +47,10 @@ using (
     organization_id,
     array['owner', 'admin', 'manager']::public.organization_role[]
   )
+  and public.organization_has_minimum_plan(organization_id, 'pro')
 );
 
-create policy "Managers can create retention actions"
+create policy "Pro managers can create retention actions"
 on public.crm_retention_actions
 for insert
 to authenticated
@@ -58,6 +59,7 @@ with check (
     organization_id,
     array['owner', 'admin', 'manager']::public.organization_role[]
   )
+  and public.organization_has_minimum_plan(organization_id, 'pro')
   and created_by = auth.uid()
   and exists (
     select 1
