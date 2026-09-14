@@ -184,9 +184,9 @@ export const salonCapabilities: Record<
     code: "advanced_crm",
     name: "Napredni CRM workflow",
     description:
-      "Budući retention workflow, akcijske liste i napredni follow-up iz CRM signala.",
+      "Pro retention akcijska lista iz CRM signala s prioritetima, snoozeom, rebook shortcutom i append-only poviješću odluka.",
     minimumPlan: "pro",
-    availability: "planned",
+    availability: "available",
   },
   review_requests: {
     code: "review_requests",
