@@ -44,7 +44,7 @@ const text = {
     freeSlots: "Slobodni sati",
     contactTitle: "Kontakt podaci",
     contactText:
-      "Unesi svoje podatke kako bi salon mogao potvrditi rezervaciju. Potvrda i povratna informacija stižu emailom.",
+      "Unesi svoje podatke kako bi salon mogao obraditi i potvrditi rezervaciju.",
     selectedSlot: "Odabrani termin",
     fullName: "Ime i prezime *",
     phone: "Telefon (opcionalno)",
@@ -86,7 +86,7 @@ const text = {
     freeSlots: "Available times",
     contactTitle: "Contact details",
     contactText:
-      "Enter your details so the salon can review your request. Confirmation and feedback are sent by email.",
+      "Enter your details so the salon can review and confirm your request.",
     selectedSlot: "Selected appointment",
     fullName: "Full name *",
     phone: "Phone (optional)",
@@ -129,7 +129,7 @@ const text = {
     freeSlots: "Orari disponibili",
     contactTitle: "Dati di contatto",
     contactText:
-      "Inserisci i tuoi dati così il salone potrà verificare la richiesta. Conferma e aggiornamenti vengono inviati via email.",
+      "Inserisci i tuoi dati così il salone potrà verificare e confermare la richiesta.",
     selectedSlot: "Appuntamento selezionato",
     fullName: "Nome e cognome *",
     phone: "Telefono (opzionale)",
