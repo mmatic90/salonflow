@@ -110,12 +110,6 @@ function copy(locale: AppLocale) {
   };
 }
 
-function statusIcon(status: MarketingEmailStatus) {
-  if (status === "allowed") return MailCheck;
-  if (status === "not_allowed") return MailX;
-  return HelpCircle;
-}
-
 function statusClasses(status: MarketingEmailStatus) {
   if (status === "allowed") return "border-emerald-200 bg-emerald-50 text-emerald-800";
   if (status === "not_allowed") return "border-red-200 bg-red-50 text-red-800";
@@ -145,7 +139,6 @@ export default function MarketingPreferenceCard({
     preference.status,
   );
   const [pending, startTransition] = useTransition();
-  const Icon = statusIcon(status);
 
   function save() {
     startTransition(async () => {
@@ -188,7 +181,14 @@ export default function MarketingPreferenceCard({
 
       <div className={`mt-5 rounded-2xl border p-4 ${statusClasses(status)}`}>
         <div className="flex items-center gap-2 font-semibold">
-          <Icon className="h-4 w-4" /> {statusLabel}
+          {status === "allowed" ? (
+            <MailCheck className="h-4 w-4" />
+          ) : status === "not_allowed" ? (
+            <MailX className="h-4 w-4" />
+          ) : (
+            <HelpCircle className="h-4 w-4" />
+          )}
+          {statusLabel}
         </div>
         <p className="mt-2 text-sm leading-6">{help}</p>
       </div>
