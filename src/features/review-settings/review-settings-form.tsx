@@ -16,13 +16,13 @@ function copy(locale: AppLocale) {
       url: "Google review link",
       urlPlaceholder: "https://g.page/r/.../review",
       urlHelp:
-        "Use the direct Google review link for this salon. The link is stored per tenant and is never shared with another salon.",
+        "Use the direct Google review link for this salon. The link is stored separately for each salon and is never shared with another tenant.",
       delay: "Earliest send time",
       twoHours: "At least 2 hours after the appointment ends",
       day: "At least 24 hours after the appointment ends",
       safety: "No retroactive sending",
       safetyBody:
-        "Only appointments ending after the automation was enabled are eligible. Existing historical visits are not contacted. The hourly background job sends at the next run after the selected delay has elapsed.",
+        "Only appointments ending after the automation was enabled are eligible. Existing historical visits are not contacted. The background process sends at the first hourly run after the selected delay has elapsed.",
       save: "Save review automation",
       saving: "Saving...",
       saved: "Review automation settings saved.",
@@ -34,21 +34,21 @@ function copy(locale: AppLocale) {
     return {
       enabled: "Richieste recensione automatiche",
       enabledHelp:
-        "Quando attivo, gli appuntamenti completati che soddisfano i requisiti ricevono una sola richiesta di recensione Google via email.",
-      url: "Link recensione Google",
+        "Quando è attiva, gli appuntamenti completati che soddisfano i requisiti ricevono una sola richiesta di recensione Google via email.",
+      url: "Link per la recensione Google",
       urlPlaceholder: "https://g.page/r/.../review",
       urlHelp:
-        "Usa il link diretto per lasciare una recensione Google a questo salone. Il link resta specifico del tenant.",
+        "Usa il link diretto per lasciare una recensione Google a questo salone. Il link viene salvato separatamente per ogni salone.",
       delay: "Invio non prima di",
       twoHours: "Almeno 2 ore dalla fine dell'appuntamento",
       day: "Almeno 24 ore dalla fine dell'appuntamento",
       safety: "Nessun invio retroattivo",
       safetyBody:
-        "Sono idonei solo gli appuntamenti che terminano dopo l'attivazione dell'automazione. Le visite storiche non vengono contattate. Il job orario invia al primo ciclo successivo al ritardo selezionato.",
+        "Sono idonei solo gli appuntamenti che terminano dopo l'attivazione dell'automazione. Le visite storiche non vengono contattate. Il processo in background invia al primo controllo orario dopo il ritardo selezionato.",
       save: "Salva automazione recensioni",
       saving: "Salvataggio...",
       saved: "Impostazioni dell'automazione recensioni salvate.",
-      preview: "Apri link recensione",
+      preview: "Apri il link recensione",
     };
   }
 
@@ -56,20 +56,20 @@ function copy(locale: AppLocale) {
     enabled: "Automatski zahtjevi za recenziju",
     enabledHelp:
       "Kad je uključeno, završeni termini koji ispunjavaju uvjete dobivaju jedan zahtjev za Google recenziju emailom.",
-    url: "Google review link",
+    url: "Google link za recenziju",
     urlPlaceholder: "https://g.page/r/.../review",
     urlHelp:
-      "Koristi direktni Google link za ostavljanje recenzije ovom salonu. Link je tenant-specifičan i ne dijeli se s drugim salonima.",
+      "Koristi izravni Google link za ostavljanje recenzije ovom salonu. Link se sprema odvojeno za svaki salon.",
     delay: "Najranije pošalji",
     twoHours: "Najranije 2 sata nakon završetka termina",
     day: "Najranije 24 sata nakon završetka termina",
     safety: "Bez retroaktivnog slanja",
     safetyBody:
-      "Uvjet ispunjavaju samo termini koji završavaju nakon uključivanja automatizacije. Stare povijesne posjete neće dobiti poruku. Pozadinski job radi jednom na sat i šalje pri prvom pokretanju nakon isteka odabrane odgode.",
+      "Uvjet ispunjavaju samo termini koji završavaju nakon uključivanja automatizacije. Stare posjete neće dobiti poruku. Pozadinski proces provjerava stanje jednom na sat i šalje pri prvom pokretanju nakon isteka odabrane odgode.",
     save: "Spremi automatizaciju recenzija",
     saving: "Spremanje...",
     saved: "Postavke automatizacije recenzija su spremljene.",
-    preview: "Otvori review link",
+    preview: "Otvori link za recenziju",
   };
 }
 
