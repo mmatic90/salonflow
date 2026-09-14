@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  LockKeyhole,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import PageShell from "@/components/page-shell";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { canUseCapability } from "@/lib/permissions";
@@ -61,10 +67,17 @@ function ui(locale: AppLocale) {
       requiredPlan: "Required plan",
       trialNote:
         "Trial salons receive the full Pro entitlement set, so this screen normally appears only after the trial or on a lower active plan.",
+      howToUpgrade: "How to get access",
+      steps: [
+        "Choose the plan that includes this feature.",
+        "Until self-service billing is connected, SalonFlow administration activates the plan change.",
+        "The feature becomes available immediately after activation; existing salon data remains preserved.",
+      ],
       adminHelp:
-        "Self-service billing is not connected yet. Plan changes are currently activated through SalonFlow administration.",
-      employeeHelp:
-        "Ask the salon owner or administrator about changing the SalonFlow plan.",
+        "Ask the salon owner or administrator to request a plan change from SalonFlow administration.",
+      developerHelp:
+        "As a Platform Admin, you can change this salon's plan directly from Platform Admin.",
+      platformAdmin: "Open Platform Admin",
       dashboard: "Back to dashboard",
       included: "Available from this plan upward",
     };
@@ -80,10 +93,17 @@ function ui(locale: AppLocale) {
       requiredPlan: "Piano richiesto",
       trialNote:
         "Durante il periodo di prova il salone dispone dell'intero set Pro, quindi questa schermata appare normalmente solo dopo il trial o con un piano attivo inferiore.",
+      howToUpgrade: "Come ottenere l'accesso",
+      steps: [
+        "Scegli il piano che include questa funzione.",
+        "Finché la fatturazione self-service non è collegata, l'amministrazione SalonFlow attiva il cambio di piano.",
+        "La funzione si sblocca subito dopo l'attivazione e i dati esistenti del salone restano conservati.",
+      ],
       adminHelp:
-        "La fatturazione self-service non è ancora collegata. Le modifiche del piano vengono attivate tramite l'amministrazione SalonFlow.",
-      employeeHelp:
-        "Contatta il proprietario o l'amministratore del salone per informazioni sul cambio di piano SalonFlow.",
+        "Chiedi al proprietario o all'amministratore del salone di richiedere il cambio di piano all'amministrazione SalonFlow.",
+      developerHelp:
+        "Come Platform Admin puoi cambiare direttamente il piano di questo salone da Platform Admin.",
+      platformAdmin: "Apri Platform Admin",
       dashboard: "Torna alla dashboard",
       included: "Disponibile da questo piano in su",
     };
@@ -98,10 +118,17 @@ function ui(locale: AppLocale) {
     requiredPlan: "Potreban plan",
     trialNote:
       "Trial salon dobiva puni Pro entitlement, pa se ova stranica u pravilu prikazuje tek nakon triala ili na nižem aktivnom planu.",
+    howToUpgrade: "Kako dobiti pristup",
+    steps: [
+      "Odaberite plan koji uključuje ovu funkciju.",
+      "Dok self-service naplata nije spojena, promjenu plana aktivira SalonFlow administracija.",
+      "Funkcija se otključava odmah nakon aktivacije, a postojeći podaci salona ostaju sačuvani.",
+    ],
     adminHelp:
-      "Self-service naplata još nije spojena. Promjena plana trenutno se aktivira kroz SalonFlow administraciju.",
-    employeeHelp:
-      "Za promjenu SalonFlow plana obratite se vlasniku ili administratoru salona.",
+      "Vlasnik ili administrator salona može zatražiti promjenu plana od SalonFlow administracije.",
+    developerHelp:
+      "Kao Platform Admin možeš odmah promijeniti plan ovog salona u Platform Adminu.",
+    platformAdmin: "Otvori Platform Admin",
     dashboard: "Natrag na dashboard",
     included: "Dostupno od ovog plana nadalje",
   };
@@ -184,17 +211,41 @@ export default async function UpgradePage({
       </section>
 
       <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm sm:p-6">
-        <p className="text-sm leading-6 text-app-text">
-          {permissions.role === "admin" ? t.adminHelp : t.employeeHelp}
-        </p>
-        <p className="mt-3 text-xs leading-5 text-app-muted">{t.trialNote}</p>
+        <h2 className="text-xl font-bold text-app-text">{t.howToUpgrade}</h2>
+        <div className="mt-4 space-y-3">
+          {t.steps.map((step, index) => (
+            <div key={step} className="flex items-start gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-app-accent/10 text-xs font-extrabold text-app-accent">
+                {index + 1}
+              </span>
+              <p className="pt-0.5 text-sm leading-6 text-app-text">{step}</p>
+            </div>
+          ))}
+        </div>
 
-        <Link
-          href="/dashboard"
-          className="mt-5 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 sm:w-auto"
-        >
-          {t.dashboard}
-        </Link>
+        <div className="mt-5 rounded-2xl bg-app-bg p-4">
+          <p className="text-sm leading-6 text-app-text">
+            {permissions.isSystemDeveloper ? t.developerHelp : t.adminHelp}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-app-muted">{t.trialNote}</p>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/dashboard"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-bg"
+          >
+            <ArrowLeft className="h-4 w-4" /> {t.dashboard}
+          </Link>
+          {permissions.isSystemDeveloper ? (
+            <Link
+              href="/platform"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+            >
+              <ShieldCheck className="h-4 w-4" /> {t.platformAdmin}
+            </Link>
+          ) : null}
+        </div>
       </section>
     </PageShell>
   );
