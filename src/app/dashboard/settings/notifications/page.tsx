@@ -22,13 +22,14 @@ function copy(locale: AppLocale) {
     return {
       title: "Email & notifications",
       description:
-        "Monitor SalonFlow Managed Email delivery and monthly usage for this salon.",
+        "Monitor SalonFlow managed email delivery and monthly usage for this salon.",
       back: "Back to settings",
       status: "Managed email",
       active: "Active",
       paused: "Paused",
-      provider: "Provider",
+      provider: "Delivery provider",
       providerValue: "SalonFlow Managed Email",
+      customProviderValue: "Custom provider",
       sender: "Sender name",
       replyTo: "Replies go to",
       usage: "Monthly usage",
@@ -38,12 +39,12 @@ function copy(locale: AppLocale) {
       remaining: "Remaining quota",
       quotaHelp:
         "The quota protects the shared SalonFlow email infrastructure from unexpected tenant usage.",
-      reminderTitle: "Included email flows",
+      reminderTitle: "Included email notifications",
       reminderBody:
         "Growth includes booking acceptance/rejection emails, appointment create/change notifications and 24h appointment reminders.",
-      customTitle: "Custom email provider",
+      customTitle: "Salon-owned email provider",
       customBody:
-        "A salon-owned provider/domain will be added later as a Pro option. Provider credentials are intentionally not stored yet.",
+        "A salon-owned provider or sending domain is planned as a Pro option. Provider credentials are intentionally not stored until a secure secret-storage design is in place.",
     };
   }
 
@@ -51,13 +52,14 @@ function copy(locale: AppLocale) {
     return {
       title: "Email e notifiche",
       description:
-        "Controlla l'invio SalonFlow Managed Email e l'utilizzo mensile del salone.",
+        "Controlla l'invio delle email gestite da SalonFlow e l'utilizzo mensile del salone.",
       back: "Torna alle impostazioni",
       status: "Email gestita",
       active: "Attiva",
       paused: "In pausa",
-      provider: "Provider",
+      provider: "Provider di invio",
       providerValue: "SalonFlow Managed Email",
+      customProviderValue: "Provider personalizzato",
       sender: "Nome mittente",
       replyTo: "Le risposte arrivano a",
       usage: "Utilizzo mensile",
@@ -67,40 +69,41 @@ function copy(locale: AppLocale) {
       remaining: "Quota restante",
       quotaHelp:
         "La quota protegge l'infrastruttura email condivisa di SalonFlow da utilizzi imprevisti di un singolo salone.",
-      reminderTitle: "Flussi email inclusi",
+      reminderTitle: "Notifiche email incluse",
       reminderBody:
         "Growth include email di accettazione/rifiuto, notifiche di creazione/modifica appuntamento e promemoria 24h.",
-      customTitle: "Provider email personalizzato",
+      customTitle: "Provider email del salone",
       customBody:
-        "Un provider/dominio del salone verrà aggiunto più avanti come opzione Pro. Le credenziali non vengono ancora salvate intenzionalmente.",
+        "Un provider o dominio di invio del salone è previsto come opzione Pro. Le credenziali non vengono salvate finché non sarà disponibile un sistema sicuro per i segreti.",
     };
   }
 
   return {
     title: "Email i obavijesti",
     description:
-      "Prati SalonFlow Managed Email slanje i mjesečnu potrošnju ovog salona.",
+      "Prati slanje upravljanih SalonFlow emailova i mjesečnu potrošnju ovog salona.",
     back: "Natrag na postavke",
-    status: "Managed email",
+    status: "Upravljani email",
     active: "Aktivno",
     paused: "Pauzirano",
-    provider: "Provider",
+    provider: "Način slanja",
     providerValue: "SalonFlow Managed Email",
+    customProviderValue: "Vlastiti provider",
     sender: "Naziv pošiljatelja",
-    replyTo: "Odgovori dolaze na",
+    replyTo: "Odgovori se šalju na",
     usage: "Mjesečna potrošnja",
     sent: "Poslano",
     failed: "Neuspjelo",
     attempted: "Pokušaji",
     remaining: "Preostala kvota",
     quotaHelp:
-      "Kvota štiti zajedničku SalonFlow email infrastrukturu od neočekivane potrošnje jednog salona.",
-    reminderTitle: "Uključeni email flowovi",
+      "Kvota štiti zajedničku SalonFlow email infrastrukturu od neočekivano velike potrošnje pojedinog salona.",
+    reminderTitle: "Uključene email obavijesti",
     reminderBody:
-      "Growth uključuje prihvaćanje/odbijanje rezervacije, obavijesti kod kreiranja i promjene termina te 24h podsjetnike.",
-    customTitle: "Vlastiti email provider",
+      "Growth uključuje email potvrde i odbijanja online rezervacija, obavijesti kod kreiranja i promjene termina te 24-satne podsjetnike.",
+    customTitle: "Vlastiti email provider salona",
     customBody:
-      "Provider i domena samog salona bit će dodani kasnije kao Pro opcija. Credentialse namjerno još ne spremamo u bazu.",
+      "Vlastiti provider ili domena za slanje planirani su kao Pro opcija. Pristupne podatke namjerno ne spremamo dok ne uvedemo sigurno spremanje tajni.",
   };
 }
 
@@ -172,7 +175,9 @@ export default async function EmailNotificationsSettingsPage() {
                 {t.provider}
               </dt>
               <dd className="mt-1 font-semibold text-app-text">
-                {overview.provider === "salonflow" ? t.providerValue : "Custom"}
+                {overview.provider === "salonflow"
+                  ? t.providerValue
+                  : t.customProviderValue}
               </dd>
             </div>
             <div className="rounded-2xl bg-app-bg p-4">
@@ -217,11 +222,15 @@ export default async function EmailNotificationsSettingsPage() {
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2">
             <div className="rounded-2xl bg-app-bg p-3">
               <p className="text-xs text-app-muted">{t.sent}</p>
-              <p className="mt-1 text-xl font-bold text-app-text">{overview.sentCount}</p>
+              <p className="mt-1 text-xl font-bold text-app-text">
+                {overview.sentCount}
+              </p>
             </div>
             <div className="rounded-2xl bg-app-bg p-3">
               <p className="text-xs text-app-muted">{t.failed}</p>
-              <p className="mt-1 text-xl font-bold text-app-text">{overview.failedCount}</p>
+              <p className="mt-1 text-xl font-bold text-app-text">
+                {overview.failedCount}
+              </p>
             </div>
             <div className="rounded-2xl bg-app-bg p-3">
               <p className="text-xs text-app-muted">{t.attempted}</p>
@@ -245,7 +254,9 @@ export default async function EmailNotificationsSettingsPage() {
             <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-app-accent" />
             <div>
               <h2 className="font-semibold text-app-text">{t.reminderTitle}</h2>
-              <p className="mt-2 text-sm leading-6 text-app-muted">{t.reminderBody}</p>
+              <p className="mt-2 text-sm leading-6 text-app-muted">
+                {t.reminderBody}
+              </p>
             </div>
           </div>
         </section>
