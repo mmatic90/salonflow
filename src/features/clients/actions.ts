@@ -59,6 +59,7 @@ function revalidateClientPaths(clientId?: string) {
   revalidatePath("/dashboard/clients/new");
   revalidatePath("/dashboard/appointments");
   revalidatePath("/dashboard/appointments/new");
+  revalidatePath("/dashboard/retention");
   if (clientId) {
     revalidatePath(`/dashboard/clients/${clientId}`);
     revalidatePath(`/dashboard/clients/${clientId}/edit`);
@@ -136,7 +137,7 @@ export async function updateClientAction(
   const { data: beforeClient, error: beforeError } = await supabase
     .from("clients")
     .select(
-      "id, first_name, last_name, phone, email, notes, allergies_sensitivities, contraindications, treatment_preferences, is_active",
+      "id, first_name, last_name, phone, email, notes, allergies_sensitivities, contraindications, treatment_preferences, marketing_email_status, is_active",
     )
     .eq("organization_id", permissions.organizationId)
     .eq("id", clientId)
@@ -147,11 +148,16 @@ export async function updateClientAction(
   }
 
   const { firstName, lastName } = splitFullName(values.full_name);
+  const nextEmail = normalizeNullableText(formData.get("email"));
+  const emailChanged = (beforeClient?.email ?? null) !== nextEmail;
+  const resetMarketingConsent =
+    emailChanged && beforeClient?.marketing_email_status === "allowed";
+
   const payload = {
     first_name: firstName,
     last_name: lastName,
     phone: normalizeNullableText(formData.get("phone")),
-    email: normalizeNullableText(formData.get("email")),
+    email: nextEmail,
     notes: normalizeNullableText(formData.get("note")),
     allergies_sensitivities: normalizeNullableText(
       formData.get("allergies_sensitivities"),
@@ -160,6 +166,16 @@ export async function updateClientAction(
     treatment_preferences: normalizeNullableText(
       formData.get("treatment_preferences"),
     ),
+    ...(resetMarketingConsent
+      ? {
+          marketing_email_status: "unknown",
+          marketing_email_consent_at: null,
+          marketing_email_consent_source: null,
+          marketing_email_source: "manual",
+          marketing_email_updated_at: new Date().toISOString(),
+          marketing_email_updated_by: permissions.userId,
+        }
+      : {}),
   };
 
   const { error } = await supabase
@@ -177,7 +193,11 @@ export async function updateClientAction(
     entityType: "client",
     entityId: clientId,
     entityLabel: values.full_name,
-    details: { before: beforeClient, after: payload },
+    details: {
+      before: beforeClient,
+      after: payload,
+      marketing_preference_reset_due_to_email_change: resetMarketingConsent,
+    },
   });
 
   revalidateClientPaths(clientId);
