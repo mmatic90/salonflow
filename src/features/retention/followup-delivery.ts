@@ -1,5 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getMarketingEmailDeliveryContext } from "@/lib/marketing/marketing-email";
+import {
+  getMarketingEmailDeliveryContext,
+  type MarketingEmailDeliveryContext,
+} from "@/lib/marketing/marketing-email";
 import { ManagedEmailError } from "@/lib/email/managed-email";
 import { sendRetentionFollowupEmail } from "@/lib/email/retention-followup-email";
 import type {
@@ -93,18 +96,42 @@ export async function deliverRetentionFollowup(args: {
     };
   }
 
-  const marketing = await getMarketingEmailDeliveryContext({
-    organizationId: args.organizationId,
-    clientId: candidate.clientId,
-  });
+  let marketing: MarketingEmailDeliveryContext;
+  try {
+    marketing = await getMarketingEmailDeliveryContext({
+      organizationId: args.organizationId,
+      clientId: candidate.clientId,
+    });
+  } catch (error) {
+    console.error("CRM follow-up consent lookup failed:", error);
+    try {
+      await recordOutcome({
+        organizationId: args.organizationId,
+        signalKey: candidate.signalKey,
+        status: "failed",
+        reason: "consent_lookup_failed",
+      });
+    } catch (recordError) {
+      console.error(
+        "CRM follow-up consent failure outcome could not be recorded:",
+        recordError,
+      );
+    }
+    return { status: "failed", reason: "consent_lookup_failed" };
+  }
 
   if (!marketing.eligible) {
-    await recordOutcome({
-      organizationId: args.organizationId,
-      signalKey: candidate.signalKey,
-      status: "skipped",
-      reason: marketing.reason,
-    });
+    try {
+      await recordOutcome({
+        organizationId: args.organizationId,
+        signalKey: candidate.signalKey,
+        status: "skipped",
+        reason: marketing.reason,
+      });
+    } catch (error) {
+      console.error("CRM follow-up skipped outcome could not be recorded:", error);
+      return { status: "failed", reason: "outcome_record_failed" };
+    }
     return { status: "skipped", reason: marketing.reason };
   }
 
@@ -117,12 +144,19 @@ export async function deliverRetentionFollowup(args: {
     .maybeSingle();
 
   if (organizationError || !organization) {
-    await recordOutcome({
-      organizationId: args.organizationId,
-      signalKey: candidate.signalKey,
-      status: "failed",
-      reason: "organization_load_failed",
-    });
+    try {
+      await recordOutcome({
+        organizationId: args.organizationId,
+        signalKey: candidate.signalKey,
+        status: "failed",
+        reason: "organization_load_failed",
+      });
+    } catch (recordError) {
+      console.error(
+        "CRM follow-up organization failure outcome could not be recorded:",
+        recordError,
+      );
+    }
     return { status: "failed", reason: "organization_load_failed" };
   }
 
