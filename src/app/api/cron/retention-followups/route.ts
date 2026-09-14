@@ -24,6 +24,7 @@ type OrganizationRow = {
   timezone: string | null;
   plan_code: string | null;
   lifecycle_status: string | null;
+  trial_ends_at: string | null;
   is_active: boolean | null;
 };
 
@@ -71,6 +72,7 @@ function organizationCanUseAutomation(organization: OrganizationRow) {
   const effectivePlan = getEffectiveEntitlementPlan(
     normalizeSalonPlanCode(organization.plan_code),
     lifecycle,
+    organization.trial_ends_at,
   );
   return planHasCapability(effectivePlan, "automations");
 }
@@ -132,7 +134,7 @@ export async function GET(request: Request) {
 
   const { data: organizationData, error: organizationError } = await supabase
     .from("organizations")
-    .select("id, locale, timezone, plan_code, lifecycle_status, is_active")
+    .select("id, locale, timezone, plan_code, lifecycle_status, trial_ends_at, is_active")
     .in("id", organizationIds);
 
   if (organizationError) {
