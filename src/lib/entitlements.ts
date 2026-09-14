@@ -192,9 +192,9 @@ export const salonCapabilities: Record<
     code: "review_requests",
     name: "Automatski zahtjevi za recenziju",
     description:
-      "Email template postoji, ali automatski flow ostaje isključen dok svaki tenant ne dobije vlastiti review URL i konfiguraciju.",
+      "Tenant-aware Google review zahtjev emailom nakon completed termina, s tenant review URL-om, odgodom, retry zaštitom i Managed Email kvotom.",
     minimumPlan: "pro",
-    availability: "partial",
+    availability: "available",
   },
   automations: {
     code: "automations",
