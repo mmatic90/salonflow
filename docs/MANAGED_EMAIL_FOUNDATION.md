@@ -61,6 +61,10 @@ Platform Admin has a dedicated per-salon managed-email screen. It shows the curr
 
 The Platform Admin usage card surfaces warning states at 80% utilization and at quota exhaustion. Manual usage reset is intentionally not supported because it would undermine cost protection and usage accounting.
 
+Platform Admin also has a global `Managed email` dashboard. It aggregates current-month attempted, sent and failed counts across all tenants, compares total attempts with `SALONFLOW_MANAGED_EMAIL_GLOBAL_MONTHLY_LIMIT`, and surfaces global warning states at 80% and 100%. The per-salon table shows plan/lifecycle, provider state, effective tenant quota, remaining quota and utilization percentage, sorted by highest utilization so high-risk tenants are visible first. Each row links to the existing per-salon quota screen.
+
+The global dashboard is read-only. It does not expose client records, appointments, message contents or other salon operational data, and it cannot edit or reset global or tenant usage counters.
+
 ## Sender strategy
 
 Local Resend testing may use `onboarding@resend.dev` when allowed by Resend testing rules. Production should use a verified domain owned by the SalonFlow SaaS product, not a personal or M.i.T. Informatika sender domain.
