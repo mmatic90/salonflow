@@ -110,10 +110,10 @@ export const salonCapabilities: Record<
   },
   booking_notifications: {
     code: "booking_notifications",
-    name: "Booking obavijesti",
+    name: "Email obavijesti",
     description:
-      "Tenant-aware email potvrde i odbijanja online rezervacija te email potvrde kreiranja i promjene termina.",
-    minimumPlan: "starter",
+      "SalonFlow Managed Email za potvrde i odbijanja online rezervacija te obavijesti pri kreiranju i promjeni termina.",
+    minimumPlan: "growth",
     availability: "available",
   },
   basic_reports: {
