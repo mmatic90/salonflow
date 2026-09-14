@@ -6,12 +6,16 @@ When a pending public online-booking request is accepted, SalonFlow should reuse
 
 1. Normalize the booking email with trim + lowercase.
 2. If exactly one active client in the organization has the same normalized email, reuse that client.
-3. If no email match exists, normalize the phone to digits only. Phone values shorter than seven digits are not identity signals.
-4. If exactly one active client has the same normalized phone, reuse it only when that client has no email or has the same normalized email as the booking request.
-5. If a phone belongs to a client with a different non-empty email, do not auto-link the booking to that client. A new client may be created instead because shared phone numbers are possible.
-6. If multiple active clients match the same normalized email or phone, stop acceptance and show an ambiguity error. Salon staff must resolve the duplicate CRM records before retrying; SalonFlow must not guess which client is correct.
+3. If multiple active clients share that email, first try to narrow them with the same normalized phone. If that produces exactly one client, reuse it.
+4. If email is still ambiguous, compare the booking full name with the candidate's stored first + last name after Unicode normalization, lowercase and whitespace normalization. Reuse only when that produces exactly one client.
+5. If no email match exists, normalize the phone to digits only. Phone values shorter than seven digits are not identity signals.
+6. If exactly one active client has the same normalized phone, reuse it only when that client has no email or has the same normalized email as the booking request.
+7. If multiple clients share the same phone, the same exact normalized full name may disambiguate them. A phone candidate that already has a different non-empty email is still not auto-linked.
+8. If more than one plausible client remains after these tie-breakers, stop acceptance and show an ambiguity error. SalonFlow must not pick an arbitrary record.
 
 Matching never crosses `organization_id` and ignores inactive/soft-deleted clients.
+
+The tie-breakers are deliberately conservative. Name is never used as the primary identity signal on its own; it only narrows an already matched email/phone candidate set.
 
 ## Existing-client enrichment
 
