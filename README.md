@@ -12,6 +12,7 @@ The project is being evolved from a single-salon application into a reusable mul
 - online booking requests
 - tenant-aware email booking notifications
 - Growth 24h email appointment reminders
+- Pro CRM retention action queue with snooze/history workflow
 - Pro automated Google review requests after completed appointments
 - reports and operational dashboards
 - role-based administration
@@ -75,6 +76,7 @@ The product foundation covers:
 - tenant-aware permissions and database access
 - onboarding, commercial-plan and billing foundations
 - email-only automated client communication so the product remains portable across markets
+- derived Pro CRM action workflows without duplicating core client/appointment data
 
 See [`docs/PRODUCT_FOUNDATION.md`](docs/PRODUCT_FOUNDATION.md) for the current implementation roadmap.
 
