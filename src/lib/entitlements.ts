@@ -184,7 +184,7 @@ export const salonCapabilities: Record<
     code: "advanced_crm",
     name: "Napredni CRM workflow",
     description:
-      "Pro retention akcijska lista iz CRM signala s prioritetima, snoozeom, rebook shortcutom i append-only poviješću odluka.",
+      "Pro retention akcijska lista iz CRM signala s prioritetima, snoozeom, rebook shortcutom, ručnim consent-gated follow-up emailom i append-only poviješću odluka.",
     minimumPlan: "pro",
     availability: "available",
   },
@@ -200,9 +200,9 @@ export const salonCapabilities: Record<
     code: "automations",
     name: "Napredne automatizacije",
     description:
-      "Budući automatizirani follow-up i operativni workflowi izvan postojećih booking procesa.",
+      "Consent-gated dnevni CRM retention follow-up s tenant ON/OFF postavkom, dnevnim limitom, deduplikacijom i Managed Email zaštitama.",
     minimumPlan: "pro",
-    availability: "planned",
+    availability: "available",
   },
   integrations: {
     code: "integrations",
