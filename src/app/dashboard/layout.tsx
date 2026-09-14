@@ -7,7 +7,10 @@ import {
   getCurrentUserPermissions,
   getSuspendedOrganizationForCurrentUser,
 } from "@/lib/permissions";
-import { isTrialEntitlementActive } from "@/lib/entitlements";
+import {
+  getTrialDaysLeft,
+  isTrialEntitlementActive,
+} from "@/lib/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import AdminFooter from "@/components/admin-footer";
 import FeedbackWidget from "@/features/feedback/components/feedback-widget";
@@ -68,13 +71,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     permissions.organizationTrialEndsAt,
   );
   const trialEnd = permissions.organizationTrialEndsAt;
-  const trialDaysLeft =
-    trialActive && trialEnd
-      ? Math.max(
-          1,
-          Math.ceil((new Date(trialEnd).getTime() - Date.now()) / 86_400_000),
-        )
-      : 0;
+  const trialDaysLeft = getTrialDaysLeft(
+    permissions.organizationLifecycleStatus,
+    trialEnd,
+  );
 
   return (
     <div
