@@ -34,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const dictionary = getDictionary(permissions.organizationLocale);
   const canUseWaitlist = canUseCapability(permissions, "waitlist");
   const canUseReports = canUseCapability(permissions, "advanced_reports");
+  const canUseAdvancedCrm = canUseCapability(permissions, "advanced_crm");
 
   return (
     <div
@@ -49,6 +50,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           locale={permissions.organizationLocale}
           canUseWaitlist={canUseWaitlist}
           canUseReports={canUseReports}
+          canUseAdvancedCrm={canUseAdvancedCrm}
           isSystemDeveloper={permissions.isSystemDeveloper}
         />
 
