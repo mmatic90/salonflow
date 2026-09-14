@@ -14,7 +14,6 @@ type Slot = {
 export async function POST(request: Request) {
   try {
     const forwardedFor = request.headers.get("x-forwarded-for");
-
     const ip =
       forwardedFor?.split(",")[0]?.trim() ||
       request.headers.get("x-real-ip") ||
@@ -36,38 +35,27 @@ export async function POST(request: Request) {
         { status: 429 },
       );
     }
-    const body = await request.json();
 
+    const body = await request.json();
     const organizationSlug = String(body.organizationSlug ?? "").trim();
     const serviceId = String(body.serviceId ?? "").trim();
     const date = String(body.date ?? "").trim();
-
     const fullName = String(body.fullName ?? "").trim();
-    const phone = String(body.phone ?? "").trim();
-    const email = String(body.email ?? "").trim() || null;
+    const phone = String(body.phone ?? "").trim() || null;
+    const email = String(body.email ?? "").trim();
     const note = String(body.note ?? "").trim() || null;
     const lang = body.lang === "en" || body.lang === "it" ? body.lang : "hr";
-
     const slot = body.slot as Slot | null;
 
-    if (!organizationSlug || !serviceId || !date || !fullName || (!phone && !email) || !slot) {
-      return NextResponse.json(
-        { error: "Ime, kontakt podatak, usluga, datum i termin su obavezni." },
-        { status: 400 },
-      );
-    }
-
-    const normalizedPhone = phone.replace(/\s+/g, "");
-    const hasCroatianPhone =
-      normalizedPhone.startsWith("+385") ||
-      normalizedPhone.startsWith("00385") ||
-      normalizedPhone.startsWith("09");
-
-    if (phone && !hasCroatianPhone && !email) {
+    if (!organizationSlug || !serviceId || !date || !fullName || !email || !slot) {
       return NextResponse.json(
         {
           error:
-            "SMS potvrde šalju se samo na hrvatske brojeve. Ako nemate hrvatski broj, unesite email.",
+            lang === "en"
+              ? "Name, email, service, date and appointment time are required."
+              : lang === "it"
+                ? "Nome, email, servizio, data e orario dell'appuntamento sono obbligatori."
+                : "Ime, email, usluga, datum i termin su obavezni.",
         },
         { status: 400 },
       );
@@ -113,14 +101,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Spriječi dupli klik / dupli submit:
-    // isti broj + ista usluga + isti datum + isto vrijeme unutar zadnjih 60 sekundi
+    // Prevent duplicate click / duplicate submit for the same email, service,
+    // date and time within the previous 60 seconds.
     const { data: recentDuplicateRequest, error: recentDuplicateError } =
       await supabase
         .from("online_booking_requests")
         .select("id")
         .eq("organization_id", organization.id)
-        .eq("client_phone", phone)
+        .eq("client_email", email)
         .eq("service_id", serviceId)
         .eq("requested_date", date)
         .eq("start_time", slot.start_time)
@@ -206,20 +194,16 @@ export async function POST(request: Request) {
         start_time: slot.start_time,
         end_time: slot.end_time,
         duration_minutes: service.duration_minutes,
-
         suggested_employee_id: slot.employee_id,
         suggested_room_id: slot.room_id,
-
         final_employee_id: slot.employee_id,
         final_room_id: slot.room_id,
         final_duration_minutes: service.duration_minutes,
-
         client_full_name: fullName,
         client_phone: phone,
         client_email: email,
         client_note: note,
         language: lang,
-
         status: "pending",
       })
       .select("id")
@@ -240,7 +224,11 @@ export async function POST(request: Request) {
       ok: true,
       requestId: requestRow.id,
       message:
-        "Zahtjev za rezervaciju je poslan. Salon će provjeriti termin i poslati potvrdu.",
+        lang === "en"
+          ? "Booking request sent. The salon will review it and send confirmation by email."
+          : lang === "it"
+            ? "Richiesta di prenotazione inviata. Il salone la verificherà e invierà la conferma via email."
+            : "Zahtjev za rezervaciju je poslan. Salon će provjeriti termin i poslati potvrdu emailom.",
     });
   } catch (error) {
     console.error("Public booking route failed:", error);
