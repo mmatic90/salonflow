@@ -1,15 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { canUseCapability } from "@/lib/permissions";
 import { requireDashboardUser } from "@/lib/page-guards";
-import {
-  getMarketingEmailDeliveryContext,
-  type MarketingEmailDeliveryContext,
-} from "@/lib/marketing/marketing-email";
-import { ManagedEmailError } from "@/lib/email/managed-email";
-import { sendRetentionFollowupEmail } from "@/lib/email/retention-followup-email";
+import { deliverRetentionFollowup } from "@/features/retention/followup-delivery";
 import {
   getRetentionOverview,
   type RetentionReasonCode,
@@ -18,11 +12,6 @@ import {
 type Result =
   | { ok: true; status: "sent" }
   | { ok: false; status: "failed" | "skipped"; error: string };
-
-type ClaimRow = {
-  allowed: boolean;
-  reason: string;
-};
 
 function isReason(value: unknown): value is RetentionReasonCode {
   return [
@@ -78,40 +67,14 @@ function copy(locale: "hr" | "en" | "it") {
   };
 }
 
-function siteUrl() {
-  return (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
-}
-
-function salonAddress(organization: {
-  address_line_1?: string | null;
-  address_line_2?: string | null;
-  city?: string | null;
-  postal_code?: string | null;
-}) {
-  return [
-    organization.address_line_1,
-    organization.address_line_2,
-    [organization.postal_code, organization.city].filter(Boolean).join(" "),
-  ]
-    .filter(Boolean)
-    .join(", ");
-}
-
-async function recordOutcome(args: {
-  organizationId: string;
-  signalKey: string;
-  status: "sent" | "failed" | "skipped";
-  reason?: string | null;
-}) {
-  const supabase = createAdminClient();
-  const { error } = await supabase.rpc("record_crm_retention_email_outcome", {
-    p_organization_id: args.organizationId,
-    p_signal_key: args.signalKey,
-    p_status: args.status,
-    p_failure_reason: args.reason ?? null,
-  });
-
-  if (error) throw new Error(error.message);
+function deliveryError(reason: string, t: ReturnType<typeof copy>) {
+  if (reason === "already_sent") return t.duplicate;
+  if (reason === "in_progress") return t.inProgress;
+  if (reason === "unknown") return t.unknown;
+  if (reason === "not_allowed") return t.notAllowed;
+  if (reason === "missing_email") return t.missingEmail;
+  if (reason === "missing_client") return t.missingClient;
+  return t.sendFailed;
 }
 
 export async function sendRetentionFollowupEmailAction(input: {
@@ -151,153 +114,23 @@ export async function sendRetentionFollowupEmailAction(input: {
     return { ok: false, status: "skipped", error: t.stale };
   }
 
-  const admin = createAdminClient();
-  const { data: claimData, error: claimError } = await admin.rpc(
-    "claim_crm_retention_email_delivery",
-    {
-      p_organization_id: permissions.organizationId,
-      p_client_id: input.clientId,
-      p_signal_key: input.signalKey,
-      p_reason_code: input.reasonCode,
-      p_initiated_by: permissions.userId,
-    },
-  );
-
-  if (claimError) {
-    console.error("CRM follow-up claim failed:", claimError.message);
-    return { ok: false, status: "failed", error: t.sendFailed };
-  }
-
-  const claim = (claimData?.[0] ?? null) as ClaimRow | null;
-  if (!claim?.allowed) {
-    if (claim?.reason === "already_sent") {
-      return { ok: false, status: "skipped", error: t.duplicate };
-    }
-    if (claim?.reason === "in_progress") {
-      return { ok: false, status: "skipped", error: t.inProgress };
-    }
-    return { ok: false, status: "skipped", error: t.invalid };
-  }
-
-  let marketing: MarketingEmailDeliveryContext;
-  try {
-    marketing = await getMarketingEmailDeliveryContext({
-      organizationId: permissions.organizationId,
-      clientId: input.clientId,
-    });
-  } catch (error) {
-    console.error("CRM follow-up consent lookup failed:", error);
-    try {
-      await recordOutcome({
-        organizationId: permissions.organizationId,
-        signalKey: input.signalKey,
-        status: "failed",
-        reason: "consent_lookup_failed",
-      });
-    } catch (recordError) {
-      console.error("CRM follow-up consent failure outcome could not be recorded:", recordError);
-    }
-    return { ok: false, status: "failed", error: t.sendFailed };
-  }
-
-  if (!marketing.eligible) {
-    try {
-      await recordOutcome({
-        organizationId: permissions.organizationId,
-        signalKey: input.signalKey,
-        status: "skipped",
-        reason: marketing.reason,
-      });
-    } catch (error) {
-      console.error("CRM follow-up skipped outcome could not be recorded:", error);
-      return { ok: false, status: "failed", error: t.sendFailed };
-    }
-
-    const error =
-      marketing.reason === "not_allowed"
-        ? t.notAllowed
-        : marketing.reason === "missing_email"
-          ? t.missingEmail
-          : marketing.reason === "missing_client"
-            ? t.missingClient
-            : t.unknown;
-
-    revalidatePath("/dashboard/retention");
-    return { ok: false, status: "skipped", error };
-  }
-
-  const { data: organization, error: organizationError } = await admin
-    .from("organizations")
-    .select(
-      "name, slug, phone, address_line_1, address_line_2, city, postal_code, logo_url",
-    )
-    .eq("id", permissions.organizationId)
-    .maybeSingle();
-
-  if (organizationError || !organization) {
-    try {
-      await recordOutcome({
-        organizationId: permissions.organizationId,
-        signalKey: input.signalKey,
-        status: "failed",
-        reason: "organization_load_failed",
-      });
-    } catch (recordError) {
-      console.error("CRM follow-up organization failure outcome could not be recorded:", recordError);
-    }
-    return { ok: false, status: "failed", error: t.sendFailed };
-  }
-
-  try {
-    await sendRetentionFollowupEmail({
-      organizationId: permissions.organizationId,
-      to: marketing.email,
-      clientName: candidate.fullName,
-      salonName: organization.name,
-      salonPhone: organization.phone,
-      salonAddress: salonAddress(organization),
-      salonLogoUrl: organization.logo_url,
-      bookingUrl: `${siteUrl()}/booking/${encodeURIComponent(organization.slug)}`,
-      unsubscribeUrl: marketing.unsubscribeUrl,
-      reasonCode: input.reasonCode,
-      lang: locale,
-    });
-  } catch (error) {
-    const reason =
-      error instanceof ManagedEmailError ? error.code : "provider_send_failed";
-
-    try {
-      await recordOutcome({
-        organizationId: permissions.organizationId,
-        signalKey: input.signalKey,
-        status: "failed",
-        reason,
-      });
-    } catch (recordError) {
-      console.error("CRM follow-up failure outcome could not be recorded:", recordError);
-    }
-
-    console.error("CRM follow-up email send failed:", error);
-    revalidatePath("/dashboard/retention");
-    return { ok: false, status: "failed", error: t.sendFailed };
-  }
-
-  try {
-    await recordOutcome({
-      organizationId: permissions.organizationId,
-      signalKey: input.signalKey,
-      status: "sent",
-    });
-  } catch (error) {
-    // Delivery already happened. Keep this visible in logs rather than attempting
-    // another send from the same request. A later hardening step may add provider
-    // idempotency keys if the provider abstraction supports them.
-    console.error("CRM follow-up sent but outcome recording failed:", error);
-    return { ok: false, status: "failed", error: t.sendFailed };
-  }
+  const result = await deliverRetentionFollowup({
+    organizationId: permissions.organizationId,
+    candidate,
+    locale,
+    initiatedBy: permissions.userId,
+  });
 
   revalidatePath("/dashboard/retention");
   revalidatePath(`/dashboard/clients/${input.clientId}`);
 
-  return { ok: true, status: "sent" };
+  if (result.status === "sent") {
+    return { ok: true, status: "sent" };
+  }
+
+  return {
+    ok: false,
+    status: result.status,
+    error: deliveryError(result.reason, t),
+  };
 }
