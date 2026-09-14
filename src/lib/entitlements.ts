@@ -112,7 +112,7 @@ export const salonCapabilities: Record<
     code: "booking_notifications",
     name: "Booking obavijesti",
     description:
-      "Tenant-aware potvrde i odbijanja online rezervacija te osnovne SMS poruke vezane uz termin.",
+      "Tenant-aware email potvrde i odbijanja online rezervacija te email potvrde kreiranja i promjene termina.",
     minimumPlan: "starter",
     availability: "available",
   },
@@ -168,7 +168,7 @@ export const salonCapabilities: Record<
     code: "appointment_reminders",
     name: "Automatski podsjetnici za termin",
     description:
-      "Tenant-aware 24h SMS/email podsjetnici s provjerom plana, lifecyclea, localea i timezonea neposredno prije slanja.",
+      "Tenant-aware 24h email podsjetnici s provjerom plana, lifecyclea, localea i timezonea neposredno prije slanja.",
     minimumPlan: "growth",
     availability: "available",
   },
@@ -192,7 +192,7 @@ export const salonCapabilities: Record<
     code: "review_requests",
     name: "Automatski zahtjevi za recenziju",
     description:
-      "Postoji prototip slanja nakon posjeta, ali još sadrži single-salon pretpostavke i mora se tenantizirati.",
+      "Email template postoji, ali automatski flow ostaje isključen dok svaki tenant ne dobije vlastiti review URL i konfiguraciju.",
     minimumPlan: "pro",
     availability: "partial",
   },
