@@ -149,7 +149,9 @@ function addDays(date: Date, days: number) {
 
 function weekdayRelative(days: number) {
   let date = addDays(new Date(), days);
-  while (date.getUTCDay() === 0) date = addDays(date, days < 0 ? -1 : 1);
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
+    date = addDays(date, days < 0 ? -1 : 1);
+  }
   return isoDate(date);
 }
 
@@ -349,7 +351,6 @@ export async function seedSalesTrialOrganization(args: {
     });
   });
 
-  // A deterministic retention example: two completed visits, no future booking.
   appointmentSpecs.push(
     { date: weekdayRelative(-84), employeeIndex: 2, serviceIndex: 6, clientIndex: 0, roomIndex: 2, startTime: "13:00", status: "completed" },
     { date: weekdayRelative(-49), employeeIndex: 2, serviceIndex: 6, clientIndex: 0, roomIndex: 2, startTime: "13:00", status: "completed" },
