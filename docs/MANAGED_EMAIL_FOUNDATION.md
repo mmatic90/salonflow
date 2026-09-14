@@ -4,11 +4,12 @@ SalonFlow tenant communication is email-only. SMS/Twilio delivery is intentional
 
 ## Architecture
 
-Tenant emails do not call Resend directly from feature code. Active booking confirmations, booking rejections, manual appointment confirmations/updates and 24h appointment reminders route through:
+Tenant emails do not call Resend directly from feature code. Active booking confirmations, booking rejections, manual appointment confirmations/updates, 24h appointment reminders and automated Google review requests route through the managed tenant email layer:
 
-1. `src/lib/email/tenant-notifications.ts` for localized tenant-facing templates;
-2. `src/lib/email/managed-email.ts` for tenant entitlement, provider choice and quota enforcement;
-3. `src/lib/email/provider.ts` for the concrete provider implementation.
+1. `src/lib/email/tenant-notifications.ts` for booking/reminder tenant-facing templates;
+2. `src/lib/email/review-request-email.ts` for the Pro Google review request template;
+3. `src/lib/email/managed-email.ts` for tenant entitlement, provider choice and quota enforcement;
+4. `src/lib/email/provider.ts` for the concrete provider implementation.
 
 Resend is currently the only managed provider implementation. The application model reserves `custom` as a future provider mode, but custom credentials are deliberately not stored yet. A custom provider must not be enabled until credential encryption/secrets handling is designed.
 
@@ -81,18 +82,26 @@ The managed email layer checks the capability associated with the email before q
 
 - booking confirmation/rejection/create/update emails use `booking_notifications`;
 - 24h reminders use `appointment_reminders`;
-- future review-request delivery must use `review_requests`.
+- Google review request emails use `review_requests`.
 
-`booking_notifications` is now a **Growth** capability. Growth, Pro and Trial tenants can use SalonFlow Managed Email for operational client notifications. Starter keeps online booking and normal appointment management, but automatic client email delivery is not included.
+`booking_notifications` is a **Growth** capability. Growth, Pro and Trial tenants can use SalonFlow Managed Email for operational client notifications. Starter keeps online booking and normal appointment management, but automatic client email delivery is not included.
 
-`appointment_reminders` remains a **Growth** capability. This means Growth/Pro/Trial receive both managed operational notifications and proactive 24h reminders, while Starter remains a complete manual/core booking product without platform-paid outbound email.
+`appointment_reminders` is a **Growth** capability. Growth/Pro/Trial receive proactive 24h reminders in addition to managed operational notifications.
 
-The Settings card is locked for Starter and routes to the existing upgrade explanation. The public booking success copy is plan-neutral so Starter never promises an automatic email that its plan does not include.
+`review_requests` is a **Pro** capability. Pro/Trial tenants can opt in, store their own Google review URL, choose a 2h or 24h delay and send one managed review request after an eligible `completed` appointment. Starter and Growth see a locked settings entry and cannot consume quota for review delivery.
 
-Entitlement checks happen before quota reservation, so blocked Starter sends do not consume tenant or global managed-email usage.
+Entitlement checks happen before quota reservation, so blocked plan sends do not consume tenant or global managed-email usage.
+
+## Scheduled delivery
+
+Netlify `netlify/functions/email-automations.mjs` runs hourly and calls both `/api/cron/email-reminders` and `/api/cron/review-requests` with `CRON_SECRET` bearer authorization.
+
+The scheduler is intentionally thin. Tenant configuration, plan/lifecycle checks, timezone handling, quota reservation, delivery state and retry rules remain inside the application routes.
+
+Review-request delivery additionally uses an atomic appointment claim, a maximum of three attempts and a one-hour retry interval. The tenant activation timestamp prevents historical appointments from receiving retroactive review requests.
 
 ## Future custom provider
 
 A future Pro/BYOP option may allow a salon to use its own provider account/domain. Before implementation, SalonFlow needs a credential-safe design such as encrypted secrets or an external secret store. Plain API keys must never be stored in tenant-readable database columns.
 
-When implemented, provider choice should remain behind the same notification interface so booking, appointment and reminder features do not need provider-specific code.
+When implemented, provider choice should remain behind the same notification interface so booking, appointment, reminder and review features do not need provider-specific code.
