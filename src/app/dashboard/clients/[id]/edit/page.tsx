@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import ClientForm from "@/components/client-form";
 import { getClientById } from "@/features/clients/queries";
 import { getClientCareProfile } from "@/features/clients/care-profile-queries";
+import { getClientMarketingPreference } from "@/features/clients/marketing-preferences";
+import MarketingPreferenceCard from "@/features/clients/marketing-preference-card";
 import { updateClientAction } from "@/features/clients/actions";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { getDictionary } from "@/lib/i18n";
@@ -15,9 +17,10 @@ export default async function EditClientPage({ params }: { params: Params }) {
   const t = getDictionary(permissions.organizationLocale).clients;
 
   const { id } = await params;
-  const [client, careProfile] = await Promise.all([
+  const [client, careProfile, marketingPreference] = await Promise.all([
     getClientById(id),
     getClientCareProfile(id),
+    getClientMarketingPreference(id),
   ]);
 
   if (!client) {
@@ -28,7 +31,7 @@ export default async function EditClientPage({ params }: { params: Params }) {
 
   return (
     <main className="min-h-screen bg-app-bg p-4 md:p-6 lg:p-8">
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto max-w-3xl space-y-5">
         <ClientForm
           locale={permissions.organizationLocale}
           title={t.editTitle}
@@ -48,6 +51,14 @@ export default async function EditClientPage({ params }: { params: Params }) {
             treatment_preferences: careProfile?.treatment_preferences ?? "",
           }}
         />
+
+        {marketingPreference ? (
+          <MarketingPreferenceCard
+            clientId={client.id}
+            locale={permissions.organizationLocale}
+            preference={marketingPreference}
+          />
+        ) : null}
       </div>
     </main>
   );
