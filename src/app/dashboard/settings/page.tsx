@@ -77,6 +77,27 @@ const emailCardCopy: Record<
   },
 };
 
+const reviewCardCopy: Record<
+  AppLocale,
+  { title: string; description: string }
+> = {
+  hr: {
+    title: "Google recenzije",
+    description:
+      "Pro automatizacija za slanje jednog zahtjeva za Google recenziju nakon završenog termina.",
+  },
+  en: {
+    title: "Google reviews",
+    description:
+      "Pro automation that sends one Google review request after an eligible completed appointment.",
+  },
+  it: {
+    title: "Recensioni Google",
+    description:
+      "Automazione Pro che invia una sola richiesta di recensione Google dopo un appuntamento completato idoneo.",
+  },
+};
+
 export default async function SettingsPage() {
   const permissions = await requireAdminForSettings();
   const dictionary = getDictionary(permissions.organizationLocale);
@@ -84,11 +105,13 @@ export default async function SettingsPage() {
   const scheduleT = dictionary.schedule;
   const groups = groupLabels[permissions.organizationLocale];
   const emailCopy = emailCardCopy[permissions.organizationLocale];
+  const reviewCopy = reviewCardCopy[permissions.organizationLocale];
   const canUseAuditLog = canUseCapability(permissions, "audit_log");
   const canUseBookingNotifications = canUseCapability(
     permissions,
     "booking_notifications",
   );
+  const canUseReviewRequests = canUseCapability(permissions, "review_requests");
   const auditLogHref = canUseAuditLog
     ? "/dashboard/settings/audit-log"
     : buildCapabilityUpgradePath(
@@ -100,6 +123,12 @@ export default async function SettingsPage() {
     : buildCapabilityUpgradePath(
         "booking_notifications",
         "/dashboard/settings/notifications",
+      );
+  const reviewRequestsHref = canUseReviewRequests
+    ? "/dashboard/settings/reviews"
+    : buildCapabilityUpgradePath(
+        "review_requests",
+        "/dashboard/settings/reviews",
       );
 
   return (
@@ -181,6 +210,13 @@ export default async function SettingsPage() {
             title={emailCopy.title}
             description={emailCopy.description}
             locked={!canUseBookingNotifications}
+          />
+
+          <SettingsCard
+            href={reviewRequestsHref}
+            title={reviewCopy.title}
+            description={reviewCopy.description}
+            locked={!canUseReviewRequests}
           />
 
           <SettingsCard
