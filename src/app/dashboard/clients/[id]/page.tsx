@@ -4,6 +4,8 @@ import { getClientById } from "@/features/clients/queries";
 import { getClientCareProfile } from "@/features/clients/care-profile-queries";
 import { formatTime, statusLabel } from "@/lib/utils";
 import { requireDashboardUser } from "@/lib/page-guards";
+import { canUseCapability } from "@/lib/permissions";
+import { buildCapabilityUpgradePath } from "@/lib/entitlements";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 import EmptyStateCard from "@/components/empty-state-card";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
@@ -14,6 +16,7 @@ import {
   CalendarPlus,
   Clock3,
   FileText,
+  LockKeyhole,
   Mail,
   Phone,
   ShieldCheck,
@@ -95,6 +98,13 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
   const locale = permissions.organizationLocale;
 
   const { id } = await params;
+  const canUseGrowthInsights =
+    canUseCapability(permissions, "crm_insights") &&
+    canUseCapability(permissions, "attendance_insights");
+  const crmUpgradeHref = buildCapabilityUpgradePath(
+    "crm_insights",
+    `/dashboard/clients/${id}`,
+  );
   const [client, careProfile] = await Promise.all([
     getClientById(id),
     getClientCareProfile(id),
@@ -167,6 +177,26 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
           ? "tasso annullamenti"
           : "stopa otkazivanja",
   };
+  const crmGateUi = {
+    title:
+      locale === "en"
+        ? "CRM insights"
+        : locale === "it"
+          ? "Analisi CRM"
+          : "CRM uvidi",
+    description:
+      locale === "en"
+        ? "Client segments, favourite service and employee, visit cadence, attendance rates and CRM signals are available as an advanced plan feature."
+        : locale === "it"
+          ? "Segmenti cliente, servizio e operatore preferiti, frequenza delle visite, tassi di presenza e segnali CRM sono disponibili come funzione avanzata del piano."
+          : "Segmentacija klijenata, omiljena usluga i djelatnik, ritam dolazaka, stope dolaznosti i CRM signali dostupni su kao napredna funkcija plana.",
+    action:
+      locale === "en"
+        ? "View plan details"
+        : locale === "it"
+          ? "Vedi dettagli del piano"
+          : "Pogledaj detalje plana",
+  };
   const careUi = {
     title:
       locale === "en"
@@ -198,6 +228,9 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
       careProfile?.contraindications ||
       careProfile?.treatment_preferences,
   );
+  const showGrowthInsights = Boolean(
+    canUseGrowthInsights && client.crm_insights && client.attendance_insights,
+  );
 
   return (
     <main className="min-h-screen bg-app-bg px-3 py-4 sm:px-4 md:p-6 lg:p-8">
@@ -219,11 +252,13 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
                     <h1 className="truncate text-2xl font-extrabold tracking-tight text-app-text sm:text-3xl">
                       {client.full_name}
                     </h1>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-bold ${segmentClasses(client.insights.segment)}`}
-                    >
-                      {segmentLabel(client.insights.segment, t)}
-                    </span>
+                    {client.crm_insights ? (
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-bold ${segmentClasses(client.crm_insights.segment)}`}
+                      >
+                        {segmentLabel(client.crm_insights.segment, t)}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-app-muted">
                     {client.phone ? (
@@ -271,10 +306,13 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
 
         <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <InsightCard label={t.totalAppointments} value={client.appointments_count} />
-          <InsightCard label={t.completed} value={client.insights.completed_appointments} />
+          <InsightCard
+            label={t.completed}
+            value={client.basic_stats.completed_appointments}
+          />
           <InsightCard
             label={t.lastVisit}
-            value={formatDate(client.insights.last_completed_appointment, locale)}
+            value={formatDate(client.basic_stats.last_completed_appointment, locale)}
           />
           <InsightCard
             label={t.nextAppointment}
@@ -283,81 +321,107 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
         </section>
 
         <section className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
-          <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent">
-                <Sparkles className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-app-muted">{t.badge}</p>
-                <h2 className="text-xl font-bold text-app-text">{t.profile}</h2>
-              </div>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-app-bg p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
-                  {t.favoriteService}
-                </p>
-                <p className="mt-2 font-bold text-app-text">
-                  {client.insights.favorite_service || t.noData}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-app-bg p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
-                  {t.favoriteEmployee}
-                </p>
-                <p className="mt-2 font-bold text-app-text">
-                  {client.insights.favorite_employee || t.noData}
-                </p>
-              </div>
-              <div className="rounded-2xl bg-app-bg p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
-                  {t.averageBetweenVisits}
-                </p>
-                <p className="mt-2 font-bold text-app-text">
-                  {client.insights.average_days_between_visits !== null
-                    ? `${client.insights.average_days_between_visits} ${t.days}`
-                    : t.noData}
-                </p>
-              </div>
-            </div>
+          <div className="space-y-5">
+            {showGrowthInsights && client.crm_insights && client.attendance_insights ? (
+              <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent">
+                    <Sparkles className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-app-muted">{t.badge}</p>
+                    <h2 className="text-xl font-bold text-app-text">{t.profile}</h2>
+                  </div>
+                </div>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-app-bg p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                      {t.favoriteService}
+                    </p>
+                    <p className="mt-2 font-bold text-app-text">
+                      {client.crm_insights.favorite_service || t.noData}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-app-bg p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                      {t.favoriteEmployee}
+                    </p>
+                    <p className="mt-2 font-bold text-app-text">
+                      {client.crm_insights.favorite_employee || t.noData}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-app-bg p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                      {t.averageBetweenVisits}
+                    </p>
+                    <p className="mt-2 font-bold text-app-text">
+                      {client.crm_insights.average_days_between_visits !== null
+                        ? `${client.crm_insights.average_days_between_visits} ${t.days}`
+                        : t.noData}
+                    </p>
+                  </div>
+                </div>
 
-            <div className="mt-4 rounded-2xl border border-app-soft bg-app-bg/45 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
-                {attendanceUi.title}
-              </p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-white px-3 py-3 text-center">
-                  <p className="text-xl font-extrabold text-app-text">
-                    {client.insights.completed_appointments}
+                <div className="mt-4 rounded-2xl border border-app-soft bg-app-bg/45 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
+                    {attendanceUi.title}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-app-muted">
-                    {attendanceUi.completed}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white px-3 py-3 text-center">
-                  <p className="text-xl font-extrabold text-app-text">
-                    {client.insights.cancelled_appointments}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-app-muted">
-                    {attendanceUi.cancelled}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-white px-3 py-3 text-center">
-                  <p className="text-xl font-extrabold text-app-text">
-                    {client.insights.no_show_appointments}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-app-muted">
-                    {attendanceUi.noShow}
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="rounded-xl bg-white px-3 py-3 text-center">
+                      <p className="text-xl font-extrabold text-app-text">
+                        {client.basic_stats.completed_appointments}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-app-muted">
+                        {attendanceUi.completed}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-white px-3 py-3 text-center">
+                      <p className="text-xl font-extrabold text-app-text">
+                        {client.attendance_insights.cancelled_appointments}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-app-muted">
+                        {attendanceUi.cancelled}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-white px-3 py-3 text-center">
+                      <p className="text-xl font-extrabold text-app-text">
+                        {client.attendance_insights.no_show_appointments}
+                      </p>
+                      <p className="mt-1 text-xs font-medium text-app-muted">
+                        {attendanceUi.noShow}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-app-muted">
+                    {attendanceUi.rates}: {client.attendance_insights.no_show_rate}% · {attendanceUi.cancellationRate}: {client.attendance_insights.cancellation_rate}%
                   </p>
                 </div>
               </div>
-              <p className="mt-3 text-xs leading-5 text-app-muted">
-                {attendanceUi.rates}: {client.insights.no_show_rate}% · {attendanceUi.cancellationRate}: {client.insights.cancellation_rate}%
-              </p>
-            </div>
+            ) : (
+              <Link
+                href={crmUpgradeHref}
+                className="group block rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:bg-app-card-alt hover:shadow-md sm:p-6"
+              >
+                <div className="flex items-start gap-4">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-bg text-app-muted transition group-hover:text-app-accent">
+                    <LockKeyhole className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-xl font-bold text-app-text">
+                      {crmGateUi.title}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-app-muted">
+                      {crmGateUi.description}
+                    </p>
+                    <p className="mt-3 text-sm font-semibold text-app-accent">
+                      {crmGateUi.action}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            )}
 
-            <div className="mt-4 rounded-2xl border border-app-soft bg-white p-4">
+            <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">
                 {attendanceUi.salonNote}
               </p>
@@ -411,28 +475,30 @@ export default async function ClientDetailsPage({ params }: { params: Params }) 
               </div>
             ) : null}
 
-            <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-600" />
-                <h2 className="text-xl font-bold text-app-text">{t.crmSignals}</h2>
-              </div>
-              <div className="mt-5 space-y-3">
-                {client.insights.alerts.length ? (
-                  client.insights.alerts.map((alert, index) => (
-                    <div
-                      key={`${alert}-${index}`}
-                      className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
-                    >
-                      {alert}
+            {client.crm_insights ? (
+              <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-6">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  <h2 className="text-xl font-bold text-app-text">{t.crmSignals}</h2>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {client.crm_insights.alerts.length ? (
+                    client.crm_insights.alerts.map((alert, index) => (
+                      <div
+                        key={`${alert}-${index}`}
+                        className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+                      >
+                        {alert}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
+                      {t.noWarnings}
                     </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
-                    {t.noWarnings}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </section>
 
