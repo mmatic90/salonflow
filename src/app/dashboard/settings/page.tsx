@@ -13,11 +13,13 @@ function SettingsCard({
   title,
   description,
   locked = false,
+  planLabel,
 }: {
   href: string;
   title: string;
   description: string;
   locked?: boolean;
+  planLabel?: "Growth" | "Pro";
 }) {
   return (
     <Link
@@ -26,8 +28,17 @@ function SettingsCard({
     >
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-xl font-semibold text-app-text">{title}</h2>
-        {locked ? (
-          <LockKeyhole className="h-4 w-4 shrink-0 text-app-muted" />
+        {planLabel || locked ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {planLabel ? (
+              <span className="rounded-full border border-app-soft bg-app-bg px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-app-muted">
+                {planLabel}
+              </span>
+            ) : null}
+            {locked ? (
+              <LockKeyhole className="h-4 w-4 shrink-0 text-app-muted" />
+            ) : null}
+          </div>
         ) : null}
       </div>
       <p className="mt-2 text-app-muted">{description}</p>
@@ -63,7 +74,7 @@ const emailCardCopy: Record<
   hr: {
     title: "Email i obavijesti",
     description:
-      "Managed email obavijesti, 24h podsjetnici, potrošnja i mjesečna kvota.",
+      "Upravljane email obavijesti, 24-satni podsjetnici, potrošnja i mjesečna kvota.",
   },
   en: {
     title: "Email & notifications",
@@ -84,17 +95,17 @@ const reviewCardCopy: Record<
   hr: {
     title: "Google recenzije",
     description:
-      "Pro automatizacija za slanje jednog zahtjeva za Google recenziju nakon završenog termina.",
+      "Automatski pošalji jedan zahtjev za Google recenziju nakon odgovarajućeg završenog termina.",
   },
   en: {
     title: "Google reviews",
     description:
-      "Pro automation that sends one Google review request after an eligible completed appointment.",
+      "Automatically send one Google review request after an eligible completed appointment.",
   },
   it: {
     title: "Recensioni Google",
     description:
-      "Automazione Pro che invia una sola richiesta di recensione Google dopo un appuntamento completato idoneo.",
+      "Invia automaticamente una sola richiesta di recensione Google dopo un appuntamento completato idoneo.",
   },
 };
 
@@ -105,17 +116,17 @@ const retentionAutomationCopy: Record<
   hr: {
     title: "Automatski CRM follow-up",
     description:
-      "Pro dnevni retention follow-up s consent provjerom, dnevnim limitom i Managed Email zaštitama.",
+      "Dnevni retention follow-up uz provjeru pristanka, dnevni limit i zaštite upravljanog emaila.",
   },
   en: {
     title: "Automatic CRM follow-up",
     description:
-      "Pro daily retention follow-up with consent checks, a daily limit and Managed Email safeguards.",
+      "Daily retention follow-up with consent checks, a daily limit and managed-email safeguards.",
   },
   it: {
     title: "Follow-up CRM automatico",
     description:
-      "Follow-up retention giornaliero Pro con controllo consenso, limite giornaliero e protezioni Managed Email.",
+      "Follow-up retention giornaliero con controllo del consenso, limite giornaliero e protezioni dell'email gestita.",
   },
 };
 
@@ -239,6 +250,7 @@ export default async function SettingsPage() {
             title={emailCopy.title}
             description={emailCopy.description}
             locked={!canUseBookingNotifications}
+            planLabel="Growth"
           />
 
           <SettingsCard
@@ -246,6 +258,7 @@ export default async function SettingsPage() {
             title={reviewCopy.title}
             description={reviewCopy.description}
             locked={!canUseReviewRequests}
+            planLabel="Pro"
           />
 
           <SettingsCard
@@ -253,6 +266,7 @@ export default async function SettingsPage() {
             title={automationCopy.title}
             description={automationCopy.description}
             locked={!canUseAutomations}
+            planLabel="Pro"
           />
 
           <SettingsCard
@@ -260,6 +274,7 @@ export default async function SettingsPage() {
             title={t.auditLogTitle}
             description={t.auditLogDescription}
             locked={!canUseAuditLog}
+            planLabel="Pro"
           />
         </div>
       </PageSection>
