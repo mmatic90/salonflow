@@ -30,6 +30,24 @@ insert into public.organization_email_settings (organization_id)
 select id from public.organizations
 on conflict (organization_id) do nothing;
 
+create or replace function public.ensure_organization_email_settings()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.organization_email_settings (organization_id)
+  values (new.id)
+  on conflict (organization_id) do nothing;
+  return new;
+end;
+$$;
+
+create trigger organizations_create_email_settings
+after insert on public.organizations
+for each row execute function public.ensure_organization_email_settings();
+
 create trigger organization_email_settings_set_updated_at
 before update on public.organization_email_settings
 for each row execute function public.set_updated_at();
@@ -176,6 +194,9 @@ begin
     and period_start = v_period_start;
 end;
 $$;
+
+revoke all on function public.ensure_organization_email_settings()
+from public, anon, authenticated;
 
 revoke all on function public.reserve_managed_email_send(uuid, integer, integer)
 from public, anon, authenticated;
