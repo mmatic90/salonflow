@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     const email = String(body.email ?? "").trim();
     const note = String(body.note ?? "").trim() || null;
     const lang = body.lang === "en" || body.lang === "it" ? body.lang : "hr";
+    const marketingOptIn = body.marketingOptIn === true;
     const slot = body.slot as Slot | null;
 
     if (!organizationSlug || !serviceId || !date || !fullName || !email || !slot) {
@@ -204,6 +205,8 @@ export async function POST(request: Request) {
         client_email: email,
         client_note: note,
         language: lang,
+        marketing_email_opt_in: marketingOptIn,
+        marketing_email_opt_in_at: marketingOptIn ? new Date().toISOString() : null,
         status: "pending",
       })
       .select("id")
