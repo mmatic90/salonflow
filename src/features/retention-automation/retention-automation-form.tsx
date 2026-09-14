@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { saveRetentionAutomationSettings } from "@/features/retention-automation/actions";
@@ -58,6 +59,7 @@ export default function RetentionAutomationForm({
   initialDailyLimit: number;
 }) {
   const t = copy(locale);
+  const router = useRouter();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [dailyLimit, setDailyLimit] = useState(initialDailyLimit);
   const [pending, startTransition] = useTransition();
@@ -75,6 +77,7 @@ export default function RetentionAutomationForm({
       }
 
       toast.success(t.saved);
+      router.refresh();
     });
   }
 
