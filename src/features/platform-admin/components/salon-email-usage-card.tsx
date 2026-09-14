@@ -26,10 +26,11 @@ export default async function SalonEmailUsageCard({
   );
   const limitReached = overview.attemptedCount >= effectiveLimit;
   const warning = !limitReached && usagePercent >= 80;
+  const paused = !overview.managedEmailEnabled;
 
   const statusClasses = limitReached
     ? "border-red-200 bg-red-50 text-red-800"
-    : warning
+    : warning || paused
       ? "border-amber-200 bg-amber-50 text-amber-800"
       : "border-emerald-200 bg-emerald-50 text-emerald-800";
 
@@ -62,18 +63,18 @@ export default async function SalonEmailUsageCard({
         <span
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${statusClasses}`}
         >
-          {limitReached || warning ? (
+          {limitReached || warning || paused ? (
             <TriangleAlert className="h-3.5 w-3.5" />
           ) : (
             <CheckCircle2 className="h-3.5 w-3.5" />
           )}
           {limitReached
             ? "Quota potrošena"
-            : warning
-              ? "Blizu limita"
-              : overview.managedEmailEnabled
-                ? "Aktivno"
-                : "Pauzirano"}
+            : paused
+              ? "Pauzirano"
+              : warning
+                ? "Blizu limita"
+                : "Aktivno"}
         </span>
       </div>
 
