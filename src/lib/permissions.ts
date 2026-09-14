@@ -31,6 +31,7 @@ export type CurrentUserPermissions = {
   organizationLogoUrl: string | null;
   organizationPlanCode: SalonPlanCode;
   organizationLifecycleStatus: SalonLifecycleStatus;
+  organizationTrialEndsAt: string | null;
   organizationEntitlementPlan: SalonPlanCode;
   organizationRole: OrganizationRole;
   role: AppRole;
@@ -82,7 +83,7 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
       supabase
         .from("organization_members")
         .select(
-          "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active, plan_code, lifecycle_status)",
+          "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active, plan_code, lifecycle_status, trial_ends_at)",
         )
         .eq("user_id", user.id)
         .eq("is_active", true)
@@ -127,6 +128,7 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
   const organizationLifecycleStatus = normalizeSalonLifecycleStatus(
     organization.lifecycle_status,
   );
+  const organizationTrialEndsAt = organization.trial_ends_at ?? null;
 
   return {
     userId: user.id,
@@ -138,9 +140,11 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     organizationLogoUrl: organization.logo_url ?? null,
     organizationPlanCode,
     organizationLifecycleStatus,
+    organizationTrialEndsAt,
     organizationEntitlementPlan: getEffectiveEntitlementPlan(
       organizationPlanCode,
       organizationLifecycleStatus,
+      organizationTrialEndsAt,
     ),
     organizationRole,
     role: appRole,
@@ -197,7 +201,9 @@ export async function getSuspendedOrganizationForCurrentUser(): Promise<Suspende
 export function canUseCapability(
   permissions: Pick<
     CurrentUserPermissions,
-    "organizationPlanCode" | "organizationLifecycleStatus"
+    | "organizationPlanCode"
+    | "organizationLifecycleStatus"
+    | "organizationTrialEndsAt"
   >,
   capabilityCode: SalonCapabilityCode,
 ) {
@@ -205,6 +211,7 @@ export function canUseCapability(
     permissions.organizationPlanCode,
     permissions.organizationLifecycleStatus,
     capabilityCode,
+    permissions.organizationTrialEndsAt,
   );
 }
 
