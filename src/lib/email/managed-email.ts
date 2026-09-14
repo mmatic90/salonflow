@@ -63,6 +63,14 @@ function positiveIntegerEnv(name: string, developmentFallback: number) {
   return parsed;
 }
 
+export function getManagedEmailDefaultMonthlyLimit() {
+  return positiveIntegerEnv("SALONFLOW_MANAGED_EMAIL_MONTHLY_LIMIT", 100);
+}
+
+export function getManagedEmailGlobalMonthlyLimit() {
+  return positiveIntegerEnv("SALONFLOW_MANAGED_EMAIL_GLOBAL_MONTHLY_LIMIT", 500);
+}
+
 function managedFromAddress() {
   const explicit = process.env.SALONFLOW_EMAIL_FROM_ADDRESS?.trim();
   if (explicit) return explicit;
@@ -102,19 +110,21 @@ async function recordResult(organizationId: string, success: boolean) {
 export async function sendManagedTenantEmail(args: ManagedEmailArgs) {
   const supabase = createAdminClient();
 
-  const [{ data: organization, error: organizationError }, { data: settings, error: settingsError }] =
-    await Promise.all([
-      supabase
-        .from("organizations")
-        .select("id, name, plan_code, lifecycle_status, is_active")
-        .eq("id", args.organizationId)
-        .maybeSingle(),
-      supabase
-        .from("organization_email_settings")
-        .select("from_name, reply_to_email")
-        .eq("organization_id", args.organizationId)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: organization, error: organizationError },
+    { data: settings, error: settingsError },
+  ] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("id, name, email, plan_code, lifecycle_status, is_active")
+      .eq("id", args.organizationId)
+      .maybeSingle(),
+    supabase
+      .from("organization_email_settings")
+      .select("from_name, reply_to_email")
+      .eq("organization_id", args.organizationId)
+      .maybeSingle(),
+  ]);
 
   if (organizationError || !organization) {
     throw new ManagedEmailError(
@@ -143,14 +153,8 @@ export async function sendManagedTenantEmail(args: ManagedEmailArgs) {
     );
   }
 
-  const organizationLimit = positiveIntegerEnv(
-    "SALONFLOW_MANAGED_EMAIL_MONTHLY_LIMIT",
-    100,
-  );
-  const globalLimit = positiveIntegerEnv(
-    "SALONFLOW_MANAGED_EMAIL_GLOBAL_MONTHLY_LIMIT",
-    500,
-  );
+  const organizationLimit = getManagedEmailDefaultMonthlyLimit();
+  const globalLimit = getManagedEmailGlobalMonthlyLimit();
 
   const { data: reservationData, error: reservationError } = await supabase.rpc(
     "reserve_managed_email_send",
@@ -194,6 +198,7 @@ export async function sendManagedTenantEmail(args: ManagedEmailArgs) {
   const from = `${fromName} <${managedFromAddress()}>`;
   const replyTo =
     emailSettings?.reply_to_email?.trim() ||
+    organization.email?.trim() ||
     process.env.SALONFLOW_EMAIL_DEFAULT_REPLY_TO?.trim() ||
     process.env.RESEND_REPLY_TO?.trim() ||
     undefined;
