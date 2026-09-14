@@ -2,6 +2,15 @@
 
 This checklist is the release gate for showing the current `feature/multi-tenant-foundation` build to Elizabeth before any merge to `main`.
 
+## Demo preparation and presentation files
+
+For the actual Elizabeth review, use these two companion files after the technical readiness checks below:
+
+- `supabase/demo_prepare_elizabeth_review.sql` — manual, rerunnable Demo Salon preparation script. It removes only known CRM QA traces, restores the safe Pro/Active state, keeps automations off and stages deterministic client/waitlist/CRM examples.
+- `docs/ELIZABETH_DEMO_RUNBOOK.md` — the 10–15 minute presentation route, concrete seeded clients/services, talk track, fallbacks and post-meeting feedback questions.
+
+The preparation SQL is **not a migration** and is intentionally locked to the known Demo Salon tenant. Never adapt or run it casually against a real salon.
+
 ## 1. Build gate
 
 Run from a clean local checkout:
@@ -128,7 +137,7 @@ Use the product in this order when explaining packaging:
 
 Trial receives the effective Pro feature set.
 
-No commercial prices are committed in code yet. Do not present a final price until packaging is intentionally finalized.
+No prices are committed in code or database yet. Do not present a final price until packaging is intentionally finalized.
 
 ## 8. Suggested Elizabeth demo route
 
@@ -143,6 +152,8 @@ Keep the first review focused on salon value rather than architecture:
 7. **CRM actions** — show who may need follow-up and the manual email flow.
 8. **Settings** — schedules/resources first, then briefly show Pro review/CRM automations.
 9. **Mobile** — finish by opening the calendar/client flow on a phone-size viewport.
+
+For the exact seeded clients, wording and fallback path, follow `docs/ELIZABETH_DEMO_RUNBOOK.md` rather than improvising.
 
 Avoid opening Platform Admin during the normal salon-owner demo; it is an operator/developer surface rather than part of the salon's workflow.
 
