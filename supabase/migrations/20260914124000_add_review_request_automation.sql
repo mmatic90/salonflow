@@ -111,6 +111,28 @@ alter table public.appointments
     check (review_request_attempt_count >= 0),
   add column if not exists review_request_last_attempt_at timestamptz;
 
+create or replace function public.appointments_reset_review_request_retry()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if old.client_email is distinct from new.client_email
+     and new.review_request_sent_at is null then
+    new.review_request_error := null;
+    new.review_request_claimed_at := null;
+    new.review_request_attempt_count := 0;
+    new.review_request_last_attempt_at := null;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger appointments_reset_review_request_retry
+before update of client_email on public.appointments
+for each row execute function public.appointments_reset_review_request_retry();
+
 create index if not exists appointments_pending_review_request_idx
 on public.appointments (organization_id, appointment_date)
 where status = 'completed'
@@ -170,4 +192,4 @@ comment on column public.organization_review_settings.enabled_at is
 comment on column public.appointments.review_request_claimed_at is
   'Short-lived delivery claim used to prevent duplicate review-request sends during overlapping cron executions.';
 comment on column public.appointments.review_request_attempt_count is
-  'Maximum-three-attempt retry counter for automated review-request delivery.';
+  'Maximum-three-attempt retry counter for automated review-request delivery; client email changes reset unsent retry state.';
