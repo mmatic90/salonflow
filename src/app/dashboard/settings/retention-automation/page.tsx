@@ -1,33 +1,44 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, Bot, CheckCircle2, Clock3, MailCheck, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  CheckCircle2,
+  Clock3,
+  MailCheck,
+  ShieldCheck,
+} from "lucide-react";
 import PageHeader from "@/components/page-header";
 import PageShell from "@/components/page-shell";
 import RetentionAutomationForm from "@/features/retention-automation/retention-automation-form";
 import {
   getRetentionAutomationPreview,
   getRetentionAutomationSettings,
+  type RetentionAutomationSettings,
 } from "@/features/retention-automation/queries";
 import { buildCapabilityUpgradePath } from "@/lib/entitlements";
 import { canUseCapability } from "@/lib/permissions";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import type { AppLocale } from "@/lib/i18n";
-import type { RetentionReasonCode } from "@/features/retention/engine";
+import type {
+  RetentionPriority,
+  RetentionReasonCode,
+} from "@/features/retention/engine";
 
 function copy(locale: AppLocale) {
   if (locale === "en") {
     return {
       title: "Automatic CRM follow-up",
       description:
-        "Send consent-gated retention emails once per day using the same Pro CRM, unsubscribe and Managed Email safeguards as manual follow-up.",
+        "Send consent-gated retention emails once per day using the same Pro CRM, unsubscribe and managed-email safeguards as manual follow-up.",
       back: "Back to settings",
       badge: "Pro automation",
-      preview: "Dry-run preview",
+      preview: "Preview without sending",
       previewHelp:
         "Nothing is sent from this preview. It shows the current CRM candidates that would be eligible if the daily run happened now.",
       total: "Current CRM candidates",
-      eligible: "Consent-eligible",
-      nextRun: "Would send next run",
+      eligible: "Eligible with consent",
+      nextRun: "Would send on next run",
       noEligible: "No consent-eligible CRM candidates right now.",
       lastRun: "Last automation run",
       never: "Not run yet",
@@ -36,6 +47,17 @@ function copy(locale: AppLocale) {
       sent: "Sent",
       skipped: "Skipped",
       failed: "Failed",
+      priorities: {
+        high: "High",
+        medium: "Medium",
+        low: "Low",
+      },
+      statuses: {
+        never: "Not run yet",
+        processing: "Running",
+        completed: "Completed",
+        failed: "Failed",
+      },
       reasons: {
         overdue_cadence: "Late vs. usual visit cadence",
         inactive_client: "Long-term inactive client",
@@ -49,23 +71,34 @@ function copy(locale: AppLocale) {
     return {
       title: "Follow-up CRM automatico",
       description:
-        "Invia una volta al giorno email retention con consenso valido usando le stesse protezioni Pro CRM, unsubscribe e Managed Email del follow-up manuale.",
+        "Invia una volta al giorno email retention con consenso valido usando le stesse protezioni Pro CRM, disiscrizione ed email gestita del follow-up manuale.",
       back: "Torna alle impostazioni",
       badge: "Automazione Pro",
-      preview: "Anteprima dry-run",
+      preview: "Anteprima senza invio",
       previewHelp:
-        "Da questa anteprima non viene inviato nulla. Mostra i candidati CRM attuali che sarebbero idonei se il run giornaliero partisse ora.",
+        "Da questa anteprima non viene inviato nulla. Mostra i candidati CRM attuali che sarebbero idonei se l'esecuzione giornaliera partisse ora.",
       total: "Candidati CRM attuali",
-      eligible: "Con consenso valido",
-      nextRun: "Invii al prossimo run",
+      eligible: "Idonei con consenso",
+      nextRun: "Invii alla prossima esecuzione",
       noEligible: "Nessun candidato CRM con consenso valido al momento.",
-      lastRun: "Ultimo run automazione",
-      never: "Non ancora eseguito",
+      lastRun: "Ultima esecuzione automatica",
+      never: "Non ancora eseguita",
       status: "Stato",
-      date: "Data locale run",
+      date: "Data locale",
       sent: "Inviate",
       skipped: "Saltate",
       failed: "Fallite",
+      priorities: {
+        high: "Alta",
+        medium: "Media",
+        low: "Bassa",
+      },
+      statuses: {
+        never: "Non ancora eseguita",
+        processing: "In corso",
+        completed: "Completata",
+        failed: "Fallita",
+      },
       reasons: {
         overdue_cadence: "In ritardo rispetto alla cadenza abituale",
         inactive_client: "Cliente inattivo da molto tempo",
@@ -78,28 +111,39 @@ function copy(locale: AppLocale) {
   return {
     title: "Automatski CRM follow-up",
     description:
-      "Jednom dnevno šalji consent-gated retention email koristeći iste Pro CRM, unsubscribe i Managed Email zaštite kao ručni follow-up.",
+      "Jednom dnevno šalji retention email klijentima s valjanim pristankom koristeći iste Pro CRM, odjava i upravljane email zaštite kao kod ručnog follow-upa.",
     back: "Natrag na postavke",
     badge: "Pro automatizacija",
-    preview: "Dry-run pregled",
+    preview: "Pregled bez slanja",
     previewHelp:
-      "Iz ovog pregleda se ništa ne šalje. Prikazuje aktualne CRM kandidate koji bi bili podobni kada bi se dnevni run pokrenuo sada.",
+      "Iz ovog pregleda se ništa ne šalje. Prikazuje aktualne CRM kandidate koji bi ispunjavali uvjete kada bi se dnevna automatizacija pokrenula sada.",
     total: "Aktualni CRM kandidati",
     eligible: "S valjanim pristankom",
-    nextRun: "Poslalo bi se u idućem runu",
+    nextRun: "Poslalo bi se pri idućem pokretanju",
     noEligible: "Trenutno nema CRM kandidata s valjanim pristankom.",
-    lastRun: "Zadnji automation run",
+    lastRun: "Zadnje pokretanje automatizacije",
     never: "Još nije pokrenuto",
     status: "Status",
-    date: "Lokalni datum runa",
+    date: "Lokalni datum",
     sent: "Poslano",
     skipped: "Preskočeno",
     failed: "Neuspjelo",
+    priorities: {
+      high: "Visok",
+      medium: "Srednji",
+      low: "Nizak",
+    },
+    statuses: {
+      never: "Još nije pokrenuto",
+      processing: "U tijeku",
+      completed: "Završeno",
+      failed: "Neuspjelo",
+    },
     reasons: {
       overdue_cadence: "Kasni u odnosu na uobičajeni ritam",
       inactive_client: "Dugo neaktivan klijent",
       no_future_booking: "Nema budući termin",
-      attendance_risk: "Attendance rizik",
+      attendance_risk: "Rizik dolaznosti",
     },
   };
 }
@@ -182,7 +226,10 @@ export default async function RetentionAutomationSettingsPage() {
         ) : (
           <div className="mt-5 divide-y divide-app-soft overflow-hidden rounded-2xl border border-app-soft">
             {preview.items.map((item) => (
-              <div key={item.clientId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+              <div
+                key={item.clientId}
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+              >
                 <div>
                   <p className="font-semibold text-app-text">{item.fullName}</p>
                   <p className="mt-0.5 text-sm text-app-muted">
@@ -190,7 +237,7 @@ export default async function RetentionAutomationSettingsPage() {
                   </p>
                 </div>
                 <span className="rounded-full bg-app-bg px-2.5 py-1 text-xs font-bold uppercase tracking-[0.06em] text-app-muted">
-                  {item.priority}
+                  {t.priorities[item.priority as RetentionPriority]}
                 </span>
               </div>
             ))}
@@ -211,25 +258,41 @@ export default async function RetentionAutomationSettingsPage() {
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div className="rounded-2xl bg-app-bg p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-app-muted">{t.status}</p>
-            <p className="mt-2 font-semibold text-app-text">{settings.lastRunStatus}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-app-muted">
+              {t.status}
+            </p>
+            <p className="mt-2 font-semibold text-app-text">
+              {t.statuses[
+                settings.lastRunStatus as RetentionAutomationSettings["lastRunStatus"]
+              ]}
+            </p>
           </div>
           <div className="rounded-2xl bg-app-bg p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-app-muted">{t.date}</p>
-            <p className="mt-2 font-semibold text-app-text">{settings.lastRunLocalDate ?? "-"}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-app-muted">
+              {t.date}
+            </p>
+            <p className="mt-2 font-semibold text-app-text">
+              {settings.lastRunLocalDate ?? "-"}
+            </p>
           </div>
           <div className="rounded-2xl bg-app-bg p-4">
             <MailCheck className="h-4 w-4 text-emerald-600" />
-            <p className="mt-2 text-2xl font-extrabold text-app-text">{settings.lastRunSent}</p>
+            <p className="mt-2 text-2xl font-extrabold text-app-text">
+              {settings.lastRunSent}
+            </p>
             <p className="text-sm text-app-muted">{t.sent}</p>
           </div>
           <div className="rounded-2xl bg-app-bg p-4">
             <CheckCircle2 className="h-4 w-4 text-app-muted" />
-            <p className="mt-2 text-2xl font-extrabold text-app-text">{settings.lastRunSkipped}</p>
+            <p className="mt-2 text-2xl font-extrabold text-app-text">
+              {settings.lastRunSkipped}
+            </p>
             <p className="text-sm text-app-muted">{t.skipped}</p>
           </div>
           <div className="rounded-2xl bg-app-bg p-4">
-            <p className="text-2xl font-extrabold text-app-text">{settings.lastRunFailed}</p>
+            <p className="text-2xl font-extrabold text-app-text">
+              {settings.lastRunFailed}
+            </p>
             <p className="text-sm text-app-muted">{t.failed}</p>
           </div>
         </div>
