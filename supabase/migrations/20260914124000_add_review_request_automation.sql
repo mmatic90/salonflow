@@ -11,7 +11,13 @@ create table public.organization_review_settings (
   enabled_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  check (google_review_url is null or google_review_url ~ '^https://'),
+  check (
+    google_review_url is null
+    or (
+      char_length(google_review_url) <= 2048
+      and google_review_url ~* '^https://([a-z0-9-]+\.)*(google\.[a-z.]+|g\.page|goo\.gl)([:/]|$)'
+    )
+  ),
   check (enabled = false or google_review_url is not null)
 );
 
