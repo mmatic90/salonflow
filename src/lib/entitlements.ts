@@ -251,6 +251,21 @@ export function isTrialEntitlementActive(
   return Number.isFinite(trialEnd) && trialEnd > now.getTime();
 }
 
+export function getTrialDaysLeft(
+  lifecycleStatus: SalonLifecycleStatus,
+  trialEndsAt?: string | null,
+  now = new Date(),
+) {
+  if (!isTrialEntitlementActive(lifecycleStatus, trialEndsAt, now) || !trialEndsAt) {
+    return 0;
+  }
+
+  return Math.max(
+    1,
+    Math.ceil((new Date(trialEndsAt).getTime() - now.getTime()) / 86_400_000),
+  );
+}
+
 export function getEffectiveEntitlementPlan(
   planCode: SalonPlanCode,
   lifecycleStatus: SalonLifecycleStatus,
