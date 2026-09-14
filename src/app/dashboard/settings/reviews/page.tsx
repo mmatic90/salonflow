@@ -4,6 +4,7 @@ import { ArrowLeft, Star } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import PageShell from "@/components/page-shell";
 import ReviewSettingsForm from "@/features/review-settings/review-settings-form";
+import ReviewTestEmailButton from "@/features/review-settings/review-test-email-button";
 import { getReviewSettings } from "@/features/review-settings/queries";
 import { buildCapabilityUpgradePath } from "@/lib/entitlements";
 import { canUseCapability } from "@/lib/permissions";
@@ -15,7 +16,7 @@ function copy(locale: AppLocale) {
     return {
       title: "Google review requests",
       description:
-        "Automatically ask eligible clients for a Google review after a completed appointment.",
+        "Automatically ask qualifying clients for a Google review after a completed appointment.",
       back: "Back to settings",
       badge: "Pro automation",
     };
@@ -25,7 +26,7 @@ function copy(locale: AppLocale) {
     return {
       title: "Richieste recensioni Google",
       description:
-        "Chiedi automaticamente una recensione Google ai clienti idonei dopo un appuntamento completato.",
+        "Chiedi automaticamente una recensione Google ai clienti che soddisfano i requisiti dopo un appuntamento completato.",
       back: "Torna alle impostazioni",
       badge: "Automazione Pro",
     };
@@ -34,7 +35,7 @@ function copy(locale: AppLocale) {
   return {
     title: "Zahtjevi za Google recenziju",
     description:
-      "Automatski zatraži Google recenziju od eligible klijenata nakon završenog termina.",
+      "Automatski zatraži Google recenziju od klijenata koji ispunjavaju uvjete nakon završenog termina.",
     back: "Natrag na postavke",
     badge: "Pro automatizacija",
   };
@@ -70,6 +71,9 @@ export default async function ReviewSettingsPage() {
       <PageHeader title={t.title} description={t.description} />
 
       <ReviewSettingsForm locale={permissions.organizationLocale} settings={settings} />
+      <div className="mt-5">
+        <ReviewTestEmailButton locale={permissions.organizationLocale} />
+      </div>
     </PageShell>
   );
 }
