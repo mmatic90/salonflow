@@ -12,6 +12,7 @@ The project is being evolved from a single-salon application into a reusable mul
 - online booking requests
 - tenant-aware email booking notifications
 - Growth 24h email appointment reminders
+- Pro automated Google review requests after completed appointments
 - reports and operational dashboards
 - role-based administration
 
@@ -23,6 +24,7 @@ The project is being evolved from a single-salon application into a reusable mul
 - Tailwind CSS 4
 - Supabase
 - Resend
+- Netlify Scheduled Functions for recurring email automation triggers
 
 ## Local setup
 
@@ -56,6 +58,12 @@ npm run build
 ```
 
 New work should avoid introducing lint or build errors. Validate meaningful implementation batches before merging them toward production.
+
+## Scheduled email automations
+
+The Next API routes `/api/cron/email-reminders` and `/api/cron/review-requests` require `CRON_SECRET` bearer authorization.
+
+On Netlify, `netlify/functions/email-automations.mjs` runs hourly and triggers both tenant-aware routes. The scheduler contains no salon-specific business logic; entitlement, quota, timezone, delivery state and tenant configuration remain inside the application routes.
 
 ## Product direction
 
