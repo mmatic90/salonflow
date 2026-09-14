@@ -43,6 +43,7 @@ type OrganizationRow = {
   logo_url: string | null;
   plan_code: string | null;
   lifecycle_status: string | null;
+  trial_ends_at: string | null;
   is_active: boolean | null;
 };
 
@@ -69,6 +70,7 @@ function organizationCanUseReminders(organization: OrganizationRow) {
   const effectivePlan = getEffectiveEntitlementPlan(
     normalizeSalonPlanCode(organization.plan_code),
     lifecycleStatus,
+    organization.trial_ends_at,
   );
 
   return planHasCapability(effectivePlan, "appointment_reminders");
@@ -249,7 +251,7 @@ export async function GET(request: Request) {
   const { data: organizations, error: organizationsError } = await supabase
     .from("organizations")
     .select(
-      "id, name, locale, timezone, phone, address_line_1, address_line_2, city, postal_code, country_code, logo_url, plan_code, lifecycle_status, is_active",
+      "id, name, locale, timezone, phone, address_line_1, address_line_2, city, postal_code, country_code, logo_url, plan_code, lifecycle_status, trial_ends_at, is_active",
     )
     .in("id", organizationIds);
 
