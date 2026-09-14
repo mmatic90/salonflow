@@ -168,9 +168,9 @@ export const salonCapabilities: Record<
     code: "appointment_reminders",
     name: "Automatski podsjetnici za termin",
     description:
-      "24h reminder infrastruktura postoji, ali email cron još treba potpuno tenant-aware dovršavanje prije enforcementa.",
+      "Tenant-aware 24h SMS/email podsjetnici s provjerom plana, lifecyclea, localea i timezonea neposredno prije slanja.",
     minimumPlan: "growth",
-    availability: "partial",
+    availability: "available",
   },
   audit_log: {
     code: "audit_log",
