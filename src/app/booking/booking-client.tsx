@@ -51,6 +51,10 @@ const text = {
     phoneHelp: "Broj telefona služi samo kao dodatni kontakt podatak.",
     email: "Email *",
     note: "Napomena (opcionalno)",
+    marketingOptIn:
+      "Želim primati novosti, ponude i retention emailove ovog salona.",
+    marketingOptInHelp:
+      "Opcionalno. Ovo nije potrebno za rezervaciju i možeš se odjaviti u bilo kojem trenutku. Poruke o terminima vode se odvojeno.",
     submit: "Pošalji zahtjev za rezervaciju",
     submitting: "Slanje zahtjeva...",
     chooseSlotFirst: "Prvo odaberi slobodan sat.",
@@ -89,6 +93,10 @@ const text = {
     phoneHelp: "Your phone number is kept only as an additional contact detail.",
     email: "Email *",
     note: "Note (optional)",
+    marketingOptIn:
+      "I want to receive news, offers and retention emails from this salon.",
+    marketingOptInHelp:
+      "Optional. This is not required to book and you can unsubscribe at any time. Appointment service messages are handled separately.",
     submit: "Send booking request",
     submitting: "Sending request...",
     chooseSlotFirst: "Please choose an available time first.",
@@ -128,6 +136,10 @@ const text = {
     phoneHelp: "Il numero di telefono viene conservato solo come contatto aggiuntivo.",
     email: "Email *",
     note: "Nota (opzionale)",
+    marketingOptIn:
+      "Desidero ricevere novità, offerte ed email retention da questo salone.",
+    marketingOptInHelp:
+      "Facoltativo. Non è necessario per prenotare e puoi disiscriverti in qualsiasi momento. Le comunicazioni operative sugli appuntamenti sono separate.",
     submit: "Invia richiesta di prenotazione",
     submitting: "Invio richiesta...",
     chooseSlotFirst: "Seleziona prima un orario disponibile.",
@@ -236,6 +248,7 @@ export default function BookingClient({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -336,6 +349,7 @@ export default function BookingClient({
           phone,
           email,
           note,
+          marketingOptIn,
           lang,
         }),
       });
@@ -696,6 +710,23 @@ export default function BookingClient({
                 rows={4}
                 className="mt-4 w-full resize-none rounded-xl border border-[#eadbd2] px-4 py-3 outline-none"
               />
+
+              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-[#eadbd2] bg-[#f8f3ef] p-4">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={(e) => setMarketingOptIn(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[#2f2723]"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-[#2f2723]">
+                    {t.marketingOptIn}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-[#6f5a50]">
+                    {t.marketingOptInHelp}
+                  </span>
+                </span>
+              </label>
 
               <button
                 type="button"
