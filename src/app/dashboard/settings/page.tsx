@@ -12,12 +12,12 @@ function SettingsCard({
   href,
   title,
   description,
-  lockedPlan,
+  locked = false,
 }: {
   href: string;
   title: string;
   description: string;
-  lockedPlan?: string;
+  locked?: boolean;
 }) {
   return (
     <Link
@@ -26,10 +26,8 @@ function SettingsCard({
     >
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-xl font-semibold text-app-text">{title}</h2>
-        {lockedPlan ? (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-app-soft bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-app-muted">
-            <LockKeyhole className="h-3 w-3" /> {lockedPlan}
-          </span>
+        {locked ? (
+          <LockKeyhole className="h-4 w-4 shrink-0 text-app-muted" />
         ) : null}
       </div>
       <p className="mt-2 text-app-muted">{description}</p>
@@ -150,7 +148,7 @@ export default async function SettingsPage() {
             href={auditLogHref}
             title={t.auditLogTitle}
             description={t.auditLogDescription}
-            lockedPlan={canUseAuditLog ? undefined : "Pro"}
+            locked={!canUseAuditLog}
           />
         </div>
       </PageSection>
