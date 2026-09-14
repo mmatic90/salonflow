@@ -5,8 +5,8 @@ This document summarizes the current three-tier commercial entitlement model. De
 ## Plans
 
 - **Starter** — complete core salon operations without SalonFlow-paid outbound automation.
-- **Growth** — managed client email, utilization, retention and CRM insight for growing salons.
-- **Pro** — governance plus finished/premium automation and future advanced CRM/integrations.
+- **Growth** — managed client email, utilization, retention insight and CRM analytics for growing salons.
+- **Pro** — governance plus actionable CRM workflow and premium automation.
 
 Pricing is intentionally not encoded yet.
 
@@ -41,8 +41,8 @@ SalonFlow Managed Email for booking acceptance/rejection and appointment create/
 | Advanced reports | — | ✓ | ✓ | Available; enforced |
 | 24h email appointment reminders | — | ✓ | ✓ | Available; enforced at delivery time |
 | Audit log and export | — | — | ✓ | Available; enforced |
+| Advanced CRM retention workflow | — | — | ✓ | Available; server/page/RLS enforced with append-only action history |
 | Automated Google review requests | — | — | ✓ | Available; tenant-configured and enforced at delivery time |
-| Advanced CRM workflow | — | — | ✓ | Planned |
 | Custom email provider/domain | — | — | ✓ | Planned; requires credential-safe secret storage |
 | Advanced automations | — | — | ✓ | Planned |
 | Advanced integrations | — | — | ✓ | Planned |
@@ -68,6 +68,7 @@ Commercial enforcement is active in controlled stages:
 - Growth Reports: server page guard and navigation state.
 - Growth 24h Appointment Reminders: current tenant plan/lifecycle is checked immediately before delivery.
 - Pro Audit Log: page/export guards plus database read RLS.
+- Pro Advanced CRM: navigation/page guard, server mutation validation and Pro-only RLS protect the retention workflow. Queue candidates are derived from current tenant appointment/client behavior; only operator decisions are persisted in append-only `crm_retention_actions` history. Contacted/resolved/ignored signals stay suppressed for that signal generation, while 7/14/30-day snoozes can reappear later.
 - Pro Automated Google Review Requests: settings/action guards plus current entitlement check immediately before managed-email delivery; tenant URL, activation boundary and per-appointment delivery state prevent cross-tenant or retroactive automation.
 
 Starter retains all core salon operation, online booking, client history, care/safety and treatment-note functionality. Downgrading does not delete premium data; access/derived premium behavior becomes available again after an eligible upgrade.
