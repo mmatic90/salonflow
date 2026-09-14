@@ -1,6 +1,17 @@
+import type { Metadata } from "next";
 import { CheckCircle2, MailX, ShieldCheck } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { unsubscribeMarketingEmailAction } from "@/features/clients/marketing-unsubscribe-actions";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
+};
 
 type Params = Promise<{ token: string }>;
 type SearchParams = Promise<{ done?: string }>;
