@@ -56,18 +56,50 @@ const groupLabels: Record<
   },
 };
 
+const emailCardCopy: Record<
+  AppLocale,
+  { title: string; description: string }
+> = {
+  hr: {
+    title: "Email i obavijesti",
+    description:
+      "Managed email obavijesti, 24h podsjetnici, potrošnja i mjesečna kvota.",
+  },
+  en: {
+    title: "Email & notifications",
+    description:
+      "Managed email notifications, 24h reminders, usage and monthly quota.",
+  },
+  it: {
+    title: "Email e notifiche",
+    description:
+      "Email gestite, promemoria 24h, utilizzo e quota mensile.",
+  },
+};
+
 export default async function SettingsPage() {
   const permissions = await requireAdminForSettings();
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.settings;
   const scheduleT = dictionary.schedule;
   const groups = groupLabels[permissions.organizationLocale];
+  const emailCopy = emailCardCopy[permissions.organizationLocale];
   const canUseAuditLog = canUseCapability(permissions, "audit_log");
+  const canUseBookingNotifications = canUseCapability(
+    permissions,
+    "booking_notifications",
+  );
   const auditLogHref = canUseAuditLog
     ? "/dashboard/settings/audit-log"
     : buildCapabilityUpgradePath(
         "audit_log",
         "/dashboard/settings/audit-log",
+      );
+  const emailNotificationsHref = canUseBookingNotifications
+    ? "/dashboard/settings/notifications"
+    : buildCapabilityUpgradePath(
+        "booking_notifications",
+        "/dashboard/settings/notifications",
       );
 
   return (
@@ -144,6 +176,13 @@ export default async function SettingsPage() {
 
       <PageSection title={groups.advanced}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <SettingsCard
+            href={emailNotificationsHref}
+            title={emailCopy.title}
+            description={emailCopy.description}
+            locked={!canUseBookingNotifications}
+          />
+
           <SettingsCard
             href={auditLogHref}
             title={t.auditLogTitle}
