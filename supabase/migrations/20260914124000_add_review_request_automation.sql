@@ -53,8 +53,12 @@ begin
     new.enabled_at := null;
   elsif tg_op = 'INSERT' then
     new.enabled_at := coalesce(new.enabled_at, now());
-  elsif old.enabled = false or new.enabled_at is null then
+  elsif old.enabled = false then
     new.enabled_at := now();
+  else
+    -- While enabled, preserve the original activation boundary even if a
+    -- tenant attempts to submit a different timestamp directly through the API.
+    new.enabled_at := old.enabled_at;
   end if;
 
   return new;
