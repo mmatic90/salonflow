@@ -9,6 +9,11 @@ import {
 } from "@/lib/email/tenant-notifications";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
+import {
+  findExistingClientMatch,
+  normalizeClientEmail,
+  type ClientMatchRecord,
+} from "@/features/clients/matching";
 
 type NotificationLang = "hr" | "en" | "it";
 
@@ -76,6 +81,34 @@ function getSalonAddress(organization: {
   ]
     .filter(Boolean)
     .join(", ");
+}
+
+function getAmbiguousClientMatchMessage(
+  locale: AppLocale,
+  matchedBy: "email" | "phone",
+) {
+  const field =
+    locale === "en"
+      ? matchedBy === "email"
+        ? "email address"
+        : "phone number"
+      : locale === "it"
+        ? matchedBy === "email"
+          ? "indirizzo email"
+          : "numero di telefono"
+        : matchedBy === "email"
+          ? "email adresom"
+          : "brojem telefona";
+
+  if (locale === "en") {
+    return `More than one active client has the same ${field}. The booking was not accepted to avoid linking it to the wrong client. Resolve the duplicate client records and try again.`;
+  }
+
+  if (locale === "it") {
+    return `Più clienti attivi hanno lo stesso ${field}. La prenotazione non è stata accettata per evitare di collegarla al cliente sbagliato. Risolvi i duplicati e riprova.`;
+  }
+
+  return `Više aktivnih klijenata ima isti zapis s ${field}. Zahtjev nije prihvaćen kako se termin ne bi povezao s pogrešnim klijentom. Razriješi duplikate i pokušaj ponovno.`;
 }
 
 async function getCurrentUserId(locale: AppLocale) {
@@ -181,42 +214,81 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const marketingPreferenceAt =
     request.marketing_email_opt_in_at || request.created_at || new Date().toISOString();
 
-  const { data: client, error: clientError } = await supabase
+  const { data: activeClientRows, error: activeClientsError } = await supabase
     .from("clients")
-    .insert({
-      organization_id: permissions.organizationId,
-      first_name: firstName,
-      last_name: lastName,
-      phone: request.client_phone || null,
-      email: request.client_email || null,
-      notes:
-        request.client_note ||
-        (notificationLang === "en"
-          ? "Client created from an online booking request."
-          : notificationLang === "it"
-            ? "Cliente creato da una richiesta di prenotazione online."
-            : "Klijent kreiran iz online zahtjeva za rezervaciju."),
-      marketing_consent: marketingOptIn,
-      marketing_email_status: marketingOptIn ? "allowed" : "unknown",
-      marketing_email_consent_at: marketingOptIn ? marketingPreferenceAt : null,
-      marketing_email_consent_source: marketingOptIn ? "online_booking" : null,
-      marketing_email_source: "online_booking",
-      marketing_email_updated_at: marketingPreferenceAt,
-      marketing_email_updated_by: null,
-      is_active: true,
-    })
-    .select("id")
-    .single();
+    .select(
+      "id, first_name, last_name, email, phone, marketing_email_status",
+    )
+    .eq("organization_id", permissions.organizationId)
+    .eq("is_active", true);
 
-  if (clientError || !client) {
-    throw new Error(clientError?.message || t.clientCreateError);
+  if (activeClientsError) throw new Error(activeClientsError.message);
+
+  const clientMatch = findExistingClientMatch(
+    (activeClientRows ?? []) as ClientMatchRecord[],
+    {
+      email: request.client_email,
+      phone: request.client_phone,
+    },
+  );
+
+  if (clientMatch.kind === "ambiguous") {
+    throw new Error(
+      getAmbiguousClientMatchMessage(
+        permissions.organizationLocale,
+        clientMatch.matchedBy,
+      ),
+    );
+  }
+
+  let clientId = "";
+  let matchedClient: ClientMatchRecord | null = null;
+  let createdNewClient = false;
+
+  if (clientMatch.kind === "matched") {
+    clientId = clientMatch.client.id;
+    matchedClient = clientMatch.client;
+  } else {
+    const { data: createdClient, error: clientError } = await supabase
+      .from("clients")
+      .insert({
+        organization_id: permissions.organizationId,
+        first_name: firstName,
+        last_name: lastName,
+        phone: request.client_phone || null,
+        email: request.client_email || null,
+        notes:
+          request.client_note ||
+          (notificationLang === "en"
+            ? "Client created from an online booking request."
+            : notificationLang === "it"
+              ? "Cliente creato da una richiesta di prenotazione online."
+              : "Klijent kreiran iz online zahtjeva za rezervaciju."),
+        marketing_consent: marketingOptIn,
+        marketing_email_status: marketingOptIn ? "allowed" : "unknown",
+        marketing_email_consent_at: marketingOptIn ? marketingPreferenceAt : null,
+        marketing_email_consent_source: marketingOptIn ? "online_booking" : null,
+        marketing_email_source: "online_booking",
+        marketing_email_updated_at: marketingPreferenceAt,
+        marketing_email_updated_by: null,
+        is_active: true,
+      })
+      .select("id")
+      .single();
+
+    if (clientError || !createdClient) {
+      throw new Error(clientError?.message || t.clientCreateError);
+    }
+
+    clientId = createdClient.id;
+    createdNewClient = true;
   }
 
   const { data: appointment, error: appointmentError } = await supabase
     .from("appointments")
     .insert({
       organization_id: permissions.organizationId,
-      client_id: client.id,
+      client_id: clientId,
       employee_id: employeeId,
       room_id: roomId,
       appointment_date: request.requested_date,
@@ -237,7 +309,13 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
     .single();
 
   if (appointmentError || !appointment) {
-    await supabase.from("clients").delete().eq("id", client.id);
+    if (createdNewClient) {
+      await supabase
+        .from("clients")
+        .delete()
+        .eq("organization_id", permissions.organizationId)
+        .eq("id", clientId);
+    }
     throw new Error(appointmentError?.message || t.appointmentCreateError);
   }
 
@@ -256,8 +334,54 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
 
   if (appointmentServicesError) {
     await supabase.from("appointments").delete().eq("id", appointment.id);
-    await supabase.from("clients").delete().eq("id", client.id);
+    if (createdNewClient) {
+      await supabase
+        .from("clients")
+        .delete()
+        .eq("organization_id", permissions.organizationId)
+        .eq("id", clientId);
+    }
     throw new Error(appointmentServicesError.message);
+  }
+
+  if (matchedClient) {
+    const clientUpdate: Record<string, string | null> = {};
+
+    if (!normalizeClientEmail(matchedClient.email) && request.client_email?.trim()) {
+      clientUpdate.email = request.client_email.trim();
+    }
+
+    if (!matchedClient.phone?.trim() && request.client_phone?.trim()) {
+      clientUpdate.phone = request.client_phone.trim();
+    }
+
+    // A previous explicit opt-out is intentionally sticky. A verified booking
+    // opt-in may promote only an unknown preference to allowed.
+    if (marketingOptIn && matchedClient.marketing_email_status === "unknown") {
+      clientUpdate.marketing_email_status = "allowed";
+      clientUpdate.marketing_email_consent_at = marketingPreferenceAt;
+      clientUpdate.marketing_email_consent_source = "online_booking";
+      clientUpdate.marketing_email_source = "online_booking";
+      clientUpdate.marketing_email_updated_at = marketingPreferenceAt;
+      clientUpdate.marketing_email_updated_by = userId;
+    }
+
+    if (Object.keys(clientUpdate).length > 0) {
+      const { error: clientUpdateError } = await supabase
+        .from("clients")
+        .update(clientUpdate)
+        .eq("organization_id", permissions.organizationId)
+        .eq("id", matchedClient.id);
+
+      // Contact enrichment is useful but must not leave a successfully created
+      // appointment stuck as pending if a secondary profile update fails.
+      if (clientUpdateError) {
+        console.warn(
+          "Online booking matched existing client but profile enrichment failed:",
+          clientUpdateError.message,
+        );
+      }
+    }
   }
 
   const { error: updateRequestError } = await supabase
@@ -301,6 +425,8 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   revalidatePath("/dashboard/appointments");
   revalidatePath("/dashboard/calendar");
   revalidatePath("/dashboard/calendar/time-grid");
+  revalidatePath("/dashboard/clients");
+  revalidatePath(`/dashboard/clients/${clientId}`);
 
   redirect("/dashboard/online-bookings");
 }
