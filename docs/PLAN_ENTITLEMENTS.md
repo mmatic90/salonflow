@@ -4,9 +4,9 @@ This document summarizes the current three-tier commercial entitlement model. De
 
 ## Plans
 
-- **Starter** — complete core salon operations.
-- **Growth** — utilization, retention, CRM insight and automation features for growing salons.
-- **Pro** — governance plus future advanced CRM, integrations and automation.
+- **Starter** — complete core salon operations without SalonFlow-paid outbound automation.
+- **Growth** — managed client email, utilization, retention and CRM insight for growing salons.
+- **Pro** — governance plus finished/premium automation and future advanced CRM/integrations.
 
 Pricing is intentionally not encoded yet.
 
@@ -18,7 +18,7 @@ A tenant with lifecycle status `trial` receives the **Pro entitlement set** for 
 
 SalonFlow automated client communication is **email-only**. Phone numbers remain available as salon/client contact data, but the product has no SMS/Twilio delivery path.
 
-Operational booking emails are part of Starter. The proactive 24h email reminder is a Growth capability.
+SalonFlow Managed Email for booking acceptance/rejection and appointment create/change notifications starts at Growth. The proactive 24h appointment reminder is also Growth. Automated Google review requests after eligible completed appointments are Pro.
 
 ## Capability matrix
 
@@ -32,8 +32,8 @@ Operational booking emails are part of Starter. The proactive 24h email reminder
 | Employee schedules | ✓ | ✓ | ✓ | Available |
 | Appearance and branding | ✓ | ✓ | ✓ | Available |
 | Online booking | ✓ | ✓ | ✓ | Available |
-| Email booking notifications | ✓ | ✓ | ✓ | Available |
 | Basic operational overview | ✓ | ✓ | ✓ | Available |
+| Managed email booking notifications | — | ✓ | ✓ | Available; enforced before quota reservation |
 | Waitlist | — | ✓ | ✓ | Available; enforced |
 | Automatic waitlist matching | — | ✓ | ✓ | Available; covered by waitlist enforcement |
 | CRM insights | — | ✓ | ✓ | Available; enforced |
@@ -41,8 +41,9 @@ Operational booking emails are part of Starter. The proactive 24h email reminder
 | Advanced reports | — | ✓ | ✓ | Available; enforced |
 | 24h email appointment reminders | — | ✓ | ✓ | Available; enforced at delivery time |
 | Audit log and export | — | — | ✓ | Available; enforced |
+| Automated Google review requests | — | — | ✓ | Available; tenant-configured and enforced at delivery time |
 | Advanced CRM workflow | — | — | ✓ | Planned |
-| Automated review requests | — | — | ✓ | Partial; email template exists, tenant-specific review configuration still required |
+| Custom email provider/domain | — | — | ✓ | Planned; requires credential-safe secret storage |
 | Advanced automations | — | — | ✓ | Planned |
 | Advanced integrations | — | — | ✓ | Planned |
 | Priority support | — | — | ✓ | Planned |
@@ -61,16 +62,18 @@ The application source of truth is `src/lib/entitlements.ts`.
 
 Commercial enforcement is active in controlled stages:
 
+- Growth Managed Email: booking acceptance/rejection and appointment create/change notifications are gated centrally before quota reservation/provider delivery.
 - Growth Waitlist: navigation/page/actions and database RLS.
 - Growth CRM/attendance insights: server query calculation/return plus in-profile upgrade state.
 - Growth Reports: server page guard and navigation state.
-- Growth 24h Appointment Reminders: current tenant plan/lifecycle is checked by the email background job immediately before sending.
+- Growth 24h Appointment Reminders: current tenant plan/lifecycle is checked immediately before delivery.
 - Pro Audit Log: page/export guards plus database read RLS.
+- Pro Automated Google Review Requests: settings/action guards plus current entitlement check immediately before managed-email delivery; tenant URL, activation boundary and per-appointment delivery state prevent cross-tenant or retroactive automation.
 
-Starter retains all core salon operation, client history, care/safety and treatment-note functionality. Downgrading does not delete premium data; access/derived premium behavior becomes available again after an eligible upgrade.
+Starter retains all core salon operation, online booking, client history, care/safety and treatment-note functionality. Downgrading does not delete premium data; access/derived premium behavior becomes available again after an eligible upgrade.
 
 Capabilities marked `partial` or `planned` must not be presented as finished paid functionality and remain outside enforcement until their dedicated implementation/hardening stage.
 
 ## Limits
 
-Employee, service, client and appointment hard limits are intentionally not active. The plan catalog keeps a limits structure for future use, but all current values remain unlimited until commercial rules are finalized.
+Employee, service, client and appointment hard limits are intentionally not active. Managed email is the exception: per-tenant and global monthly safety quotas are enforced to control shared provider cost. Commercial email allowances are not final pricing yet and can be overridden per tenant by Platform Admin.
