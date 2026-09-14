@@ -16,8 +16,15 @@ function browserLocale(): Locale {
   return "hr";
 }
 
-const subscribeToLocale = () => () => {};
+function browserInviteError() {
+  if (typeof window === "undefined") return false;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  return Boolean(hash.get("error") || hash.get("error_code"));
+}
+
+const subscribeToBrowserSnapshot = () => () => {};
 const getServerLocale = (): Locale => "hr";
+const getServerInviteError = () => false;
 
 function copy(locale: Locale) {
   if (locale === "it") {
@@ -75,9 +82,14 @@ export default function SetPasswordPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const locale = useSyncExternalStore(
-    subscribeToLocale,
+    subscribeToBrowserSnapshot,
     browserLocale,
     getServerLocale,
+  );
+  const inviteError = useSyncExternalStore(
+    subscribeToBrowserSnapshot,
+    browserInviteError,
+    getServerInviteError,
   );
   const [ready, setReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
@@ -87,14 +99,11 @@ export default function SetPasswordPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const text = copy(locale);
+  const isReady = inviteError || ready;
+  const canSetPassword = !inviteError && hasSession;
 
   useEffect(() => {
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    if (hash.get("error") || hash.get("error_code")) {
-      setReady(true);
-      setHasSession(false);
-      return;
-    }
+    if (inviteError) return;
 
     let active = true;
     void supabase.auth.getSession().then(({ data }) => {
@@ -115,7 +124,7 @@ export default function SetPasswordPage() {
       active = false;
       listener.subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [inviteError, supabase]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -156,11 +165,11 @@ export default function SetPasswordPage() {
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-stone-950">{text.title}</h1>
         <p className="mt-2 text-sm leading-6 text-stone-600">{text.description}</p>
 
-        {!ready ? (
+        {!isReady ? (
           <div className="mt-7 flex items-center gap-2 rounded-2xl bg-stone-50 p-4 text-sm text-stone-600">
             <Loader2 className="h-4 w-4 animate-spin" /> {text.checking}
           </div>
-        ) : !hasSession ? (
+        ) : !canSetPassword ? (
           <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
             <div className="font-semibold">{text.invalid}</div>
             <div className="mt-1 text-amber-800">{text.invalidHelp}</div>
