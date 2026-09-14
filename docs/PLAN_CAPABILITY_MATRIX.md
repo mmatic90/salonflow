@@ -8,7 +8,7 @@ This document records the audited commercial capability split for the current Sa
 - **Partial** — meaningful implementation exists, but it must be finished or tenant-hardened before it is enforced or advertised as fully available.
 - **Planned** — commercial roadmap capability; do not market it as currently delivered.
 
-Entitlement enforcement is now implemented for Waitlist, CRM/attendance insights, Advanced Reports and Audit Log. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
+Entitlement enforcement is now implemented for Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders and Audit Log. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
 
 ## Trial rule
 
@@ -28,7 +28,7 @@ Starter must remain a complete day-to-day salon-management product. Safety-relat
 | Employees and schedules | Available | Employees, default schedules, quick ranges, breaks and date overrides. |
 | Appearance and basic branding | Available | Theme, logo and tenant presentation settings. |
 | Online booking | Available | Public tenant booking page/API, availability and dashboard request handling. |
-| Booking notifications | Available | Tenant-aware booking accept/reject email/SMS plus appointment-created/updated SMS flows. |
+| Booking notifications | Available | Tenant-aware booking accept/reject email/SMS plus basic appointment-created/updated communication. These are operational booking messages, not the premium 24h reminder capability. |
 | Basic operational overview | Available | Main dashboard counts and daily operational overview. This is the Starter reporting surface. |
 
 ### Starter enforcement note
@@ -48,13 +48,15 @@ Growth adds utilization, retention and management insight on top of the Starter 
 | CRM insights | Available | **Enforced.** Client segmentation, favorite service/employee, visit cadence and CRM warning signals are calculated and returned only for Growth/Pro or Trial. Starter sees a locked CRM-insights entry point without losing the core client profile. |
 | Attendance insights | Available | **Enforced with CRM insights.** Cancelled/no-show counts and history-aware rates are returned only for Growth/Pro or Trial. Completed-count and visit-history data remain basic client information. |
 | Advanced reports | Available | **Enforced.** Full `/dashboard/reports` module requires Growth/Pro or Trial through a server page guard; Starter retains only the dashboard operational overview. |
-| Appointment reminders | Partial | Tenant-aware SMS scheduling exists. The separate email reminder cron still needs full tenant context/branding and per-tenant commercial enforcement before this capability should be considered fully ready. |
+| Appointment reminders | Available | **Enforced at delivery time.** The 24h reminder job resolves tenant plan/lifecycle, locale, timezone and branding before sending. Growth/Pro and Trial are eligible; Starter and suspended tenants do not receive premium reminders. Croatian mobile numbers use SMS; other supported reminder contacts use tenant-branded email. |
 
 ### Growth enforcement notes
 
 The sidebar and main dashboard expose clear locked states rather than silently failing. Direct URLs are protected server-side where a capability has its own page. Waitlist server actions are also guarded, and the main Starter dashboard does not execute waitlist count/opportunity queries.
 
 CRM enforcement differs from Waitlist because Starter legitimately needs the same appointment records for client history and continuity of care. Therefore the underlying appointment rows are **not** hidden by RLS. Instead, the server query layer checks the entitlement before calculating or returning segmentation, favourites, cadence, attendance rates and CRM signals.
+
+Appointment reminders differ again because they are a background capability rather than a dashboard page. Their authoritative entitlement check happens immediately before delivery. This prevents a reminder from leaking through after a downgrade and lets already-existing future appointments become reminder-eligible immediately after an upgrade.
 
 ## Pro
 
@@ -93,10 +95,21 @@ Client allergies/sensitivities, contraindications, treatment preferences and tre
 
 ### Notifications and reminders
 
-Booking accept/reject communication is tenant-aware and reusable. Appointment-created/updated SMS and scheduled SMS reminders also include the tenant salon name. However, the standalone email-reminder cron currently scans appointments globally and does not resolve/push full tenant branding into the reminder email. For this reason:
+Booking confirmation/status communication remains a Starter operational capability. The premium reminder boundary is specifically the proactive 24h reminder.
 
-- `booking_notifications` = Starter / Available
-- `appointment_reminders` = Growth / Partial until tenant-hardening is complete
+The reminder delivery job is now tenant-aware and plan-aware. It:
+
+- resolves each appointment's organization before delivery;
+- uses the organization's current plan/lifecycle, with Trial receiving Pro-equivalent access;
+- skips Starter and suspended organizations;
+- uses organization locale for HR/EN/IT message language;
+- converts appointment wall-clock date/time using organization timezone rather than server timezone;
+- passes salon name, phone, address and logo to reminder email branding;
+- sends SMS to Croatian mobile numbers and email to other contacts with an email address;
+- stores separate SMS/email sent/error state to avoid duplicate delivery;
+- attempts to retire legacy pre-scheduled Twilio reminder SIDs so the old scheduling path cannot duplicate the new send-time flow.
+
+Reminder delivery state is reset only when date/time/contact target changes or a previously inactive appointment becomes active again. Routine note/resource edits therefore do not create duplicate reminders.
 
 ### Review automation
 
@@ -114,9 +127,10 @@ Staged enforcement remains the rule:
 2. **Page/server guards** — implemented for Waitlist, Reports and Audit Log/export.
 3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. CRM advanced values are guarded in the server query layer because the underlying appointment history is Starter data.
 4. **CRM insight enforcement** — implemented for segmentation, favourites, cadence, attendance rates and CRM signals.
-5. **Background jobs** — make reminder/review jobs tenant- and entitlement-aware before commercial enforcement.
-6. **Public booking/API behavior** — keep Starter booking stable; only gate capabilities that are explicitly premium.
-7. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
+5. **Background reminder enforcement** — implemented at send time for 24h appointment reminders; tenant context and current plan/lifecycle are authoritative.
+6. **Background review automation** — still requires tenant-hardening before Pro enforcement.
+7. **Public booking/API behavior** — keep Starter booking stable; only gate capabilities that are explicitly premium.
+8. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
 
 ## Pricing
 
