@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendGoogleReviewRequestEmail } from "@/lib/email/review-request-email";
 import { canUseCapability } from "@/lib/permissions";
 import { requireAdminForSettings } from "@/lib/page-guards";
 
@@ -13,6 +14,8 @@ type ReviewSettingsActionResult =
       delayHours: 2 | 24;
     }
   | { ok: false; error: string };
+
+type ReviewTestActionResult = { ok: true } | { ok: false; error: string };
 
 function isGoogleReviewUrl(value: string) {
   try {
@@ -38,6 +41,8 @@ function copy(locale: "hr" | "en" | "it") {
       missingUrl: "A Google review link is required before automation can be enabled.",
       invalidDelay: "Choose a supported delay: 2 or 24 hours.",
       missingSettings: "Review settings are not available yet. Apply the latest database migration first.",
+      missingEmail: "Your signed-in account does not have an email address for the test message.",
+      missingSalon: "The salon could not be loaded for the test message.",
     };
   }
 
@@ -48,6 +53,8 @@ function copy(locale: "hr" | "en" | "it") {
       missingUrl: "È necessario un link per le recensioni Google prima di attivare l'automazione.",
       invalidDelay: "Scegli un ritardo supportato: 2 o 24 ore.",
       missingSettings: "Le impostazioni recensioni non sono ancora disponibili. Applica prima l'ultima migrazione del database.",
+      missingEmail: "L'account con cui hai effettuato l'accesso non ha un indirizzo email per il messaggio di test.",
+      missingSalon: "Impossibile caricare il salone per il messaggio di test.",
     };
   }
 
@@ -57,7 +64,30 @@ function copy(locale: "hr" | "en" | "it") {
     missingUrl: "Google review link je obavezan prije uključivanja automatizacije.",
     invalidDelay: "Odaberite podržanu odgodu: 2 ili 24 sata.",
     missingSettings: "Postavke recenzija još nisu dostupne. Prvo primijenite najnoviju migraciju baze.",
+    missingEmail: "Prijavljeni račun nema email adresu na koju možemo poslati testnu poruku.",
+    missingSalon: "Salon nije moguće učitati za testnu poruku.",
   };
+}
+
+function salonAddress(organization: {
+  address_line_1: string | null;
+  address_line_2: string | null;
+  postal_code: string | null;
+  city: string | null;
+  country_code: string | null;
+}) {
+  const cityLine = [organization.postal_code, organization.city]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const parts = [
+    organization.address_line_1,
+    organization.address_line_2,
+    cityLine || null,
+    organization.country_code,
+  ].filter((part): part is string => Boolean(part?.trim()));
+
+  return parts.length ? parts.join(", ") : null;
 }
 
 export async function updateReviewSettingsAction(input: {
@@ -107,4 +137,62 @@ export async function updateReviewSettingsAction(input: {
     googleReviewUrl: data.google_review_url ?? null,
     delayHours: data.delay_hours === 2 ? 2 : 24,
   };
+}
+
+export async function sendReviewTestEmailAction(): Promise<ReviewTestActionResult> {
+  const permissions = await requireAdminForSettings();
+  const t = copy(permissions.organizationLocale);
+
+  if (!canUseCapability(permissions, "review_requests")) {
+    return { ok: false, error: t.unavailable };
+  }
+  if (!permissions.email) {
+    return { ok: false, error: t.missingEmail };
+  }
+
+  const supabase = await createClient();
+  const [settingsResult, organizationResult] = await Promise.all([
+    supabase
+      .from("organization_review_settings")
+      .select("google_review_url")
+      .eq("organization_id", permissions.organizationId)
+      .maybeSingle(),
+    supabase
+      .from("organizations")
+      .select(
+        "name, phone, address_line_1, address_line_2, postal_code, city, country_code, logo_url",
+      )
+      .eq("id", permissions.organizationId)
+      .maybeSingle(),
+  ]);
+
+  if (settingsResult.error) return { ok: false, error: settingsResult.error.message };
+  if (organizationResult.error) return { ok: false, error: organizationResult.error.message };
+
+  const reviewUrl = settingsResult.data?.google_review_url?.trim();
+  if (!reviewUrl) return { ok: false, error: t.missingUrl };
+  if (!organizationResult.data) return { ok: false, error: t.missingSalon };
+
+  const organization = organizationResult.data;
+
+  try {
+    await sendGoogleReviewRequestEmail({
+      organizationId: permissions.organizationId,
+      salonName: organization.name,
+      salonPhone: organization.phone,
+      salonAddress: salonAddress(organization),
+      salonLogoUrl: organization.logo_url,
+      to: permissions.email,
+      clientName: permissions.displayName,
+      reviewUrl,
+      lang: permissions.organizationLocale,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Email delivery failed.",
+    };
+  }
+
+  return { ok: true };
 }
