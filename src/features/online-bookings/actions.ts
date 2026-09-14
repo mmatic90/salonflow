@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   sendBookingAcceptedEmail,
   sendBookingRejectedEmail,
-} from "@/lib/email/booking-email";
+} from "@/lib/email/tenant-notifications";
 import { requireDashboardUser } from "@/lib/page-guards";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 
@@ -222,6 +222,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
       source: "online_booking",
       total_price: request.services?.price ?? null,
       currency: request.services?.currency || "EUR",
+      created_by: userId,
     })
     .select("id")
     .single();
@@ -269,6 +270,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   if (request.client_email) {
     try {
       await sendBookingAcceptedEmail({
+        organizationId: permissions.organizationId,
         to: request.client_email,
         salonName: organization.name,
         salonPhone: organization.phone,
@@ -360,6 +362,7 @@ export async function rejectOnlineBookingRequestAction(formData: FormData) {
   if (request.client_email) {
     try {
       await sendBookingRejectedEmail({
+        organizationId: permissions.organizationId,
         to: request.client_email,
         salonName: organization.name,
         salonPhone: organization.phone,
