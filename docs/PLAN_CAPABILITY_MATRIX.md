@@ -8,7 +8,7 @@ This document records the audited commercial capability split for the current Sa
 - **Partial** — meaningful implementation exists, but it must be finished or tenant-hardened before it is enforced or advertised as fully available.
 - **Planned** — commercial roadmap capability; do not market it as currently delivered.
 
-The **first entitlement-enforcement batch is implemented** for the available Waitlist, Advanced Reports and Audit Log capabilities. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
+Entitlement enforcement is now implemented for Waitlist, CRM/attendance insights, Advanced Reports and Audit Log. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
 
 ## Trial rule
 
@@ -35,6 +35,8 @@ Starter must remain a complete day-to-day salon-management product. Safety-relat
 
 Do **not** gate core appointment availability rules, salon hours, employee schedules, room/resource conflict validation or care/safety data separately. They are part of a reliable core booking product.
 
+Client contact data, salon notes, upcoming/history records, treatment notes, total appointment count, completed appointment count and last/next appointment stay available in Starter. Premium CRM enforcement must not make the basic client record unusable.
+
 ## Growth
 
 Growth adds utilization, retention and management insight on top of the Starter foundation.
@@ -43,16 +45,16 @@ Growth adds utilization, retention and management insight on top of the Starter 
 | --- | --- | --- |
 | Waitlist | Available | **Enforced.** `/dashboard/waitlist`, waitlist mutations and database RLS require Growth/Pro or Trial. Starter keeps existing rows but cannot read or mutate them. |
 | Automatic waitlist opportunities | Available | **Covered by Waitlist enforcement.** Dashboard waitlist queries/panel are skipped entirely for Starter. Event-driven persistence remains maintained internally so waitlist state is not destroyed by plan changes. |
-| CRM insights | Available | Client segmentation, favorite service/employee, visit cadence and CRM signals. **Not enforced yet.** |
-| Attendance insights | Available | Completed/cancelled/no-show counts and history-aware rates. **Not enforced yet.** |
+| CRM insights | Available | **Enforced.** Client segmentation, favorite service/employee, visit cadence and CRM warning signals are calculated and returned only for Growth/Pro or Trial. Starter sees a locked CRM-insights entry point without losing the core client profile. |
+| Attendance insights | Available | **Enforced with CRM insights.** Cancelled/no-show counts and history-aware rates are returned only for Growth/Pro or Trial. Completed-count and visit-history data remain basic client information. |
 | Advanced reports | Available | **Enforced.** Full `/dashboard/reports` module requires Growth/Pro or Trial through a server page guard; Starter retains only the dashboard operational overview. |
 | Appointment reminders | Partial | Tenant-aware SMS scheduling exists. The separate email reminder cron still needs full tenant context/branding and per-tenant commercial enforcement before this capability should be considered fully ready. |
 
 ### Growth enforcement notes
 
-The sidebar and main dashboard expose clear locked Growth states rather than silently failing. Direct URLs are protected server-side. Waitlist server actions are also guarded, and the main Starter dashboard does not execute waitlist count/opportunity queries.
+The sidebar and main dashboard expose clear locked states rather than silently failing. Direct URLs are protected server-side where a capability has its own page. Waitlist server actions are also guarded, and the main Starter dashboard does not execute waitlist count/opportunity queries.
 
-CRM-derived insights and reminders are deliberately outside this first batch and remain unchanged until their own tenant-hardening/enforcement work.
+CRM enforcement differs from Waitlist because Starter legitimately needs the same appointment records for client history and continuity of care. Therefore the underlying appointment rows are **not** hidden by RLS. Instead, the server query layer checks the entitlement before calculating or returning segmentation, favourites, cadence, attendance rates and CRM signals.
 
 ## Pro
 
@@ -75,7 +77,15 @@ The existing `/dashboard/reports` page is already substantially more than a basi
 
 ### CRM
 
-The current client profile already computes segments, attendance rates, favorite service/employee, average visit cadence and warning signals. These are the real **Growth CRM insights**. There is not yet a distinct finished "advanced CRM" workflow, so Pro `advanced_crm` remains planned.
+The current client profile computes segments, attendance rates, favorite service/employee, average visit cadence and warning signals. These are the real **Growth CRM insights** and are now enforced at the server-query and UI layers.
+
+The query contract separates:
+
+- `basic_stats` — Starter-safe completed count and last completed visit;
+- `crm_insights` — Growth segmentation, favorites, cadence and CRM signals;
+- `attendance_insights` — Growth cancellation/no-show counts and rates.
+
+There is not yet a distinct finished "advanced CRM" workflow, so Pro `advanced_crm` remains planned.
 
 ### Care and safety
 
@@ -100,10 +110,10 @@ Audit storage remains tenant-aware and immutable from the application. The first
 
 Staged enforcement remains the rule:
 
-1. **Navigation/upgrade states** — implemented for Waitlist, Reports and Audit Log.
+1. **Navigation/upgrade states** — implemented for Waitlist, Reports and Audit Log; CRM uses an in-profile locked upgrade state because the Clients module itself remains Starter.
 2. **Page/server guards** — implemented for Waitlist, Reports and Audit Log/export.
-3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. Future capability batches must follow the same pattern.
-4. **CRM insight enforcement** — next candidate after regression QA of this first batch.
+3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. CRM advanced values are guarded in the server query layer because the underlying appointment history is Starter data.
+4. **CRM insight enforcement** — implemented for segmentation, favourites, cadence, attendance rates and CRM signals.
 5. **Background jobs** — make reminder/review jobs tenant- and entitlement-aware before commercial enforcement.
 6. **Public booking/API behavior** — keep Starter booking stable; only gate capabilities that are explicitly premium.
 7. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
