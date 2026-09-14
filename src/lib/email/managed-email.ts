@@ -116,7 +116,9 @@ export async function sendManagedTenantEmail(args: ManagedEmailArgs) {
   ] = await Promise.all([
     supabase
       .from("organizations")
-      .select("id, name, email, plan_code, lifecycle_status, is_active")
+      .select(
+        "id, name, email, plan_code, lifecycle_status, trial_ends_at, is_active",
+      )
       .eq("id", args.organizationId)
       .maybeSingle(),
     supabase
@@ -145,7 +147,12 @@ export async function sendManagedTenantEmail(args: ManagedEmailArgs) {
   if (
     organization.is_active === false ||
     lifecycleStatus === "suspended" ||
-    !organizationHasCapability(planCode, lifecycleStatus, args.capability)
+    !organizationHasCapability(
+      planCode,
+      lifecycleStatus,
+      args.capability,
+      organization.trial_ends_at ?? null,
+    )
   ) {
     throw new ManagedEmailError(
       "EMAIL_PLAN_NOT_ELIGIBLE",
