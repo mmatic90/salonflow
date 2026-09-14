@@ -38,14 +38,16 @@ export async function getMarketingEmailDeliveryContext(args: {
     return { eligible: false, reason: "unknown" };
   }
 
-  let { data: tokenRow, error: tokenError } = await supabase
+  const tokenResult = await supabase
     .from("client_marketing_unsubscribe_tokens")
     .select("token")
     .eq("organization_id", args.organizationId)
     .eq("client_id", args.clientId)
     .maybeSingle();
 
-  if (tokenError) throw new Error(tokenError.message);
+  if (tokenResult.error) throw new Error(tokenResult.error.message);
+
+  let tokenRow = tokenResult.data;
 
   if (!tokenRow) {
     const insertResult = await supabase
