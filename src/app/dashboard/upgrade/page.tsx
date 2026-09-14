@@ -61,6 +61,11 @@ function capabilityLabel(code: SalonCapabilityCode, locale: AppLocale) {
       en: "Advanced reports",
       it: "Report avanzati",
     },
+    advanced_crm: {
+      hr: "CRM akcije i retention",
+      en: "CRM actions & retention",
+      it: "Azioni CRM e retention",
+    },
     review_requests: {
       hr: "Zahtjevi za Google recenziju",
       en: "Google review requests",
