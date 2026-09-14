@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendAppointmentReminderEmail } from "@/lib/email/booking-email";
-import { cancelScheduledSms, sendInstantSms } from "@/lib/twilio/sms";
 import {
   getEffectiveEntitlementPlan,
   planHasCapability,
@@ -23,13 +22,10 @@ type AppointmentRow = {
   organization_id: string;
   client_name: string;
   client_email: string | null;
-  client_phone: string | null;
   appointment_date: string;
   start_time: string;
   status: string;
   email_reminder_24h_sent_at: string | null;
-  sms_reminder_24h_sent_at: string | null;
-  twilio_reminder_24h_sid: string | null;
   appointment_services?: AppointmentServiceRow[] | null;
 };
 
@@ -60,19 +56,6 @@ function isAuthorized(request: Request) {
 function normalizeLocale(value: string | null | undefined): AppLocale {
   if (value === "en" || value === "it") return value;
   return "hr";
-}
-
-function isCroatianPhone(phone: string | null | undefined) {
-  const normalized = String(phone ?? "")
-    .replace(/[^\d+]/g, "")
-    .trim();
-
-  return (
-    normalized.startsWith("+385") ||
-    normalized.startsWith("00385") ||
-    normalized.startsWith("385") ||
-    normalized.startsWith("09")
-  );
 }
 
 function organizationCanUseReminders(organization: OrganizationRow) {
@@ -169,7 +152,9 @@ function isReminderDue(appointment: AppointmentRow, organization: OrganizationRo
 }
 
 function formatReminderDate(date: string, locale: AppLocale) {
-  const localeCode = locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR";
+  const localeCode =
+    locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR";
+
   return new Intl.DateTimeFormat(localeCode, {
     day: "2-digit",
     month: "2-digit",
@@ -204,51 +189,6 @@ function getSalonAddress(organization: OrganizationRow) {
   return parts.length ? parts.join(", ") : null;
 }
 
-function buildReminderSms(args: {
-  salonName: string;
-  clientName: string;
-  serviceName: string | null;
-  date: string;
-  time: string;
-  locale: AppLocale;
-}) {
-  const service = args.serviceName ? ` "${args.serviceName}"` : "";
-
-  if (args.locale === "en") {
-    return `Reminder: tomorrow you have an appointment${service} at ${args.time} (${args.date}). ${args.salonName}`;
-  }
-  if (args.locale === "it") {
-    return `Promemoria: domani hai un appuntamento${service} alle ${args.time} (${args.date}). ${args.salonName}`;
-  }
-  return `Podsjetnik: sutra imate termin${service} u ${args.time} (${args.date}). ${args.salonName}`;
-}
-
-async function retireLegacyTwilioReminder(
-  supabase: ReturnType<typeof createAdminClient>,
-  appointment: AppointmentRow,
-) {
-  if (!appointment.twilio_reminder_24h_sid) return true;
-
-  try {
-    await cancelScheduledSms(appointment.twilio_reminder_24h_sid);
-    await supabase
-      .from("appointments")
-      .update({
-        twilio_reminder_24h_sid: null,
-        reminder_24h_scheduled_at: null,
-      })
-      .eq("id", appointment.id)
-      .eq("organization_id", appointment.organization_id);
-    return true;
-  } catch (error) {
-    console.error("Legacy Twilio reminder could not be cancelled:", {
-      appointmentId: appointment.id,
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-    return false;
-  }
-}
-
 export async function GET(request: Request) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -271,13 +211,10 @@ export async function GET(request: Request) {
       organization_id,
       client_name,
       client_email,
-      client_phone,
       appointment_date,
       start_time,
       status,
       email_reminder_24h_sent_at,
-      sms_reminder_24h_sent_at,
-      twilio_reminder_24h_sid,
       appointment_services (
         service_name,
         sort_order
@@ -285,6 +222,7 @@ export async function GET(request: Request) {
     `,
     )
     .in("status", ["scheduled", "confirmed"])
+    .not("client_email", "is", null)
     .gte("appointment_date", minCandidateDate)
     .lte("appointment_date", maxCandidateDate);
 
@@ -328,11 +266,7 @@ export async function GET(request: Request) {
       organization,
     ]),
   );
-  const results: Array<{
-    id: string;
-    status: string;
-    channel?: "sms" | "email";
-  }> = [];
+  const results: Array<{ id: string; status: string }> = [];
   let eligibleCount = 0;
   let dueCount = 0;
   let sentCount = 0;
@@ -344,13 +278,7 @@ export async function GET(request: Request) {
       continue;
     }
 
-    const legacyScheduleResolved = await retireLegacyTwilioReminder(
-      supabase,
-      appointment,
-    );
-    const entitled = organizationCanUseReminders(organization);
-
-    if (!entitled) {
+    if (!organizationCanUseReminders(organization)) {
       results.push({ id: appointment.id, status: "plan_not_eligible" });
       continue;
     }
@@ -359,8 +287,13 @@ export async function GET(request: Request) {
     if (!isReminderDue(appointment, organization)) continue;
     dueCount += 1;
 
-    if (!legacyScheduleResolved) {
-      results.push({ id: appointment.id, status: "legacy_schedule_unresolved" });
+    if (appointment.email_reminder_24h_sent_at) {
+      results.push({ id: appointment.id, status: "already_sent" });
+      continue;
+    }
+
+    if (!appointment.client_email) {
+      results.push({ id: appointment.id, status: "no_email" });
       continue;
     }
 
@@ -368,62 +301,6 @@ export async function GET(request: Request) {
     const serviceName = getServiceName(appointment);
     const formattedDate = formatReminderDate(appointment.appointment_date, locale);
     const formattedTime = appointment.start_time.slice(0, 5);
-
-    if (isCroatianPhone(appointment.client_phone)) {
-      if (appointment.sms_reminder_24h_sent_at) {
-        results.push({ id: appointment.id, status: "already_sent", channel: "sms" });
-        continue;
-      }
-
-      try {
-        await sendInstantSms({
-          to: appointment.client_phone!,
-          message: buildReminderSms({
-            salonName: organization.name,
-            clientName: appointment.client_name,
-            serviceName,
-            date: formattedDate,
-            time: formattedTime,
-            locale,
-          }),
-        });
-
-        await supabase
-          .from("appointments")
-          .update({
-            sms_reminder_24h_sent_at: new Date().toISOString(),
-            sms_reminder_24h_error: null,
-          })
-          .eq("id", appointment.id)
-          .eq("organization_id", appointment.organization_id);
-
-        sentCount += 1;
-        results.push({ id: appointment.id, status: "sent", channel: "sms" });
-      } catch (sendError) {
-        const message =
-          sendError instanceof Error ? sendError.message : "Unknown error";
-
-        await supabase
-          .from("appointments")
-          .update({ sms_reminder_24h_error: message })
-          .eq("id", appointment.id)
-          .eq("organization_id", appointment.organization_id);
-
-        results.push({ id: appointment.id, status: "failed", channel: "sms" });
-      }
-
-      continue;
-    }
-
-    if (!appointment.client_email) {
-      results.push({ id: appointment.id, status: "no_supported_channel" });
-      continue;
-    }
-
-    if (appointment.email_reminder_24h_sent_at) {
-      results.push({ id: appointment.id, status: "already_sent", channel: "email" });
-      continue;
-    }
 
     try {
       await sendAppointmentReminderEmail({
@@ -449,7 +326,7 @@ export async function GET(request: Request) {
         .eq("organization_id", appointment.organization_id);
 
       sentCount += 1;
-      results.push({ id: appointment.id, status: "sent", channel: "email" });
+      results.push({ id: appointment.id, status: "sent" });
     } catch (sendError) {
       const message =
         sendError instanceof Error ? sendError.message : "Unknown error";
@@ -460,7 +337,7 @@ export async function GET(request: Request) {
         .eq("id", appointment.id)
         .eq("organization_id", appointment.organization_id);
 
-      results.push({ id: appointment.id, status: "failed", channel: "email" });
+      results.push({ id: appointment.id, status: "failed" });
     }
   }
 
@@ -470,6 +347,7 @@ export async function GET(request: Request) {
     eligible: eligibleCount,
     due: dueCount,
     sent: sentCount,
+    channel: "email",
     results,
   });
 }
