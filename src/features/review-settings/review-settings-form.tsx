@@ -12,17 +12,17 @@ function copy(locale: AppLocale) {
     return {
       enabled: "Automatic review requests",
       enabledHelp:
-        "When enabled, eligible completed appointments receive one Google review request by email.",
+        "When enabled, qualifying completed appointments receive one Google review request by email.",
       url: "Google review link",
       urlPlaceholder: "https://g.page/r/.../review",
       urlHelp:
         "Use the direct Google review link for this salon. The link is stored per tenant and is never shared with another salon.",
-      delay: "Send after",
-      twoHours: "2 hours after the appointment ends",
-      day: "24 hours after the appointment ends",
+      delay: "Earliest send time",
+      twoHours: "At least 2 hours after the appointment ends",
+      day: "At least 24 hours after the appointment ends",
       safety: "No retroactive sending",
       safetyBody:
-        "Only appointments ending after the automation was enabled are eligible. Existing historical visits are not contacted.",
+        "Only appointments ending after the automation was enabled are eligible. Existing historical visits are not contacted. The hourly background job sends at the next run after the selected delay has elapsed.",
       save: "Save review automation",
       saving: "Saving...",
       saved: "Review automation settings saved.",
@@ -34,17 +34,17 @@ function copy(locale: AppLocale) {
     return {
       enabled: "Richieste recensione automatiche",
       enabledHelp:
-        "Quando attivo, gli appuntamenti completati idonei ricevono una sola richiesta di recensione Google via email.",
+        "Quando attivo, gli appuntamenti completati che soddisfano i requisiti ricevono una sola richiesta di recensione Google via email.",
       url: "Link recensione Google",
       urlPlaceholder: "https://g.page/r/.../review",
       urlHelp:
         "Usa il link diretto per lasciare una recensione Google a questo salone. Il link resta specifico del tenant.",
-      delay: "Invia dopo",
-      twoHours: "2 ore dalla fine dell'appuntamento",
-      day: "24 ore dalla fine dell'appuntamento",
+      delay: "Invio non prima di",
+      twoHours: "Almeno 2 ore dalla fine dell'appuntamento",
+      day: "Almeno 24 ore dalla fine dell'appuntamento",
       safety: "Nessun invio retroattivo",
       safetyBody:
-        "Sono idonei solo gli appuntamenti che terminano dopo l'attivazione dell'automazione. Le visite storiche non vengono contattate.",
+        "Sono idonei solo gli appuntamenti che terminano dopo l'attivazione dell'automazione. Le visite storiche non vengono contattate. Il job orario invia al primo ciclo successivo al ritardo selezionato.",
       save: "Salva automazione recensioni",
       saving: "Salvataggio...",
       saved: "Impostazioni dell'automazione recensioni salvate.",
@@ -55,17 +55,17 @@ function copy(locale: AppLocale) {
   return {
     enabled: "Automatski zahtjevi za recenziju",
     enabledHelp:
-      "Kad je uključeno, eligible završeni termini dobivaju jedan zahtjev za Google recenziju emailom.",
+      "Kad je uključeno, završeni termini koji ispunjavaju uvjete dobivaju jedan zahtjev za Google recenziju emailom.",
     url: "Google review link",
     urlPlaceholder: "https://g.page/r/.../review",
     urlHelp:
       "Koristi direktni Google link za ostavljanje recenzije ovom salonu. Link je tenant-specifičan i ne dijeli se s drugim salonima.",
-    delay: "Pošalji nakon",
-    twoHours: "2 sata nakon završetka termina",
-    day: "24 sata nakon završetka termina",
+    delay: "Najranije pošalji",
+    twoHours: "Najranije 2 sata nakon završetka termina",
+    day: "Najranije 24 sata nakon završetka termina",
     safety: "Bez retroaktivnog slanja",
     safetyBody:
-      "Eligible su samo termini koji završavaju nakon uključivanja automatizacije. Stare povijesne posjete neće dobiti poruku.",
+      "Uvjet ispunjavaju samo termini koji završavaju nakon uključivanja automatizacije. Stare povijesne posjete neće dobiti poruku. Pozadinski job radi jednom na sat i šalje pri prvom pokretanju nakon isteka odabrane odgode.",
     save: "Spremi automatizaciju recenzija",
     saving: "Spremanje...",
     saved: "Postavke automatizacije recenzija su spremljene.",
