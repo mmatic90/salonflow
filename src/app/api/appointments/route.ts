@@ -6,7 +6,7 @@ import {
   validateAppointmentRuntime,
 } from "@/features/appointments/runtime-validation";
 import { refreshWaitlistOpportunitiesAfterOccupiedSlot } from "@/features/waitlist/opportunities";
-import { sendBookingAcceptedEmail } from "@/lib/email/booking-email";
+import { sendBookingAcceptedEmail } from "@/lib/email/tenant-notifications";
 import type { AppLocale } from "@/lib/i18n";
 
 function value(input: unknown) {
@@ -408,6 +408,7 @@ export async function POST(request: Request) {
           .maybeSingle();
 
         await sendBookingAcceptedEmail({
+          organizationId,
           to: clientEmail,
           salonName: organization?.name ?? permissions.organizationName,
           salonPhone: organization?.phone ?? null,
