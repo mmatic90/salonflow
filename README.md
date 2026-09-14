@@ -10,7 +10,8 @@ The project is being evolved from a single-salon application into a reusable mul
 - employee shifts and availability
 - clients, services, rooms and equipment
 - online booking requests
-- SMS and email notifications
+- tenant-aware email booking notifications
+- Growth 24h email appointment reminders
 - reports and operational dashboards
 - role-based administration
 
@@ -22,7 +23,6 @@ The project is being evolved from a single-salon application into a reusable mul
 - Tailwind CSS 4
 - Supabase
 - Resend
-- Twilio
 
 ## Local setup
 
@@ -55,24 +55,25 @@ npm run lint
 npm run build
 ```
 
-The existing codebase currently contains lint debt inherited from the original single-salon application. New work should avoid introducing additional lint errors, while existing findings will be handled incrementally.
+New work should avoid introducing lint or build errors. Validate meaningful implementation batches before merging them toward production.
 
 ## Product direction
 
-The first product-foundation phase covers:
+The product foundation covers:
 
 - centralized SalonFlow product identity
 - removal of hardcoded single-salon assumptions
 - multi-tenant organization architecture
 - tenant-aware permissions and database access
-- onboarding and subscription foundations
+- onboarding, commercial-plan and billing foundations
+- email-only automated client communication so the product remains portable across markets
 
 See [`docs/PRODUCT_FOUNDATION.md`](docs/PRODUCT_FOUNDATION.md) for the current implementation roadmap.
 
 ## Security
 
 - Never commit `.env` files or real credentials.
-- Do not expose Supabase service-role, Resend, Twilio or cron secrets to the browser.
+- Do not expose Supabase service-role, Resend or cron secrets to the browser.
 - Keep production customer data out of the repository.
 
 ## Status
