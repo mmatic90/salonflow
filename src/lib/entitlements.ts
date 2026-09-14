@@ -241,13 +241,24 @@ export function buildCapabilityUpgradePath(
   return `/dashboard/upgrade?${params.toString()}`;
 }
 
+export function isTrialEntitlementActive(
+  lifecycleStatus: SalonLifecycleStatus,
+  trialEndsAt?: string | null,
+  now = new Date(),
+) {
+  if (lifecycleStatus !== "trial" || !trialEndsAt) return false;
+  const trialEnd = new Date(trialEndsAt).getTime();
+  return Number.isFinite(trialEnd) && trialEnd > now.getTime();
+}
+
 export function getEffectiveEntitlementPlan(
   planCode: SalonPlanCode,
   lifecycleStatus: SalonLifecycleStatus,
+  trialEndsAt?: string | null,
 ): SalonPlanCode {
-  // Trial intentionally unlocks the complete Pro feature set so a new salon
-  // can evaluate SalonFlow before selecting its paid plan.
-  return lifecycleStatus === "trial" ? "pro" : planCode;
+  return isTrialEntitlementActive(lifecycleStatus, trialEndsAt)
+    ? "pro"
+    : planCode;
 }
 
 export function planHasCapability(
@@ -264,9 +275,10 @@ export function organizationHasCapability(
   planCode: SalonPlanCode,
   lifecycleStatus: SalonLifecycleStatus,
   capabilityCode: SalonCapabilityCode,
+  trialEndsAt?: string | null,
 ) {
   return planHasCapability(
-    getEffectiveEntitlementPlan(planCode, lifecycleStatus),
+    getEffectiveEntitlementPlan(planCode, lifecycleStatus, trialEndsAt),
     capabilityCode,
   );
 }
