@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, KeyRound, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -15,6 +15,9 @@ function browserLocale(): Locale {
   if (value.startsWith("en")) return "en";
   return "hr";
 }
+
+const subscribeToLocale = () => () => {};
+const getServerLocale = (): Locale => "hr";
 
 function copy(locale: Locale) {
   if (locale === "it") {
@@ -71,7 +74,11 @@ function copy(locale: Locale) {
 export default function SetPasswordPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [locale, setLocale] = useState<Locale>("hr");
+  const locale = useSyncExternalStore(
+    subscribeToLocale,
+    browserLocale,
+    getServerLocale,
+  );
   const [ready, setReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [password, setPassword] = useState("");
@@ -82,8 +89,6 @@ export default function SetPasswordPage() {
   const text = copy(locale);
 
   useEffect(() => {
-    setLocale(browserLocale());
-
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     if (hash.get("error") || hash.get("error_code")) {
       setReady(true);
