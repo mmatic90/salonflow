@@ -17,7 +17,7 @@ Use the deployed review build if available. Use local `npm run dev` only as a fa
 
 ### 2. Prepare Demo Salon
 
-In Supabase SQL Editor run:
+In Supabase SQL Editor run the complete contents of:
 
 ```text
 supabase/demo_prepare_elizabeth_review.sql
@@ -25,18 +25,23 @@ supabase/demo_prepare_elizabeth_review.sql
 
 This is a manual demo tool, **not a migration**. It is locked to the known Demo Salon tenant and is safe to rerun before the review.
 
-It prepares:
+The preparation script does **not** require the Instagram demo seed. It uses the salon's current employees, services and schedules, and creates/refreshes only three presentation clients identified by dedicated demo email addresses:
+
+- **Ema Babić** — `elizabeth-demo-ema@demo-salon.test` — client care/safety example;
+- **Lara Božić** — `elizabeth-demo-lara@demo-salon.test` — waitlist example;
+- **Marina Vuković** — `elizabeth-demo-marina@demo-salon.test` — CRM retention example.
+
+It also prepares:
 
 - Demo Salon as **Pro + Active**;
 - Managed Email enabled;
 - Google review automation **OFF**;
 - automatic CRM follow-up **OFF**;
-- removal of the temporary CRM follow-up QA clients/appointments;
-- **Ema Babić** as a client-care/safety example;
-- **Marina Vuković** as a deterministic CRM retention example;
-- **Lara Božić** as a waiting-list example.
+- removal of temporary CRM follow-up QA clients/appointments;
+- two genuine historical completed visits for Marina in free slots from the current employee schedule;
+- a waiting-list entry for Lara using the current salon service configuration.
 
-Do not rerun the destructive base Instagram seed just before the meeting unless a complete Demo Salon reset is intentionally required.
+Do not rerun a destructive base seed just before the meeting unless a complete Demo Salon reset is intentionally required.
 
 ### 3. Verify the safe state
 
@@ -90,13 +95,9 @@ Suggested framing:
 
 Do not begin with plans, databases, multi-tenancy, Supabase or technical architecture.
 
----
-
 ## 1. Dashboard — about 1 minute
 
-Show the daily overview first.
-
-Point out only what matters operationally:
+Show the daily overview first. Point out only what matters operationally:
 
 - today/tomorrow appointments;
 - pending online bookings if any;
@@ -109,20 +110,11 @@ Suggested line:
 
 Do not spend time reading every number.
 
----
-
 ## 2. Calendar — about 2 minutes
 
 **Open:** Calendar / time-grid.
 
-The demo dataset contains four employees with distinct roles:
-
-- **Ana Anić** — face treatments;
-- **Luka Lukić** — brows/lashes;
-- **Ivan Ivić** — massage/body/laser;
-- **Petra Perić** — manicure/pedicure.
-
-Use the populated calendar to show that the schedule is not a generic list. Open one realistic appointment and briefly show:
+Use the salon's current populated calendar. Open one realistic appointment and briefly show:
 
 - employee;
 - service;
@@ -131,15 +123,11 @@ Use the populated calendar to show that the schedule is not a generic list. Open
 - client;
 - notes where present.
 
-Useful services in the dataset include **Hydra Glow tretman lica**, **Oxy tretman lica**, **Lash Lift**, **Body Sculpt**, **Relax masaža 60 min** and **Spa pedikura**.
-
 Suggested framing:
 
 > “Kod termina SalonFlow gleda tko radi, koju uslugu osoba može raditi, koja je soba potrebna i je li vrijeme stvarno slobodno. Ne oslanja se samo na to izgleda li polje na kalendaru prazno.”
 
 If useful, begin creating a new appointment and stop before saving. There is no need to create throwaway data merely to prove the form works.
-
----
 
 ## 3. Online booking — about 2 minutes
 
@@ -149,44 +137,34 @@ Explain that the client sees a salon-facing booking experience while the salon k
 
 ### Recommended live version: repeat-client reuse
 
-Use an existing seeded client so the result is meaningful:
+Use the presentation client created by the prep script:
 
-**Sara Marić**
+**Ema Babić**
 
-- email: `client001@demo-salon.test`
-- phone: `+385 91 100 0001`
+- email: `elizabeth-demo-ema@demo-salon.test`
+- phone: `+385 91 555 0101`
 
-Choose any genuinely available service/time from the public booking flow and submit the request.
+Choose any genuinely available service/time and submit the request. Then return to Dashboard → Online bookings and show the pending request. Accept it using the normal employee/room flow.
 
-Then return to Dashboard → Online bookings and show the pending request. Accept it using the normal employee/room flow.
-
-Key point to explain:
+Key point:
 
 > “Ako se postojeća klijentica ponovno naruči online, sustav pokušava prepoznati postojeći CRM profil po sigurnim podacima, umjesto da svaki put stvara novi duplikat.”
 
 Do not promise fuzzy matching. SalonFlow intentionally blocks ambiguous duplicate identities rather than guessing.
 
-### Important email note
-
 `@demo-salon.test` addresses are fictional and should not be used to prove real delivery. If Elizabeth specifically wants to see an email arrive, use a separate controlled email address you own and treat that as a new-client demonstration.
 
-Do not try to demonstrate repeat-client matching and real email delivery with one request.
-
-### Fallback
-
-If a live public slot is inconvenient or the network is unreliable, show the public booking steps without submitting and move on. The product review should not depend on a live external-email/network moment.
-
----
+If a live public slot is inconvenient, show the booking steps without submitting and move on.
 
 ## 4. Client profile — Ema Babić — about 1.5 minutes
 
-**Open:** Clients → **Ema Babić**.
+**Open:** Clients → **Ema Babić**. If another Ema exists, select the profile with `elizabeth-demo-ema@demo-salon.test`.
 
 The prep script gives her deterministic care/safety data:
 
-- sensitive skin / prior reaction to more intensive peels;
-- note to check current skin condition before stronger treatments;
-- preference for gentler treatments and hydrating finishing care.
+- sensitive skin / possible reaction to stronger peels;
+- avoid aggressive treatments during active irritation;
+- preference for gentler products, hydration and soothing care.
 
 Show:
 
@@ -200,41 +178,31 @@ Suggested line:
 
 > “Ovo nije zamišljeno samo kao adresar. Kad klijentica ponovno dođe, bitne informacije i povijest ostaju uz njezin profil.”
 
-For communication preferences, keep the explanation simple:
+For communication preferences:
 
 > “Operativne poruke o terminu i marketinški follow-up nisu ista stvar. Klijent može biti normalno naručen, a da marketinške poruke nisu dopuštene.”
 
 Do not turn this into a legal/GDPR presentation unless Elizabeth asks.
 
----
-
 ## 5. Waitlist — Lara Božić — about 1 minute
 
 **Open:** Waitlist.
 
-The prep script creates a natural waiting entry:
+The prep script creates a natural waiting entry for **Lara Božić** (`elizabeth-demo-lara@demo-salon.test`). It prefers Hydra Glow if that service exists; otherwise it uses an active service from the current salon configuration. If an employee is mapped to that service, the script also sets that employee as preferred.
 
-- **Lara Božić**
-- **Hydra Glow tretman lica**
-- preferred employee: **Ana Anić**
-- preferred window: next 3–14 days, 09:00–16:00
-- note: “Preferira raniji termin ako se oslobodi mjesto.”
+The date window is the next 3–14 days, between 09:00 and 16:00.
 
 Suggested framing:
 
 > “Umjesto da se na papir zapisuje koga treba zvati ako netko otkaže, želja ostaje u sustavu. Kad se oslobodi kompatibilan termin, SalonFlow može povezati slobodno mjesto s osobom koja ga čeka.”
 
-If an automatic opportunity is already present, open it. If not, do not manufacture one during the meeting; the waiting-list record itself is enough to explain the workflow.
-
----
+If an automatic opportunity is already present, open it. If not, the waiting-list record itself is enough.
 
 ## 6. Reports — about 1 minute
 
 **Open:** Reports.
 
-The rich demo seed has enough historical appointments to make the reports visually meaningful.
-
-Show only two or three things, for example:
+Show only two or three useful views, for example:
 
 - activity/status trend;
 - top services or employees;
@@ -246,13 +214,13 @@ Suggested line:
 
 Do not explain every chart.
 
----
-
 ## 7. CRM actions — Marina Vuković — about 1.5 minutes
 
 **Open:** CRM actions & retention.
 
-The prep script gives **Marina Vuković** two historical Relax-massage visits with Ivan and no future appointment. She should therefore appear as a current retention candidate with a natural “no future appointment” signal.
+Use **Marina Vuković** with email `elizabeth-demo-marina@demo-salon.test`.
+
+The prep script dynamically selects a current active salon service and creates two historical completed visits for Marina in genuine free slots from the salon's employee schedule. It removes her future bookings, so Advanced CRM derives a real current signal rather than displaying a hard-coded demo row.
 
 Show:
 
@@ -260,7 +228,7 @@ Show:
 - profile shortcut;
 - rebook shortcut;
 - contacted / snooze / resolve actions;
-- the manual follow-up email action.
+- manual follow-up email action.
 
 Suggested framing:
 
@@ -268,19 +236,17 @@ Suggested framing:
 
 ### Do not click Send during the normal demo
 
-Marina uses the fictional seed address `client012@demo-salon.test`. The button is useful to show, but do not actually send unless you first intentionally replace the address with a controlled inbox and re-establish valid marketing consent.
+Marina's `@demo-salon.test` address is intentionally fictional. The button is useful to show, but do not actually send unless you first replace the address with a controlled inbox and deliberately restore valid marketing consent.
 
 If Elizabeth asks how consent works:
 
 > “Automatski ili ručni retention email prolazi samo ako klijent ima izričito dopušten marketinški email. Odjava se poštuje i ne gasi operativne poruke o terminu.”
 
----
-
 ## 8. Settings and automation — about 1.5 minutes
 
 **Open:** Settings.
 
-First show the operational configuration, not premium features:
+First show operational configuration:
 
 - employees;
 - employee schedules;
@@ -289,7 +255,7 @@ First show the operational configuration, not premium features:
 - rooms/equipment;
 - appearance/branding.
 
-Then briefly point out the package badges:
+Then briefly point out the package boundaries:
 
 - Starter = everyday salon operation;
 - Growth = managed email, waitlist, CRM insights/reports;
@@ -303,15 +269,11 @@ Explain:
 
 You may also briefly show Google review automation, which should be OFF during the meeting.
 
-Do not present prices as final; pricing is not committed yet.
-
----
+Do not present prices as final.
 
 ## 9. Mobile finish — about 1 minute
 
-Finish on a phone-sized viewport or actual phone.
-
-Best screens to show:
+Finish on a phone-sized viewport or actual phone. Best screens:
 
 1. public booking;
 2. calendar navigation;
@@ -321,62 +283,39 @@ Suggested close:
 
 > “Ideja je da za svakodnevne stvari ne moraš biti za računalom — ključni flowovi su napravljeni tako da se mogu normalno koristiti i na mobitelu.”
 
-This is a stronger ending than finishing inside Settings.
-
 ---
 
 # What not to show unless Elizabeth asks
 
-## Platform Admin
+Do not include Platform Admin in the normal salon-owner walkthrough. Avoid Supabase tables, migrations, RLS, cron routes and provider implementation details unless the discussion specifically turns technical.
 
-Do not include Platform Admin in the normal salon-owner walkthrough. It is the SalonFlow operator surface for tenant plans, lifecycle and aggregate email/automation controls.
+Do not quote final Starter/Growth/Pro prices yet. The current branch defines capability boundaries, not finalized commercial pricing.
 
-If she asks how you manage multiple salons, then show it as a separate platform capability.
-
-## Technical architecture
-
-Avoid Supabase tables, migrations, RLS, cron routes, service-role language, provider abstractions and implementation details unless the discussion specifically turns technical.
-
-## Final pricing
-
-Do not quote in-product Starter/Growth/Pro prices as finalized. The current branch defines capability boundaries, not final commercial prices.
-
-## Deferred roadmap
-
-Do not imply the pilot already includes:
-
-- Stripe/self-service billing;
-- automatic subscription lifecycle;
-- multi-location management;
-- salon-owned custom email provider/domain credentials;
-- native mobile apps;
-- advanced third-party integrations.
+Do not imply the pilot already includes Stripe/self-service billing, automatic subscription lifecycle, multi-location management, salon-owned custom email provider credentials, native mobile apps or advanced third-party integrations.
 
 ---
 
 # If something goes wrong during the demo
 
-## Public booking has no convenient slot
+### Public booking has no convenient slot
 
-Do not troubleshoot availability for five minutes in front of Elizabeth. Show the booking flow, explain that availability is derived from salon/employee/resource rules, then return to the populated calendar.
+Do not troubleshoot availability for five minutes. Show the booking flow, explain that availability is derived from salon/employee/resource rules, then return to the populated calendar.
 
-## Email does not arrive
+### Email does not arrive
 
-Do not make the meeting about Resend. Explain that email delivery is already part of the managed notification layer and continue with the salon workflow. Check provider/quota state after the meeting.
+Do not make the meeting about the email provider. Continue with the salon workflow and troubleshoot provider/quota state later.
 
-## CRM candidate is missing
+### CRM candidate is missing
 
-Refresh once. If Marina is still missing, skip CRM automation and continue. After the meeting rerun `supabase/demo_prepare_elizabeth_review.sql` and inspect her appointments/action history.
+Refresh once. If Marina is still missing, skip the live CRM queue and continue. After the meeting rerun `supabase/demo_prepare_elizabeth_review.sql` and inspect the notices/error.
 
-## A visual bug appears
+### A visual bug appears
 
-Note it and continue to the next workflow. The purpose of this review is also to collect real owner feedback; do not derail the full walkthrough to debug live.
+Note it and continue. This review is also meant to collect owner feedback; do not derail the walkthrough to debug live.
 
 ---
 
 # Questions worth asking Elizabeth after the walkthrough
-
-Do not ask only “sviđa li ti se?”. Ask questions that reveal product priorities:
 
 1. “Koji dio bi ti najviše koristio svaki dan?”
 2. “Što ti je ovdje sporije ili kompliciranije nego način na koji sada radiš?”
@@ -386,7 +325,7 @@ Do not ask only “sviđa li ti se?”. Ask questions that reveal product priori
 6. “Koje izvještaje stvarno pogledaš ili bi željela pogledati jednom tjedno/mjesečno?”
 7. “Što bi moralo biti jednostavnije prije nego bi ovakav sustav koristila svaki dan?”
 
-Write down wording she uses. Her terminology is useful for later UI copy and sales messaging.
+Write down her wording. Her terminology is useful for later UI copy and sales messaging.
 
 ---
 
