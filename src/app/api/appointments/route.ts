@@ -6,6 +6,8 @@ import {
   validateAppointmentRuntime,
 } from "@/features/appointments/runtime-validation";
 import { refreshWaitlistOpportunitiesAfterOccupiedSlot } from "@/features/waitlist/opportunities";
+import { sendBookingAcceptedEmail } from "@/lib/email/booking-email";
+import type { AppLocale } from "@/lib/i18n";
 
 function value(input: unknown) {
   return typeof input === "string" ? input.trim() : "";
@@ -25,6 +27,31 @@ function splitClientName(fullName: string) {
     return { firstName: parts[0] ?? fullName.trim(), lastName: null };
   }
   return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
+function formatDate(date: string, locale: AppLocale) {
+  const localeCode = locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR";
+  return new Intl.DateTimeFormat(localeCode, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
+function getSalonAddress(organization: {
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city?: string | null;
+  postal_code?: string | null;
+}) {
+  return [
+    organization.address_line_1,
+    organization.address_line_2,
+    [organization.postal_code, organization.city].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function waitlistIdFromRequest(request: Request, body: Record<string, unknown>) {
@@ -368,6 +395,32 @@ export async function POST(request: Request) {
       });
     } catch (waitlistSyncError) {
       console.error("Waitlist opportunities could not be refreshed:", waitlistSyncError);
+    }
+
+    if (clientEmail) {
+      try {
+        const { data: organization } = await supabase
+          .from("organizations")
+          .select(
+            "name, phone, address_line_1, address_line_2, city, postal_code, logo_url",
+          )
+          .eq("id", organizationId)
+          .maybeSingle();
+
+        await sendBookingAcceptedEmail({
+          to: clientEmail,
+          salonName: organization?.name ?? permissions.organizationName,
+          salonPhone: organization?.phone ?? null,
+          salonAddress: organization ? getSalonAddress(organization) : null,
+          salonLogoUrl: organization?.logo_url ?? null,
+          serviceName: service.name,
+          date: formatDate(appointmentDate, permissions.organizationLocale),
+          time: startTime.slice(0, 5),
+          lang: permissions.organizationLocale,
+        });
+      } catch (emailError) {
+        console.error("Appointment confirmation email could not be sent:", emailError);
+      }
     }
 
     return NextResponse.json({
