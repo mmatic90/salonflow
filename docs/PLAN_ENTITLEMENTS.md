@@ -14,6 +14,12 @@ Pricing is intentionally not encoded yet.
 
 A tenant with lifecycle status `trial` receives the **Pro entitlement set** for the duration of the trial, regardless of its stored paid `plan_code`. This lets a new salon evaluate the complete currently available product before selecting a paid tier.
 
+## Communication rule
+
+SalonFlow automated client communication is **email-only**. Phone numbers remain available as salon/client contact data, but the product has no SMS/Twilio delivery path.
+
+Operational booking emails are part of Starter. The proactive 24h email reminder is a Growth capability.
+
 ## Capability matrix
 
 | Capability | Starter | Growth | Pro | Delivery / enforcement |
@@ -26,17 +32,17 @@ A tenant with lifecycle status `trial` receives the **Pro entitlement set** for 
 | Employee schedules | ✓ | ✓ | ✓ | Available |
 | Appearance and branding | ✓ | ✓ | ✓ | Available |
 | Online booking | ✓ | ✓ | ✓ | Available |
-| Booking notifications | ✓ | ✓ | ✓ | Available |
+| Email booking notifications | ✓ | ✓ | ✓ | Available |
 | Basic operational overview | ✓ | ✓ | ✓ | Available |
 | Waitlist | — | ✓ | ✓ | Available; enforced |
 | Automatic waitlist matching | — | ✓ | ✓ | Available; covered by waitlist enforcement |
 | CRM insights | — | ✓ | ✓ | Available; enforced |
 | No-show/cancellation insights | — | ✓ | ✓ | Available; enforced |
 | Advanced reports | — | ✓ | ✓ | Available; enforced |
-| 24h appointment reminders | — | ✓ | ✓ | Available; enforced at delivery time |
+| 24h email appointment reminders | — | ✓ | ✓ | Available; enforced at delivery time |
 | Audit log and export | — | — | ✓ | Available; enforced |
 | Advanced CRM workflow | — | — | ✓ | Planned |
-| Automated review requests | — | — | ✓ | Partial; not commercially enforced yet |
+| Automated review requests | — | — | ✓ | Partial; email template exists, tenant-specific review configuration still required |
 | Advanced automations | — | — | ✓ | Planned |
 | Advanced integrations | — | — | ✓ | Planned |
 | Priority support | — | — | ✓ | Planned |
@@ -58,7 +64,7 @@ Commercial enforcement is active in controlled stages:
 - Growth Waitlist: navigation/page/actions and database RLS.
 - Growth CRM/attendance insights: server query calculation/return plus in-profile upgrade state.
 - Growth Reports: server page guard and navigation state.
-- Growth 24h Appointment Reminders: current tenant plan/lifecycle is checked by the background delivery job immediately before sending.
+- Growth 24h Appointment Reminders: current tenant plan/lifecycle is checked by the email background job immediately before sending.
 - Pro Audit Log: page/export guards plus database read RLS.
 
 Starter retains all core salon operation, client history, care/safety and treatment-note functionality. Downgrading does not delete premium data; access/derived premium behavior becomes available again after an eligible upgrade.
