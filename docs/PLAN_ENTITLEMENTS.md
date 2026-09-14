@@ -20,6 +20,8 @@ SalonFlow automated client communication is **email-only**. Phone numbers remain
 
 SalonFlow Managed Email for booking acceptance/rejection and appointment create/change notifications starts at Growth. The proactive 24h appointment reminder is also Growth. Automated Google review requests after eligible completed appointments are Pro.
 
+Client marketing/retention preferences are core client data and are available on every plan. They do not unlock outbound marketing by themselves. Future marketing/retention automation must additionally require `marketing_email_status = allowed` and use the server-side marketing eligibility helper before provider delivery. `unknown` and `not_allowed` fail closed.
+
 ## Capability matrix
 
 | Capability | Starter | Growth | Pro | Delivery / enforcement |
@@ -27,11 +29,12 @@ SalonFlow Managed Email for booking acceptance/rejection and appointment create/
 | Calendar | ✓ | ✓ | ✓ | Available |
 | Appointment management | ✓ | ✓ | ✓ | Available |
 | Clients and history | ✓ | ✓ | ✓ | Available |
+| Communication preferences | ✓ | ✓ | ✓ | Available; core client data, append-only preference history and unsubscribe foundation |
 | Care and safety | ✓ | ✓ | ✓ | Available; intentionally not paywalled |
 | Services, rooms and equipment | ✓ | ✓ | ✓ | Available |
 | Employee schedules | ✓ | ✓ | ✓ | Available |
 | Appearance and branding | ✓ | ✓ | ✓ | Available |
-| Online booking | ✓ | ✓ | ✓ | Available |
+| Online booking | ✓ | ✓ | ✓ | Available; optional marketing opt-in is independent of plan |
 | Basic operational overview | ✓ | ✓ | ✓ | Available |
 | Managed email booking notifications | — | ✓ | ✓ | Available; enforced before quota reservation |
 | Waitlist | — | ✓ | ✓ | Available; enforced |
@@ -50,13 +53,15 @@ SalonFlow Managed Email for booking acceptance/rejection and appointment create/
 
 ## Implementation source of truth
 
-The application source of truth is `src/lib/entitlements.ts`.
+The application source of truth for commercial entitlements is `src/lib/entitlements.ts`.
 
-- `minimumPlan` defines the minimum paid tier for a capability.
+- `minimumPlan` defines the minimum paid tier for a premium capability.
 - `availability` distinguishes `available`, `partial` and `planned` functionality.
 - `getEffectiveEntitlementPlan()` implements the Pro-trial rule.
 - `planHasCapability()` and `organizationHasCapability()` implement plan capability checks.
 - `CurrentUserPermissions` exposes tenant plan, lifecycle and effective entitlement plan for server-side authorization.
+
+Communication preferences are intentionally not a separate premium entitlement code. They remain part of core client management across all plans.
 
 ## Current enforcement state
 
@@ -71,7 +76,9 @@ Commercial enforcement is active in controlled stages:
 - Pro Advanced CRM: navigation/page guard, server mutation validation and Pro-only RLS protect the retention workflow. Queue candidates are derived from current tenant appointment/client behavior; only operator decisions are persisted in append-only `crm_retention_actions` history. Contacted/resolved/ignored signals stay suppressed for that signal generation, while 7/14/30-day snoozes can reappear later.
 - Pro Automated Google Review Requests: settings/action guards plus current entitlement check immediately before managed-email delivery; tenant URL, activation boundary and per-appointment delivery state prevent cross-tenant or retroactive automation.
 
-Starter retains all core salon operation, online booking, client history, care/safety and treatment-note functionality. Downgrading does not delete premium data; access/derived premium behavior becomes available again after an eligible upgrade.
+Marketing preference storage is not plan-gated. Manual status changes are recorded through the client profile, explicit transitions are stored in append-only history, public online booking may create `allowed` only from an explicit checked opt-in, and the public unsubscribe link can only move a matching client to `not_allowed`.
+
+Starter retains all core salon operation, online booking, client history, communication preferences, care/safety and treatment-note functionality. Downgrading does not delete premium data; access/derived premium behavior becomes available again after an eligible upgrade.
 
 Capabilities marked `partial` or `planned` must not be presented as finished paid functionality and remain outside enforcement until their dedicated implementation/hardening stage.
 
