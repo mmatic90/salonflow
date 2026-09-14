@@ -20,6 +20,7 @@ Transform the existing single-salon Body & Soul application into a reusable comm
 - Keep tenant suspension reversible and non-destructive.
 - Store billing-readiness metadata separately from salon operational data: billing contact, provider, Stripe references, billing period, and cancel-at-period-end state.
 - Keep lifecycle status as the SalonFlow access source of truth; future billing-provider events may synchronize lifecycle, but do not bypass it.
+- Keep automated client communication provider-neutral and cross-market by using email rather than country-specific SMS delivery.
 
 ## Commercial capability source of truth
 
@@ -33,7 +34,18 @@ Capabilities are explicitly classified as:
 
 The matrix currently keeps core salon operation and client care/safety in Starter, utilization/retention insights in Growth, and governance/advanced automation in Pro. Pricing is intentionally not stored in code or database yet.
 
-Enforcement currently covers Growth Waitlist, CRM/attendance insights, Reports and 24h Appointment Reminders, plus Pro Audit Log. Review automation and planned capabilities remain outside commercial enforcement until their dedicated tenant-hardening/implementation stage.
+Enforcement currently covers Growth Waitlist, CRM/attendance insights, Reports and 24h email Appointment Reminders, plus Pro Audit Log. Review automation and planned capabilities remain outside commercial enforcement until their dedicated tenant-hardening/implementation stage.
+
+## Communication model
+
+SalonFlow automated client communication is email-only:
+
+- online booking acceptance/rejection emails belong to Starter;
+- manual appointment confirmation and scheduled date/time-change emails belong to Starter;
+- proactive 24h appointment reminder emails belong to Growth;
+- future automated review requests will use email once tenant-specific review configuration exists.
+
+Phone numbers remain normal salon/client contact data. SalonFlow does not contain an SMS/Twilio delivery path.
 
 ## Non-goals for Phase 1
 
@@ -46,6 +58,7 @@ Enforcement currently covers Growth Waitlist, CRM/attendance insights, Reports a
 - Multiple locations per organization.
 - Native mobile applications.
 - Advanced marketing automation.
+- SMS provider integration.
 
 ## Security rules for the public repository
 
@@ -75,7 +88,7 @@ Enforcement currently covers Growth Waitlist, CRM/attendance insights, Reports a
 11. Audited Starter/Growth/Pro capability matrix.
 12. First staged enforcement: Growth Waitlist/Reports and Pro Audit Log.
 13. Growth CRM/attendance insight enforcement.
-14. Tenant-aware Growth appointment-reminder enforcement.
+14. Tenant-aware Growth email appointment-reminder enforcement.
 15. Commercial pilot readiness and final pricing/package approval.
-16. Tenant-hardening of remaining partial background automation (review requests).
+16. Tenant-hardening of remaining partial background automation (email review requests with tenant-specific review destination).
 17. Stripe checkout/webhooks when pricing and subscription rules are finalized.
