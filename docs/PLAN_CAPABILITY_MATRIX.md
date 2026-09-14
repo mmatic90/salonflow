@@ -8,7 +8,7 @@ This document records the audited commercial capability split for the current Sa
 - **Partial** — meaningful implementation exists, but it must be finished or tenant-hardened before it is enforced or advertised as fully available.
 - **Planned** — commercial roadmap capability; do not market it as currently delivered.
 
-Entitlement enforcement is now implemented for Managed Email notifications, Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders and Audit Log. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
+Entitlement enforcement is now implemented for Managed Email notifications, Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders, Audit Log and Automated Review Requests. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
 
 ## Trial rule
 
@@ -66,13 +66,13 @@ Appointment reminders are a background capability rather than a dashboard page. 
 
 ## Pro
 
-Pro is the governance/automation tier. The current product has one clearly finished Pro-specific governance capability; the rest must remain explicitly roadmap/partial until completed.
+Pro is the governance/automation tier. Audit Log and Automated Review Requests are currently the two clearly finished Pro-specific product capabilities; the remaining items stay roadmap/planned until their dedicated implementation is complete.
 
 | Capability | Status | Current implementation / enforcement target |
 | --- | --- | --- |
 | Audit log and export | Available | **Enforced.** Pro/Trial management users can read the audit page and CSV export. Audit events continue to be written for all plans so historical governance data is preserved for a later upgrade. Database RLS also protects direct audit-log reads. |
+| Automated review requests | Available | **Enforced.** Pro/Trial tenants can configure their own Google review URL, enable/disable automation and choose a 2h or 24h delay. Only `completed` appointments are eligible; historical visits from before activation are not contacted. Delivery is email-only through Managed Email, with tenant/global quota accounting and duplicate/retry protection. |
 | Advanced CRM workflow | Planned | Future retention action lists, follow-up workflow and CRM-driven tasks. Existing client insights belong to Growth, not this capability. |
-| Automated review requests | Partial | The old single-salon cron has been removed. A reusable email approach can be added later, but a future implementation must store a tenant-specific Google review URL/configuration and run with tenant/plan checks before this can be exposed as a Pro feature. |
 | Custom email provider/domain | Planned | Future Bring Your Own Provider/domain option. Must use a credential-safe secret design before enabling; plain tenant-readable API keys are not acceptable. |
 | Advanced automations | Planned | Future follow-up and operational automations beyond existing booking flows. |
 | Advanced integrations | Planned | Future third-party integrations. |
@@ -104,7 +104,7 @@ Client allergies/sensitivities, contraindications, treatment preferences and tre
 
 SalonFlow communication is intentionally **email-only**. Phone numbers remain stored as contact information, but the application has no Twilio/SMS delivery path.
 
-SalonFlow Managed Email is now a **Growth** capability. The centralized managed-email layer handles entitlement, per-tenant/global quota protection, provider abstraction and tenant Reply-To resolution. Active booking acceptance/rejection emails plus manual appointment creation/schedule-change emails use `booking_notifications`. The proactive 24h email reminder uses the separate `appointment_reminders` Growth capability.
+SalonFlow Managed Email is a **Growth** capability. The centralized managed-email layer handles entitlement, per-tenant/global quota protection, provider abstraction and tenant Reply-To resolution. Active booking acceptance/rejection emails plus manual appointment creation/schedule-change emails use `booking_notifications`. The proactive 24h email reminder uses the separate `appointment_reminders` Growth capability.
 
 The current managed provider implementation is Resend behind an abstraction. Production should eventually send from a SalonFlow-owned product domain. A future Pro custom-provider option may allow a salon to bring its own provider/domain, but credentials must not be stored until a secure secrets/encryption design exists.
 
@@ -123,7 +123,15 @@ Reminder delivery state is reset only when date/time/email target changes or a p
 
 ### Review automation
 
-The previous `/api/cron/review-requests` implementation was removed because it contained a hardcoded Body & Soul review URL and single-salon assumptions. Automated review requests stay Pro / Partial until each tenant can configure its own review destination and the background job is tenant/entitlement-aware.
+Automated review requests are now a finished Pro/Trial tenant capability. Each salon has its own `organization_review_settings` row with an opt-in toggle, Google review URL, 2h/24h delay and activation timestamp.
+
+The flow deliberately prevents retroactive campaigns: only appointments whose scheduled end is at or after the latest automation activation time are eligible. A request is sent only when the appointment status is `completed`, the configured delay has elapsed and a client email exists.
+
+Delivery reuses `sendManagedTenantEmail` with the `review_requests` capability, so current plan/lifecycle and managed-email quota are checked immediately before provider delivery. Review request state is stored per appointment. An atomic database claim prevents overlapping cron executions from normally sending the same request twice, and failed deliveries are limited to three attempts with at least one hour between attempts.
+
+The active review cron contains no Body & Soul URL or single-tenant assumptions. Platform Admin can see whether the automation is configured, its delay and activation state without access to clients, appointments or message content.
+
+Netlify `email-automations` runs hourly and invokes both the 24h reminder route and review-request route using `CRON_SECRET`. Business logic remains inside the tenant-aware Next API routes rather than being duplicated in the scheduler.
 
 ### Audit log
 
@@ -133,13 +141,13 @@ Audit storage remains tenant-aware and immutable from the application. The first
 
 Staged enforcement remains the rule:
 
-1. **Navigation/upgrade states** — implemented for Managed Email settings, Waitlist, Reports and Audit Log; CRM uses an in-profile locked upgrade state because the Clients module itself remains Starter.
-2. **Page/server guards** — implemented for Managed Email settings, Waitlist, Reports and Audit Log/export.
-3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. CRM advanced values are guarded in the server query layer because the underlying appointment history is Starter data.
-4. **Managed email enforcement** — implemented centrally before quota reservation/provider send for booking notifications; per-tenant/global usage safety caps are active.
+1. **Navigation/upgrade states** — implemented for Managed Email settings, Google Review settings, Waitlist, Reports and Audit Log; CRM uses an in-profile locked upgrade state because the Clients module itself remains Starter.
+2. **Page/server guards** — implemented for Managed Email settings, Google Review settings/actions, Waitlist, Reports and Audit Log/export.
+3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. Review settings have tenant-scoped manager RLS plus server capability enforcement. CRM advanced values are guarded in the server query layer because the underlying appointment history is Starter data.
+4. **Managed email enforcement** — implemented centrally before quota reservation/provider send for booking notifications and review requests; per-tenant/global usage safety caps are active.
 5. **CRM insight enforcement** — implemented for segmentation, favourites, cadence, attendance rates and CRM signals.
 6. **Background reminder enforcement** — implemented at send time for 24h email appointment reminders; tenant context and current plan/lifecycle are authoritative.
-7. **Background review automation** — still requires tenant-specific review configuration and tenant-hardening before Pro enforcement.
+7. **Background review automation** — implemented for Pro/Trial with tenant-specific URL/configuration, hourly scheduler, activation cutoff and duplicate/retry protection.
 8. **Public booking/API behavior** — Starter booking remains available; user-facing success copy does not promise managed email when the plan does not include it.
 9. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
 
