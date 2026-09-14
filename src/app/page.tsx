@@ -14,7 +14,7 @@ export default function HomePage() {
         <header className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-app-muted">
-              Salon management platform
+              Platforma za upravljanje salonom
             </p>
             <h1 className="mt-1 text-2xl font-extrabold">SalonFlow</h1>
           </div>
@@ -39,8 +39,8 @@ export default function HomePage() {
             </h2>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-app-muted">
-              Upravljanje terminima, zaposlenicima, rasporedima, prostorijama,
-              klijentima, izvještajima i online rezervacijama u jednom sustavu.
+              Upravljanje terminima, timom, rasporedima, klijentima, izvještajima
+              i online rezervacijama u jednom preglednom sustavu.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -58,23 +58,25 @@ export default function HomePage() {
               <CalendarCheck className="h-7 w-7 text-app-accent" />
               <h3 className="mt-4 text-lg font-extrabold">Pametni termini</h3>
               <p className="mt-2 text-sm leading-6 text-app-muted">
-                Dostupnost zaposlenika, soba i radnog vremena salona na jednom mjestu.
+                Dostupnost zaposlenika, prostorija i radnog vremena provjerava se
+                na jednom mjestu.
               </p>
             </div>
 
             <div className="rounded-3xl border border-app-soft bg-white p-6 shadow-sm">
               <Users className="h-7 w-7 text-app-accent" />
-              <h3 className="mt-4 text-lg font-extrabold">Više zaposlenika</h3>
+              <h3 className="mt-4 text-lg font-extrabold">Tim i rasporedi</h3>
               <p className="mt-2 text-sm leading-6 text-app-muted">
-                Rasporedi, usluge i dostupnost za svaki tim i salon.
+                Usluge, radno vrijeme, pauze i dostupnost za svakog člana tima.
               </p>
             </div>
 
             <div className="rounded-3xl border border-app-soft bg-white p-6 shadow-sm">
               <Palette className="h-7 w-7 text-app-accent" />
-              <h3 className="mt-4 text-lg font-extrabold">Personalizacija</h3>
+              <h3 className="mt-4 text-lg font-extrabold">Izgled salona</h3>
               <p className="mt-2 text-sm leading-6 text-app-muted">
-                Više tema, branding salona i vlastita javna booking stranica.
+                Tema, logo i javna stranica za online rezervacije prilagođeni su
+                svakom salonu.
               </p>
             </div>
 
@@ -88,9 +90,10 @@ export default function HomePage() {
 
             <div className="rounded-3xl border border-app-soft bg-app-card p-6 shadow-sm sm:col-span-2">
               <ShieldCheck className="h-7 w-7 text-app-accent" />
-              <h3 className="mt-4 text-lg font-extrabold">Multi-tenant arhitektura</h3>
+              <h3 className="mt-4 text-lg font-extrabold">Odvojeni podaci salona</h3>
               <p className="mt-2 text-sm leading-6 text-app-muted">
-                Svaki salon ima vlastite podatke, postavke, booking URL i organizacijski prostor.
+                Svaki salon ima vlastite podatke, postavke i javnu stranicu za
+                rezervacije, odvojene od drugih salona na platformi.
               </p>
             </div>
           </div>
