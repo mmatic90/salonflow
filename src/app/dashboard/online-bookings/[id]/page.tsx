@@ -26,6 +26,21 @@ export default async function OnlineBookingDetailsPage({
   const permissions = await requireDashboardUser();
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.onlineBookings;
+  const rejectionEmailCopy =
+    permissions.organizationLocale === "en"
+      ? {
+          help: "The client will receive an email with the selected rejection reason.",
+          button: "Reject and send email",
+        }
+      : permissions.organizationLocale === "it"
+        ? {
+            help: "Il cliente riceverà un'email con il motivo del rifiuto selezionato.",
+            button: "Rifiuta e invia email",
+          }
+        : {
+            help: "Klijent će dobiti email s odabranim razlogom odbijanja.",
+            button: "Odbij i pošalji email",
+          };
   const { id } = await params;
 
   const request = await getOnlineBookingRequestById(id);
@@ -127,7 +142,7 @@ export default async function OnlineBookingDetailsPage({
               <div>
                 <div className="text-app-muted">{t.phone}</div>
                 <div className="font-medium text-app-text">
-                  {request.client_phone}
+                  {request.client_phone || "-"}
                 </div>
               </div>
 
@@ -279,7 +294,9 @@ export default async function OnlineBookingDetailsPage({
                     {t.rejectRequest}
                   </h2>
 
-                  <p className="mt-2 text-sm text-red-700">{t.rejectHelp}</p>
+                  <p className="mt-2 text-sm text-red-700">
+                    {rejectionEmailCopy.help}
+                  </p>
 
                   <label className="mt-5 block text-sm">
                     <span className="font-medium text-red-900">
@@ -303,7 +320,7 @@ export default async function OnlineBookingDetailsPage({
                     type="submit"
                     className="mt-6 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
                   >
-                    {t.rejectAndSend}
+                    {rejectionEmailCopy.button}
                   </button>
                 </form>
               </>
