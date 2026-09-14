@@ -22,6 +22,7 @@ Transform the existing single-salon Body & Soul application into a reusable comm
 - Keep lifecycle status as the SalonFlow access source of truth; future billing-provider events may synchronize lifecycle, but do not bypass it.
 - Keep automated client communication provider-neutral and cross-market by using email rather than country-specific SMS delivery.
 - Protect shared email cost with per-tenant and global usage quotas before scaling to multiple salons.
+- Turn Growth CRM signals into a distinct Pro retention action workflow without hiding core client history from lower plans.
 
 ## Commercial capability source of truth
 
@@ -33,9 +34,9 @@ Capabilities are explicitly classified as:
 - `partial` — meaningful implementation exists but needs tenant-hardening or completion before enforcement;
 - `planned` — roadmap capability that must not be marketed as currently delivered.
 
-The matrix keeps core salon operation and client care/safety in Starter, managed operational email/retention insight in Growth, and governance/advanced automation in Pro. Pricing is intentionally not stored in code or database yet.
+The matrix keeps core salon operation and client care/safety in Starter, managed operational email/retention insight in Growth, and governance/action/automation workflows in Pro. Pricing is intentionally not stored in code or database yet.
 
-Enforcement currently covers Growth Managed Email notifications, Waitlist, CRM/attendance insights, Reports and 24h email Appointment Reminders, plus Pro Audit Log and automated Google review requests.
+Enforcement currently covers Growth Managed Email notifications, Waitlist, CRM/attendance insights, Reports and 24h email Appointment Reminders, plus Pro Audit Log, CRM Retention workflow and automated Google review requests.
 
 ## Communication model
 
@@ -49,6 +50,25 @@ SalonFlow automated client communication is email-only:
 All tenant-facing automated email routes through the managed-email layer, which applies current plan/lifecycle entitlement, tenant/global quota protection, provider abstraction and tenant Reply-To resolution immediately before provider delivery.
 
 Phone numbers remain normal salon/client contact data. SalonFlow does not contain an SMS/Twilio delivery path.
+
+## Advanced CRM retention workflow
+
+Pro and Trial management users have a dedicated `/dashboard/retention` action queue. It is intentionally separate from Growth CRM insights: Growth explains client behavior, while Pro turns those signals into a repeatable operating workflow.
+
+The queue is derived from current tenant data rather than persisted as a second copy of CRM state. Initial candidate rules cover:
+
+- a client who is late compared with their own average visit cadence;
+- a client inactive for more than 120 days without a future booking;
+- a returning client with completed visits but no future appointment;
+- a client with meaningful cancellation/no-show attendance risk and no future booking.
+
+Only the strongest current signal per client is shown. Each candidate includes priority, contact shortcuts, direct client profile access and a rebook shortcut. Operators may mark the signal `contacted`, `resolved`, `ignored` or snooze it for 7/14/30 days.
+
+Operator decisions are stored in append-only `crm_retention_actions`. The queue uses a deterministic signal-generation key so handling one generation does not permanently hide future behavior changes. A new completed visit, new future appointment or new attendance event can produce a new signal generation without deleting old history.
+
+The server recalculates the queue before recording an action, preventing stale/fabricated browser payloads from becoming current CRM decisions. Database RLS also requires a management role and current Pro-equivalent entitlement. Downgrading preserves action history but lower plans cannot read or append it until the tenant returns to Pro/Trial.
+
+The first Advanced CRM batch is deliberately manual: it does **not** automatically send follow-up marketing emails. Future automated follow-up can build on this action queue as a separate automation capability.
 
 ## Automated Google review requests
 
@@ -80,7 +100,7 @@ Netlify invokes the reminder and review routes hourly through a thin scheduled f
 - Self-service signup.
 - Multiple locations per organization.
 - Native mobile applications.
-- Advanced marketing automation beyond the currently finished appointment/reminder/review email flows.
+- Advanced marketing automation beyond the currently finished appointment/reminder/review email flows and manual CRM retention queue.
 - SMS provider integration.
 
 ## Security rules for the public repository
@@ -89,7 +109,7 @@ Netlify invokes the reminder and review routes hourly through a thin scheduled f
 - Never commit real client names, phone numbers, email addresses, appointment notes, or database dumps.
 - Use fictional data in seeds and screenshots.
 - Enforce tenant isolation in the database before onboarding multiple salons.
-- Platform Admin may access tenant/account metadata, billing metadata, plan entitlements, aggregate email usage and automation configuration state, but not salon clients, appointments, treatment notes, or message contents.
+- Platform Admin may access tenant/account metadata, billing metadata, plan entitlements, aggregate email usage and automation configuration state, but not salon clients, appointments, treatment notes, message contents or tenant CRM action details.
 - Stripe identifiers are platform metadata only and should be populated by the future Stripe integration, not by salon users.
 - Server-side entitlement checks are authoritative; hiding or locking UI controls alone is not sufficient.
 - Premium data surfaces should use database/RLS enforcement where direct tenant data access could otherwise bypass application guards.
@@ -114,6 +134,7 @@ Netlify invokes the reminder and review routes hourly through a thin scheduled f
 14. Tenant-aware managed email, quota protection and Growth appointment reminders.
 15. Platform Admin tenant/global email usage and quota controls.
 16. Pro tenant-aware automated Google review requests.
-17. Commercial pilot readiness and final pricing/package approval.
-18. Advanced CRM/retention workflow and remaining planned automations.
-19. Stripe checkout/webhooks when pricing and subscription rules are finalized.
+17. Pro Advanced CRM retention action queue and append-only action history.
+18. Commercial pilot readiness and final pricing/package approval.
+19. Remaining planned automations/integrations and automated CRM follow-up.
+20. Stripe checkout/webhooks when pricing and subscription rules are finalized.
