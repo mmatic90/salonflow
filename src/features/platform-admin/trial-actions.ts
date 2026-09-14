@@ -165,11 +165,13 @@ export async function createSalesTrialAction(
       await supabase.auth.admin.generateLink({
         type: "invite",
         email: ownerEmail,
-        data: {
-          display_name: ownerName,
-          salonflow_invite: "sales_trial",
+        options: {
+          data: {
+            display_name: ownerName,
+            salonflow_invite: "sales_trial",
+          },
+          redirectTo,
         },
-        redirectTo,
       });
 
     if (inviteError || !invite.user?.id || !invite.properties?.action_link) {
