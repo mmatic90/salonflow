@@ -19,7 +19,6 @@ import {
   type RetentionActionCode,
   type RetentionCandidate,
   type RetentionPriority,
-  type RetentionReasonCode,
 } from "@/features/retention/queries";
 import { requireAdminForAdvancedCrm } from "@/lib/page-guards";
 import type { AppLocale } from "@/lib/i18n";
@@ -168,7 +167,8 @@ function actionClasses(action: RetentionActionCode) {
 
 function formatDate(value: string | null, locale: AppLocale) {
   if (!value) return null;
-  const language = locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR";
+  const language =
+    locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR";
   return new Intl.DateTimeFormat(language, {
     day: "2-digit",
     month: "2-digit",
@@ -177,7 +177,8 @@ function formatDate(value: string | null, locale: AppLocale) {
 }
 
 function formatDateTime(value: string, locale: AppLocale) {
-  const language = locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR";
+  const language =
+    locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR";
   return new Intl.DateTimeFormat(language, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -196,19 +197,31 @@ function reasonDetail(candidate: RetentionCandidate, locale: AppLocale) {
   }
 
   if (candidate.reasonCode === "inactive_client") {
-    if (locale === "en") return `No completed visit for ${candidate.daysSinceLastVisit ?? 0} days and no future appointment.`;
-    if (locale === "it") return `Nessuna visita completata da ${candidate.daysSinceLastVisit ?? 0} giorni e nessun appuntamento futuro.`;
+    if (locale === "en") {
+      return `No completed visit for ${candidate.daysSinceLastVisit ?? 0} days and no future appointment.`;
+    }
+    if (locale === "it") {
+      return `Nessuna visita completata da ${candidate.daysSinceLastVisit ?? 0} giorni e nessun appuntamento futuro.`;
+    }
     return `Nema završeni posjet već ${candidate.daysSinceLastVisit ?? 0} dana i nema budući termin.`;
   }
 
   if (candidate.reasonCode === "attendance_risk") {
-    if (locale === "en") return `${candidate.noShowCount} no-shows and ${candidate.cancelledCount} cancellations; no future appointment.`;
-    if (locale === "it") return `${candidate.noShowCount} no-show e ${candidate.cancelledCount} cancellazioni; nessun appuntamento futuro.`;
+    if (locale === "en") {
+      return `${candidate.noShowCount} no-shows and ${candidate.cancelledCount} cancellations; no future appointment.`;
+    }
+    if (locale === "it") {
+      return `${candidate.noShowCount} no-show e ${candidate.cancelledCount} cancellazioni; nessun appuntamento futuro.`;
+    }
     return `${candidate.noShowCount} no-show i ${candidate.cancelledCount} otkazivanja; nema budući termin.`;
   }
 
-  if (locale === "en") return `Returning client with ${candidate.completedCount} completed visits has no future appointment.`;
-  if (locale === "it") return `Cliente abituale con ${candidate.completedCount} visite completate senza un appuntamento futuro.`;
+  if (locale === "en") {
+    return `Returning client with ${candidate.completedCount} completed visits has no future appointment.`;
+  }
+  if (locale === "it") {
+    return `Cliente abituale con ${candidate.completedCount} visite completate senza un appuntamento futuro.`;
+  }
   return `Klijent s ${candidate.completedCount} završenih posjeta nema budući termin.`;
 }
 
@@ -228,22 +241,30 @@ export default async function RetentionPage() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm">
           <UserRoundSearch className="h-5 w-5 text-app-accent" />
-          <p className="mt-4 text-3xl font-extrabold text-app-text">{overview.stats.total}</p>
+          <p className="mt-4 text-3xl font-extrabold text-app-text">
+            {overview.stats.total}
+          </p>
           <p className="mt-1 text-sm text-app-muted">{t.total}</p>
         </div>
         <div className="rounded-3xl border border-red-200 bg-red-50 p-5 shadow-sm">
           <ShieldAlert className="h-5 w-5 text-red-700" />
-          <p className="mt-4 text-3xl font-extrabold text-red-900">{overview.stats.high}</p>
+          <p className="mt-4 text-3xl font-extrabold text-red-900">
+            {overview.stats.high}
+          </p>
           <p className="mt-1 text-sm text-red-700">{t.high}</p>
         </div>
         <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm">
           <Clock3 className="h-5 w-5 text-app-accent" />
-          <p className="mt-4 text-3xl font-extrabold text-app-text">{overview.stats.snoozed}</p>
+          <p className="mt-4 text-3xl font-extrabold text-app-text">
+            {overview.stats.snoozed}
+          </p>
           <p className="mt-1 text-sm text-app-muted">{t.snoozed}</p>
         </div>
         <div className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm">
           <History className="h-5 w-5 text-app-accent" />
-          <p className="mt-4 text-3xl font-extrabold text-app-text">{overview.history.length}</p>
+          <p className="mt-4 text-3xl font-extrabold text-app-text">
+            {overview.history.length}
+          </p>
           <p className="mt-1 text-sm text-app-muted">{t.historyCount}</p>
         </div>
       </section>
@@ -258,7 +279,9 @@ export default async function RetentionPage() {
           <div className="px-6 py-14 text-center">
             <CheckCircle2 className="mx-auto h-9 w-9 text-emerald-600" />
             <p className="mt-4 font-semibold text-app-text">{t.noQueue}</p>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-app-muted">{t.noQueueHelp}</p>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-app-muted">
+              {t.noQueueHelp}
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-app-soft">
@@ -267,18 +290,29 @@ export default async function RetentionPage() {
                 <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.75fr)] xl:items-start">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-bold text-app-text">{candidate.fullName}</h3>
-                      <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${priorityClasses(candidate.priority)}`}>
+                      <h3 className="text-lg font-bold text-app-text">
+                        {candidate.fullName}
+                      </h3>
+                      <span
+                        className={`rounded-full border px-2.5 py-1 text-xs font-bold ${priorityClasses(
+                          candidate.priority,
+                        )}`}
+                      >
                         {t.priority[candidate.priority]}
                       </span>
                     </div>
 
-                    <p className="mt-2 font-semibold text-app-text">{t.reasons[candidate.reasonCode]}</p>
-                    <p className="mt-1 max-w-3xl text-sm leading-6 text-app-muted">{reasonDetail(candidate, locale)}</p>
+                    <p className="mt-2 font-semibold text-app-text">
+                      {t.reasons[candidate.reasonCode]}
+                    </p>
+                    <p className="mt-1 max-w-3xl text-sm leading-6 text-app-muted">
+                      {reasonDetail(candidate, locale)}
+                    </p>
 
                     <div className="mt-4 flex flex-wrap gap-2 text-xs text-app-muted">
                       <span className="rounded-full bg-app-bg px-3 py-1.5">
-                        {t.lastVisit}: {formatDate(candidate.lastCompleted, locale) ?? t.never}
+                        {t.lastVisit}:{" "}
+                        {formatDate(candidate.lastCompleted, locale) ?? t.never}
                       </span>
                       <span className="rounded-full bg-app-bg px-3 py-1.5">
                         {t.visits}: {candidate.completedCount}
@@ -292,19 +326,33 @@ export default async function RetentionPage() {
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {candidate.phone ? (
-                        <a href={`tel:${candidate.phone}`} className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg">
+                        <a
+                          href={`tel:${candidate.phone}`}
+                          className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg"
+                        >
                           <Phone className="h-4 w-4" /> {candidate.phone}
                         </a>
                       ) : null}
                       {candidate.email ? (
-                        <a href={`mailto:${candidate.email}`} className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg">
+                        <a
+                          href={`mailto:${candidate.email}`}
+                          className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg"
+                        >
                           <Mail className="h-4 w-4" /> {candidate.email}
                         </a>
                       ) : null}
-                      <Link href={`/dashboard/clients/${candidate.clientId}`} className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg">
+                      <Link
+                        href={`/dashboard/clients/${candidate.clientId}`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg"
+                      >
                         {t.profile} <ArrowRight className="h-4 w-4" />
                       </Link>
-                      <Link href={`/dashboard/appointments/new?clientId=${encodeURIComponent(candidate.clientId)}`} className="inline-flex items-center gap-2 rounded-xl bg-app-text px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                      <Link
+                        href={`/dashboard/appointments/new?clientId=${encodeURIComponent(
+                          candidate.clientId,
+                        )}`}
+                        className="inline-flex items-center gap-2 rounded-xl bg-app-text px-3 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                      >
                         <CalendarPlus className="h-4 w-4" /> {t.rebook}
                       </Link>
                     </div>
@@ -332,25 +380,43 @@ export default async function RetentionPage() {
         </div>
 
         {overview.history.length === 0 ? (
-          <div className="px-6 py-10 text-center text-sm text-app-muted">{t.noHistory}</div>
+          <div className="px-6 py-10 text-center text-sm text-app-muted">
+            {t.noHistory}
+          </div>
         ) : (
           <div className="divide-y divide-app-soft">
             {overview.history.map((item) => (
-              <div key={item.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <div
+                key={item.id}
+                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+              >
                 <div className="min-w-0">
-                  <Link href={`/dashboard/clients/${item.clientId}`} className="font-semibold text-app-text hover:underline">
+                  <Link
+                    href={`/dashboard/clients/${item.clientId}`}
+                    className="font-semibold text-app-text hover:underline"
+                  >
                     {item.clientName}
                   </Link>
-                  <p className="mt-1 text-sm text-app-muted">{t.reasons[item.reasonCode]}</p>
+                  <p className="mt-1 text-sm text-app-muted">
+                    {t.reasons[item.reasonCode]}
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className={`rounded-full px-2.5 py-1 font-bold ${actionClasses(item.action)}`}>
+                  <span
+                    className={`rounded-full px-2.5 py-1 font-bold ${actionClasses(
+                      item.action,
+                    )}`}
+                  >
                     {t.actions[item.action]}
                   </span>
                   {item.snoozedUntil ? (
-                    <span className="text-app-muted">→ {formatDate(item.snoozedUntil, locale)}</span>
+                    <span className="text-app-muted">
+                      → {formatDate(item.snoozedUntil, locale)}
+                    </span>
                   ) : null}
-                  <span className="text-app-muted">{formatDateTime(item.createdAt, locale)}</span>
+                  <span className="text-app-muted">
+                    {formatDateTime(item.createdAt, locale)}
+                  </span>
                 </div>
               </div>
             ))}
