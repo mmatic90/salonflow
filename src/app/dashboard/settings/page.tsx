@@ -98,6 +98,27 @@ const reviewCardCopy: Record<
   },
 };
 
+const retentionAutomationCopy: Record<
+  AppLocale,
+  { title: string; description: string }
+> = {
+  hr: {
+    title: "Automatski CRM follow-up",
+    description:
+      "Pro dnevni retention follow-up s consent provjerom, dnevnim limitom i Managed Email zaštitama.",
+  },
+  en: {
+    title: "Automatic CRM follow-up",
+    description:
+      "Pro daily retention follow-up with consent checks, a daily limit and Managed Email safeguards.",
+  },
+  it: {
+    title: "Follow-up CRM automatico",
+    description:
+      "Follow-up retention giornaliero Pro con controllo consenso, limite giornaliero e protezioni Managed Email.",
+  },
+};
+
 export default async function SettingsPage() {
   const permissions = await requireAdminForSettings();
   const dictionary = getDictionary(permissions.organizationLocale);
@@ -106,12 +127,14 @@ export default async function SettingsPage() {
   const groups = groupLabels[permissions.organizationLocale];
   const emailCopy = emailCardCopy[permissions.organizationLocale];
   const reviewCopy = reviewCardCopy[permissions.organizationLocale];
+  const automationCopy = retentionAutomationCopy[permissions.organizationLocale];
   const canUseAuditLog = canUseCapability(permissions, "audit_log");
   const canUseBookingNotifications = canUseCapability(
     permissions,
     "booking_notifications",
   );
   const canUseReviewRequests = canUseCapability(permissions, "review_requests");
+  const canUseAutomations = canUseCapability(permissions, "automations");
   const auditLogHref = canUseAuditLog
     ? "/dashboard/settings/audit-log"
     : buildCapabilityUpgradePath(
@@ -129,6 +152,12 @@ export default async function SettingsPage() {
     : buildCapabilityUpgradePath(
         "review_requests",
         "/dashboard/settings/reviews",
+      );
+  const retentionAutomationHref = canUseAutomations
+    ? "/dashboard/settings/retention-automation"
+    : buildCapabilityUpgradePath(
+        "automations",
+        "/dashboard/settings/retention-automation",
       );
 
   return (
@@ -217,6 +246,13 @@ export default async function SettingsPage() {
             title={reviewCopy.title}
             description={reviewCopy.description}
             locked={!canUseReviewRequests}
+          />
+
+          <SettingsCard
+            href={retentionAutomationHref}
+            title={automationCopy.title}
+            description={automationCopy.description}
+            locked={!canUseAutomations}
           />
 
           <SettingsCard
