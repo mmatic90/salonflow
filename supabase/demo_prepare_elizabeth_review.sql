@@ -14,6 +14,7 @@ declare
 
   v_marina_id uuid;
   v_lara_id uuid;
+  v_ema_id uuid;
   v_ivan_id uuid;
   v_ana_id uuid;
   v_room_3_id uuid;
@@ -147,6 +148,14 @@ begin
     and c.is_active = true
   limit 1;
 
+  select c.id into v_ema_id
+  from public.clients c
+  where c.organization_id = v_org_id
+    and c.first_name = 'Ema'
+    and c.last_name = 'Babić'
+    and c.is_active = true
+  limit 1;
+
   select e.id into v_ivan_id
   from public.employees e
   where e.organization_id = v_org_id
@@ -187,6 +196,7 @@ begin
 
   if v_marina_id is null
      or v_lara_id is null
+     or v_ema_id is null
      or v_ivan_id is null
      or v_ana_id is null
      or v_room_3_id is null
@@ -196,7 +206,18 @@ begin
   end if;
 
   ------------------------------------------------------------------------------
-  -- 4. Stage Marina Vuković as a deterministic CRM retention example.
+  -- 4. Give Ema Babić a deterministic care/safety example for the client profile.
+  ------------------------------------------------------------------------------
+  update public.clients
+  set
+    allergies_sensitivities = 'Osjetljiva koža; prethodno zabilježena reakcija na intenzivnije pilinge.',
+    contraindications = 'Prije jačih pilinga provjeriti trenutno stanje kože.',
+    treatment_preferences = 'Preferira blaže tretmane i hidratantnu završnu njegu.'
+  where id = v_ema_id
+    and organization_id = v_org_id;
+
+  ------------------------------------------------------------------------------
+  -- 5. Stage Marina Vuković as a deterministic CRM retention example.
   --
   -- Two completed visits, 13 and 7 weeks before the current week, produce a
   -- natural "no future appointment" retention signal without making her appear
@@ -349,7 +370,7 @@ begin
   );
 
   ------------------------------------------------------------------------------
-  -- 5. Stage Lara Božić as a natural waitlist example.
+  -- 6. Stage Lara Božić as a natural waitlist example.
   ------------------------------------------------------------------------------
   delete from public.waitlist_entries
   where organization_id = v_org_id
@@ -383,6 +404,6 @@ begin
 
   raise notice 'Elizabeth review state prepared successfully.';
   raise notice 'Demo Salon: Pro + Active; Managed Email ON; review automation OFF; CRM automation OFF.';
-  raise notice 'CRM example: Marina Vuković. Waitlist example: Lara Božić.';
+  raise notice 'Client-care example: Ema Babić. CRM example: Marina Vuković. Waitlist example: Lara Božić.';
   raise notice 'Do not send Marina follow-up during the review unless her demo email is intentionally replaced by a controlled recipient.';
 end $$;
