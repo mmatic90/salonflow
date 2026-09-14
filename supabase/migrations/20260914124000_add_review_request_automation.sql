@@ -94,13 +94,17 @@ with check (
 alter table public.appointments
   add column if not exists review_request_sent_at timestamptz,
   add column if not exists review_request_error text,
-  add column if not exists review_request_claimed_at timestamptz;
+  add column if not exists review_request_claimed_at timestamptz,
+  add column if not exists review_request_attempt_count integer not null default 0
+    check (review_request_attempt_count >= 0),
+  add column if not exists review_request_last_attempt_at timestamptz;
 
 create index if not exists appointments_pending_review_request_idx
 on public.appointments (organization_id, appointment_date)
 where status = 'completed'
   and client_email is not null
-  and review_request_sent_at is null;
+  and review_request_sent_at is null
+  and review_request_attempt_count < 3;
 
 create or replace function public.claim_appointment_review_request(
   p_appointment_id uuid,
@@ -115,12 +119,20 @@ declare
   v_claimed uuid;
 begin
   update public.appointments
-  set review_request_claimed_at = now()
+  set
+    review_request_claimed_at = now(),
+    review_request_attempt_count = review_request_attempt_count + 1,
+    review_request_last_attempt_at = now()
   where id = p_appointment_id
     and organization_id = p_organization_id
     and status = 'completed'
     and client_email is not null
     and review_request_sent_at is null
+    and review_request_attempt_count < 3
+    and (
+      review_request_last_attempt_at is null
+      or review_request_last_attempt_at < now() - interval '1 hour'
+    )
     and (
       review_request_claimed_at is null
       or review_request_claimed_at < now() - interval '15 minutes'
@@ -145,3 +157,5 @@ comment on column public.organization_review_settings.enabled_at is
   'Timestamp of the latest transition from disabled to enabled; prevents retroactive review requests for older visits.';
 comment on column public.appointments.review_request_claimed_at is
   'Short-lived delivery claim used to prevent duplicate review-request sends during overlapping cron executions.';
+comment on column public.appointments.review_request_attempt_count is
+  'Maximum-three-attempt retry counter for automated review-request delivery.';
