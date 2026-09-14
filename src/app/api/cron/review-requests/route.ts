@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ManagedEmailError } from "@/lib/email/managed-email";
 import { sendGoogleReviewRequestEmail } from "@/lib/email/review-request-email";
 import {
   getEffectiveEntitlementPlan,
@@ -216,6 +217,7 @@ export async function GET(request: Request) {
       due: 0,
       sent: 0,
       failed: 0,
+      deferred: 0,
       results: [],
     });
   }
@@ -266,6 +268,7 @@ export async function GET(request: Request) {
   let dueCount = 0;
   let sentCount = 0;
   let failedCount = 0;
+  let deferredCount = 0;
 
   for (const appointment of appointments) {
     const organization = organizationsById.get(appointment.organization_id);
@@ -338,18 +341,30 @@ export async function GET(request: Request) {
     } catch (sendError) {
       const message =
         sendError instanceof Error ? sendError.message : "Unknown error";
+      const deferred = sendError instanceof ManagedEmailError;
 
       await supabase
         .from("appointments")
         .update({
           review_request_error: message.slice(0, 2000),
           review_request_claimed_at: null,
+          ...(deferred
+            ? {
+                review_request_attempt_count:
+                  appointment.review_request_attempt_count ?? 0,
+              }
+            : {}),
         })
         .eq("id", appointment.id)
         .eq("organization_id", appointment.organization_id);
 
-      failedCount += 1;
-      results.push({ id: appointment.id, status: "failed" });
+      if (deferred) {
+        deferredCount += 1;
+        results.push({ id: appointment.id, status: "deferred" });
+      } else {
+        failedCount += 1;
+        results.push({ id: appointment.id, status: "failed" });
+      }
     }
   }
 
@@ -360,6 +375,7 @@ export async function GET(request: Request) {
     due: dueCount,
     sent: sentCount,
     failed: failedCount,
+    deferred: deferredCount,
     channel: "email",
     results,
   });
