@@ -90,6 +90,22 @@ export async function requireAdminForAuditLog() {
   return permissions;
 }
 
+export async function requireAdminForAdvancedCrm() {
+  const permissions = await requireDashboardUser();
+
+  if (!canAccessSettings(permissions.role)) {
+    redirect("/dashboard");
+  }
+
+  if (!canUseCapability(permissions, "advanced_crm")) {
+    redirect(
+      buildCapabilityUpgradePath("advanced_crm", "/dashboard/retention"),
+    );
+  }
+
+  return permissions;
+}
+
 export async function requireAdminForScheduleManagement() {
   const permissions = await requireDashboardUser();
 
