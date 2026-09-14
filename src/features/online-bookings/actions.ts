@@ -229,6 +229,7 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
     {
       email: request.client_email,
       phone: request.client_phone,
+      fullName: request.client_full_name,
     },
   );
 
