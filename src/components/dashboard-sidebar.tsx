@@ -6,6 +6,7 @@ import {
   BarChart3,
   BellRing,
   CalendarDays,
+  HeartHandshake,
   LayoutDashboard,
   ListPlus,
   LockKeyhole,
@@ -34,6 +35,7 @@ type Props = {
   locale: AppLocale;
   canUseWaitlist?: boolean;
   canUseReports?: boolean;
+  canUseAdvancedCrm?: boolean;
   isSystemDeveloper?: boolean;
 };
 
@@ -45,6 +47,7 @@ type NavDefinition = {
     | "calendar"
     | "clients"
     | "waitlist"
+    | "retention"
     | "reports"
     | "settings";
   icon: typeof LayoutDashboard;
@@ -88,6 +91,13 @@ const navDefinitions: NavDefinition[] = [
     capability: "waitlist",
   },
   {
+    href: "/dashboard/retention",
+    key: "retention",
+    icon: HeartHandshake,
+    roles: ["admin"],
+    capability: "advanced_crm",
+  },
+  {
     href: "/dashboard/reports",
     key: "reports",
     icon: BarChart3,
@@ -124,6 +134,12 @@ function waitlistLabel(locale: AppLocale) {
   return "Lista čekanja";
 }
 
+function retentionLabel(locale: AppLocale) {
+  if (locale === "en") return "CRM actions";
+  if (locale === "it") return "Azioni CRM";
+  return "CRM akcije";
+}
+
 function subscribeToSidebarPreference(listener: () => void) {
   window.addEventListener("storage", listener);
   window.addEventListener(SIDEBAR_CHANGE_EVENT, listener);
@@ -149,6 +165,7 @@ export default function DashboardSidebar({
   locale,
   canUseWaitlist = true,
   canUseReports = true,
+  canUseAdvancedCrm = true,
   isSystemDeveloper = false,
 }: Props) {
   const pathname = usePathname();
@@ -170,12 +187,16 @@ export default function DashboardSidebar({
               ? canUseWaitlist
               : item.capability === "advanced_reports"
                 ? canUseReports
-                : true;
+                : item.capability === "advanced_crm"
+                  ? canUseAdvancedCrm
+                  : true;
           const locked = Boolean(item.capability && !unlocked);
           const label =
             item.key === "waitlist"
               ? waitlistLabel(locale)
-              : dictionary.nav[item.key];
+              : item.key === "retention"
+                ? retentionLabel(locale)
+                : dictionary.nav[item.key];
 
           return {
             ...item,
@@ -187,7 +208,14 @@ export default function DashboardSidebar({
                 : item.href,
           };
         }),
-    [canUseReports, canUseWaitlist, dictionary, locale, role],
+    [
+      canUseAdvancedCrm,
+      canUseReports,
+      canUseWaitlist,
+      dictionary,
+      locale,
+      role,
+    ],
   );
 
   function toggleDesktop() {
