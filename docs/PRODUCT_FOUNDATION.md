@@ -33,7 +33,7 @@ Capabilities are explicitly classified as:
 
 The matrix currently keeps core salon operation and client care/safety in Starter, utilization/retention insights in Growth, and governance/advanced automation in Pro. Pricing is intentionally not stored in code or database yet.
 
-The first enforcement stage covers Growth Waitlist, Growth Reports and Pro Audit Log. CRM insights, reminders, review automation and planned capabilities remain outside enforcement until their dedicated implementation stage.
+Enforcement currently covers Growth Waitlist, CRM/attendance insights, Reports and 24h Appointment Reminders, plus Pro Audit Log. Review automation and planned capabilities remain outside commercial enforcement until their dedicated tenant-hardening/implementation stage.
 
 ## Non-goals for Phase 1
 
@@ -58,6 +58,7 @@ The first enforcement stage covers Growth Waitlist, Growth Reports and Pro Audit
 - Server-side entitlement checks are authoritative; hiding or locking UI controls alone is not sufficient.
 - Premium data surfaces should use database/RLS enforcement where direct tenant data access could otherwise bypass application guards.
 - Background jobs and public APIs must become tenant- and entitlement-aware before a premium capability is enforced commercially.
+- Background entitlements should be checked at delivery/execution time where possible so upgrades and downgrades apply to already-existing future work without destructive cleanup.
 
 ## Initial roadmap
 
@@ -73,7 +74,8 @@ The first enforcement stage covers Growth Waitlist, Growth Reports and Pro Audit
 10. Three-tier plan and capability-entitlement foundation.
 11. Audited Starter/Growth/Pro capability matrix.
 12. First staged enforcement: Growth Waitlist/Reports and Pro Audit Log.
-13. Commercial pilot readiness and final pricing/package approval.
-14. Further server-side entitlement enforcement in controlled stages.
-15. Tenant-hardening of partial background automations/reminders.
-16. Stripe checkout/webhooks when pricing and subscription rules are finalized.
+13. Growth CRM/attendance insight enforcement.
+14. Tenant-aware Growth appointment-reminder enforcement.
+15. Commercial pilot readiness and final pricing/package approval.
+16. Tenant-hardening of remaining partial background automation (review requests).
+17. Stripe checkout/webhooks when pricing and subscription rules are finalized.
