@@ -31,6 +31,11 @@ function safeReturnTo(value: string | undefined) {
 
 function capabilityLabel(code: SalonCapabilityCode, locale: AppLocale) {
   const labels: Partial<Record<SalonCapabilityCode, Record<AppLocale, string>>> = {
+    booking_notifications: {
+      hr: "Email i obavijesti",
+      en: "Email & notifications",
+      it: "Email e notifiche",
+    },
     waitlist: {
       hr: "Lista čekanja",
       en: "Waitlist",
