@@ -35,11 +35,45 @@ export function normalizeClientPhone(value: string | null | undefined) {
   return normalized.length >= 7 ? normalized : null;
 }
 
+export function normalizeClientName(value: string | null | undefined) {
+  const normalized =
+    value
+      ?.normalize("NFKC")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase() ?? "";
+
+  return normalized || null;
+}
+
+function clientFullName(client: ClientMatchRecord) {
+  return [client.first_name, client.last_name].filter(Boolean).join(" ");
+}
+
+function uniqueNameMatch(
+  matches: ClientMatchRecord[],
+  fullName: string | null | undefined,
+) {
+  const normalizedName = normalizeClientName(fullName);
+  if (!normalizedName) return null;
+
+  const nameMatches = matches.filter(
+    (client) => normalizeClientName(clientFullName(client)) === normalizedName,
+  );
+
+  return nameMatches.length === 1 ? nameMatches[0] : null;
+}
+
 export function findExistingClientMatch(
   clients: ClientMatchRecord[],
-  input: { email?: string | null; phone?: string | null },
+  input: {
+    email?: string | null;
+    phone?: string | null;
+    fullName?: string | null;
+  },
 ): ClientMatchResult {
   const normalizedEmail = normalizeClientEmail(input.email);
+  const normalizedPhone = normalizeClientPhone(input.phone);
 
   if (normalizedEmail) {
     const emailMatches = clients.filter(
@@ -55,6 +89,46 @@ export function findExistingClientMatch(
     }
 
     if (emailMatches.length > 1) {
+      if (normalizedPhone) {
+        const emailAndPhoneMatches = emailMatches.filter(
+          (client) => normalizeClientPhone(client.phone) === normalizedPhone,
+        );
+
+        if (emailAndPhoneMatches.length === 1) {
+          return {
+            kind: "matched",
+            matchedBy: "email",
+            client: emailAndPhoneMatches[0],
+          };
+        }
+
+        if (emailAndPhoneMatches.length > 1) {
+          const nameMatch = uniqueNameMatch(emailAndPhoneMatches, input.fullName);
+          if (nameMatch) {
+            return {
+              kind: "matched",
+              matchedBy: "email",
+              client: nameMatch,
+            };
+          }
+
+          return {
+            kind: "ambiguous",
+            matchedBy: "email",
+            matches: emailAndPhoneMatches,
+          };
+        }
+      }
+
+      const nameMatch = uniqueNameMatch(emailMatches, input.fullName);
+      if (nameMatch) {
+        return {
+          kind: "matched",
+          matchedBy: "email",
+          client: nameMatch,
+        };
+      }
+
       return {
         kind: "ambiguous",
         matchedBy: "email",
@@ -63,7 +137,6 @@ export function findExistingClientMatch(
     }
   }
 
-  const normalizedPhone = normalizeClientPhone(input.phone);
   if (!normalizedPhone) return { kind: "none" };
 
   const phoneMatches = clients.filter(
@@ -71,6 +144,25 @@ export function findExistingClientMatch(
   );
 
   if (phoneMatches.length > 1) {
+    const nameMatch = uniqueNameMatch(phoneMatches, input.fullName);
+    if (nameMatch) {
+      const existingEmail = normalizeClientEmail(nameMatch.email);
+
+      if (
+        existingEmail &&
+        normalizedEmail &&
+        existingEmail !== normalizedEmail
+      ) {
+        return { kind: "none", reason: "phone_email_conflict" };
+      }
+
+      return {
+        kind: "matched",
+        matchedBy: "phone",
+        client: nameMatch,
+      };
+    }
+
     return {
       kind: "ambiguous",
       matchedBy: "phone",
