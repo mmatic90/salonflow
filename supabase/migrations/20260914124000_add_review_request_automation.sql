@@ -51,7 +51,9 @@ as $$
 begin
   if new.enabled = false then
     new.enabled_at := null;
-  elsif tg_op = 'INSERT' or old.enabled = false or new.enabled_at is null then
+  elsif tg_op = 'INSERT' then
+    new.enabled_at := coalesce(new.enabled_at, now());
+  elsif old.enabled = false or new.enabled_at is null then
     new.enabled_at := now();
   end if;
 
