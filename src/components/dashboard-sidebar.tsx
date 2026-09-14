@@ -50,7 +50,6 @@ type NavDefinition = {
   icon: typeof LayoutDashboard;
   roles: AppRole[];
   capability?: SalonCapabilityCode;
-  requiredPlan?: "Growth" | "Pro";
 };
 
 const SIDEBAR_STORAGE_KEY = "dashboard-sidebar-collapsed";
@@ -87,7 +86,6 @@ const navDefinitions: NavDefinition[] = [
     icon: ListPlus,
     roles: ["admin", "employee"],
     capability: "waitlist",
-    requiredPlan: "Growth",
   },
   {
     href: "/dashboard/reports",
@@ -95,7 +93,6 @@ const navDefinitions: NavDefinition[] = [
     icon: BarChart3,
     roles: ["admin"],
     capability: "advanced_reports",
-    requiredPlan: "Growth",
   },
   {
     href: "/dashboard/settings",
@@ -245,9 +242,7 @@ export default function DashboardSidebar({
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
                     {item.locked ? (
-                      <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-app-soft bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-app-muted">
-                        <LockKeyhole className="h-3 w-3" /> {item.requiredPlan}
-                      </span>
+                      <LockKeyhole className="ml-auto h-4 w-4 text-app-muted" />
                     ) : item.href === "/dashboard/online-bookings" ? (
                       <OnlineBookingBadge />
                     ) : null}
@@ -343,20 +338,14 @@ export default function DashboardSidebar({
                     ? "bg-app-accent text-white shadow-sm"
                     : "text-app-text hover:bg-app-card-alt"
                 }`}
-                title={
-                  desktopCollapsed
-                    ? `${item.label}${item.locked ? ` · ${item.requiredPlan}` : ""}`
-                    : undefined
-                }
+                title={desktopCollapsed ? item.label : undefined}
               >
                 <Icon className="h-4 w-4 shrink-0" />
                 {!desktopCollapsed ? (
                   <>
                     <span>{item.label}</span>
                     {item.locked ? (
-                      <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-app-soft bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-app-muted">
-                        <LockKeyhole className="h-3 w-3" /> {item.requiredPlan}
-                      </span>
+                      <LockKeyhole className="ml-auto h-4 w-4 text-app-muted" />
                     ) : item.href === "/dashboard/online-bookings" ? (
                       <OnlineBookingBadge />
                     ) : null}
