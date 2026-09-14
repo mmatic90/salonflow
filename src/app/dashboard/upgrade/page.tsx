@@ -61,6 +61,11 @@ function capabilityLabel(code: SalonCapabilityCode, locale: AppLocale) {
       en: "Advanced reports",
       it: "Report avanzati",
     },
+    review_requests: {
+      hr: "Zahtjevi za Google recenziju",
+      en: "Google review requests",
+      it: "Richieste recensioni Google",
+    },
     audit_log: {
       hr: "Audit log i izvoz",
       en: "Audit log and export",
