@@ -8,7 +8,7 @@ This document records the audited commercial capability split for the current Sa
 - **Partial** — meaningful implementation exists, but it must be finished or tenant-hardened before it is enforced or advertised as fully available.
 - **Planned** — commercial roadmap capability; do not market it as currently delivered.
 
-Entitlement enforcement is now implemented for Managed Email notifications, Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders, Audit Log and Automated Review Requests. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
+Entitlement enforcement is now implemented for Managed Email notifications, Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders, Audit Log, Advanced CRM Retention and Automated Review Requests. Remaining planned capabilities stay unenforced until their dedicated batch is completed.
 
 ## Trial rule
 
@@ -40,7 +40,7 @@ Starter does not receive SalonFlow-paid automatic client email delivery. Booking
 
 ## Growth
 
-Growth adds managed client communication, utilization, retention and management insight on top of the Starter foundation.
+Growth adds managed client communication, utilization, retention insight and management analytics on top of the Starter foundation.
 
 | Capability | Status | Current implementation / enforcement target |
 | --- | --- | --- |
@@ -66,15 +66,15 @@ Appointment reminders are a background capability rather than a dashboard page. 
 
 ## Pro
 
-Pro is the governance/automation tier. Audit Log and Automated Review Requests are currently the two clearly finished Pro-specific product capabilities; the remaining items stay roadmap/planned until their dedicated implementation is complete.
+Pro is the governance/action/automation tier. Audit Log, Advanced CRM Retention and Automated Review Requests are finished Pro-specific product capabilities; remaining items stay roadmap/planned until their dedicated implementation is complete.
 
 | Capability | Status | Current implementation / enforcement target |
 | --- | --- | --- |
 | Audit log and export | Available | **Enforced.** Pro/Trial management users can read the audit page and CSV export. Audit events continue to be written for all plans so historical governance data is preserved for a later upgrade. Database RLS also protects direct audit-log reads. |
+| Advanced CRM workflow | Available | **Enforced.** `/dashboard/retention` derives an action queue from current visit cadence, inactivity, missing future bookings and attendance-risk signals. The strongest current signal per client is shown with priority, contact/rebook shortcuts and `contacted / snoozed / resolved / ignored` actions. Decisions are stored append-only in `crm_retention_actions`; Pro-only RLS preserves history across downgrades without exposing it to lower plans. |
 | Automated review requests | Available | **Enforced.** Pro/Trial tenants can configure their own Google review URL, enable/disable automation and choose a 2h or 24h delay. Only `completed` appointments are eligible; historical visits from before activation are not contacted. Delivery is email-only through Managed Email, with tenant/global quota accounting and duplicate/retry protection. |
-| Advanced CRM workflow | Planned | Future retention action lists, follow-up workflow and CRM-driven tasks. Existing client insights belong to Growth, not this capability. |
 | Custom email provider/domain | Planned | Future Bring Your Own Provider/domain option. Must use a credential-safe secret design before enabling; plain tenant-readable API keys are not acceptable. |
-| Advanced automations | Planned | Future follow-up and operational automations beyond existing booking flows. |
+| Advanced automations | Planned | Future automated follow-up delivery and operational automations beyond the current manual retention queue and review automation. |
 | Advanced integrations | Planned | Future third-party integrations. |
 | Priority support | Planned | Commercial support entitlement; operational process still to be defined. |
 
@@ -86,7 +86,7 @@ The existing `/dashboard/reports` page is already substantially more than a basi
 
 ### CRM
 
-The current client profile computes segments, attendance rates, favorite service/employee, average visit cadence and warning signals. These are the real **Growth CRM insights** and are now enforced at the server-query and UI layers.
+The client profile computes segments, attendance rates, favorite service/employee, average visit cadence and warning signals. These remain the **Growth CRM insights** and are enforced at the server-query and UI layers.
 
 The query contract separates:
 
@@ -94,7 +94,11 @@ The query contract separates:
 - `crm_insights` — Growth segmentation, favorites, cadence and CRM signals;
 - `attendance_insights` — Growth cancellation/no-show counts and rates.
 
-There is not yet a distinct finished "advanced CRM" workflow, so Pro `advanced_crm` remains planned.
+Pro `advanced_crm` is now a distinct operational workflow rather than another analytics card. `/dashboard/retention` derives current candidates from tenant appointments/clients and displays only the strongest current reason per client. Initial signal rules cover overdue visit cadence, >120-day inactivity, returning clients with no future booking and attendance risk.
+
+The queue is intentionally derived rather than persisted. A new completed visit, new future booking or new attendance event changes the current signal automatically. Only human operator decisions are stored in `crm_retention_actions`. Each decision is tied to a deterministic signal generation key, so `contacted`, `resolved` and `ignored` suppress that generation while 7/14/30-day snoozes return after expiry. A later client event can create a new signal generation without deleting history.
+
+The action table is append-only from the tenant application: there are no update/delete RLS policies. Reads and inserts require a management role plus Pro-equivalent entitlement at the database boundary. The server action also recalculates the live queue before insert so a stale or fabricated browser signal cannot be recorded as current.
 
 ### Care and safety
 
@@ -141,15 +145,16 @@ Audit storage remains tenant-aware and immutable from the application. The first
 
 Staged enforcement remains the rule:
 
-1. **Navigation/upgrade states** — implemented for Managed Email settings, Google Review settings, Waitlist, Reports and Audit Log; CRM uses an in-profile locked upgrade state because the Clients module itself remains Starter.
-2. **Page/server guards** — implemented for Managed Email settings, Google Review settings/actions, Waitlist, Reports and Audit Log/export.
-3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. Review settings have tenant-scoped manager RLS plus server capability enforcement. CRM advanced values are guarded in the server query layer because the underlying appointment history is Starter data.
+1. **Navigation/upgrade states** — implemented for Managed Email settings, Google Review settings, Waitlist, CRM Retention, Reports and Audit Log; Growth CRM insight remains an in-profile locked state because the Clients module itself remains Starter.
+2. **Page/server guards** — implemented for Managed Email settings, Google Review settings/actions, Waitlist, CRM Retention, Reports and Audit Log/export.
+3. **Mutation/data guards** — implemented for waitlist actions/RLS, audit-log read RLS, review settings, and CRM Retention. Retention actions require current server-revalidated signal data plus Pro-only append-only RLS. Growth CRM advanced values remain guarded in the query layer because the underlying appointment history is Starter data.
 4. **Managed email enforcement** — implemented centrally before quota reservation/provider send for booking notifications and review requests; per-tenant/global usage safety caps are active.
 5. **CRM insight enforcement** — implemented for segmentation, favourites, cadence, attendance rates and CRM signals.
-6. **Background reminder enforcement** — implemented at send time for 24h email appointment reminders; tenant context and current plan/lifecycle are authoritative.
-7. **Background review automation** — implemented for Pro/Trial with tenant-specific URL/configuration, hourly scheduler, activation cutoff and duplicate/retry protection.
-8. **Public booking/API behavior** — Starter booking remains available; user-facing success copy does not promise managed email when the plan does not include it.
-9. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
+6. **Pro CRM action workflow** — implemented with derived current signals, contact/rebook shortcuts, action history and snooze lifecycle.
+7. **Background reminder enforcement** — implemented at send time for 24h email appointment reminders; tenant context and current plan/lifecycle are authoritative.
+8. **Background review automation** — implemented for Pro/Trial with tenant-specific URL/configuration, hourly scheduler, activation cutoff and duplicate/retry protection.
+9. **Public booking/API behavior** — Starter booking remains available; user-facing success copy does not promise managed email when the plan does not include it.
+10. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
 
 ## Pricing
 
