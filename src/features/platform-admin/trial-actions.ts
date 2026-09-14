@@ -209,15 +209,17 @@ export async function createSalesTrialAction(
       .select("id, slug")
       .single();
 
-    if (organizationError || !organization) {
+    if (organizationError || !organization?.id) {
       throw new Error(organizationError?.message || "Could not create trial salon.");
     }
-    organizationId = organization.id;
+
+    const createdOrganizationId = String(organization.id);
+    organizationId = createdOrganizationId;
 
     const { error: membershipError } = await supabase
       .from("organization_members")
       .insert({
-        organization_id: organizationId,
+        organization_id: createdOrganizationId,
         user_id: generatedUserId,
         role: "owner",
         display_name: ownerName,
@@ -228,7 +230,7 @@ export async function createSalesTrialAction(
     const { error: metadataError } = await supabase
       .from("organization_trial_metadata")
       .insert({
-        organization_id: organizationId,
+        organization_id: createdOrganizationId,
         owner_invite_email: ownerEmail,
         demo_data_seeded: false,
         seed_version: null,
@@ -240,11 +242,11 @@ export async function createSalesTrialAction(
       supabase
         .from("organization_review_settings")
         .update({ enabled: false })
-        .eq("organization_id", organizationId),
+        .eq("organization_id", createdOrganizationId),
       supabase
         .from("organization_retention_automation_settings")
         .update({ enabled: false })
-        .eq("organization_id", organizationId),
+        .eq("organization_id", createdOrganizationId),
     ]);
     if (reviewSettings.error) throw new Error(reviewSettings.error.message);
     if (retentionSettings.error) throw new Error(retentionSettings.error.message);
@@ -252,7 +254,7 @@ export async function createSalesTrialAction(
     if (input.seedDemoData) {
       await seedSalesTrialOrganization({
         supabase,
-        organizationId,
+        organizationId: createdOrganizationId,
         locale: input.locale,
       });
 
@@ -263,7 +265,7 @@ export async function createSalesTrialAction(
           seed_version: SALES_TRIAL_SEED_VERSION,
           last_demo_reset_at: new Date().toISOString(),
         })
-        .eq("organization_id", organizationId);
+        .eq("organization_id", createdOrganizationId);
       if (seedMetadataError) throw new Error(seedMetadataError.message);
     }
 
@@ -285,7 +287,7 @@ export async function createSalesTrialAction(
           invite_sent_at: new Date().toISOString(),
           invite_last_error: null,
         })
-        .eq("organization_id", organizationId);
+        .eq("organization_id", createdOrganizationId);
     } catch (inviteSendError) {
       const message =
         inviteSendError instanceof Error
@@ -296,14 +298,14 @@ export async function createSalesTrialAction(
       await supabase
         .from("organization_trial_metadata")
         .update({ invite_last_error: message.slice(0, 500) })
-        .eq("organization_id", organizationId);
+        .eq("organization_id", createdOrganizationId);
     }
 
     revalidatePath("/platform");
 
     return {
       ok: true,
-      organizationId,
+      organizationId: createdOrganizationId,
       salonName,
       slug: organization.slug,
       trialEndsAt: trialEndsAt.toISOString(),
