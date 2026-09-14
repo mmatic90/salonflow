@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, LayoutDashboard, MessageSquareText, Store } from "lucide-react";
+import {
+  Building2,
+  LayoutDashboard,
+  Mail,
+  MessageSquareText,
+  Store,
+} from "lucide-react";
 
 const items = [
   { href: "/platform", label: "Pregled", icon: LayoutDashboard, exact: true },
+  { href: "/platform/email", label: "Managed email", icon: Mail },
   { href: "/platform/feedback", label: "Feedback", icon: MessageSquareText },
 ];
 
