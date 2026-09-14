@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendAppointmentReminderEmail } from "@/lib/email/booking-email";
+import { sendAppointmentReminderEmail } from "@/lib/email/tenant-notifications";
 import {
   getEffectiveEntitlementPlan,
   planHasCapability,
@@ -304,6 +304,7 @@ export async function GET(request: Request) {
 
     try {
       await sendAppointmentReminderEmail({
+        organizationId: appointment.organization_id,
         salonName: organization.name,
         salonPhone: organization.phone,
         salonAddress: getSalonAddress(organization),
