@@ -259,6 +259,101 @@ alter table public.online_booking_requests
       (marketing_email_opt_in = false and marketing_email_opt_in_at is null)
     );
 
+-- Preference integrity is enforced at the database boundary as well as in UI/server actions.
+-- Any member may create an ordinary unknown client. Explicit preference mutations require
+-- management, except a verified online-booking opt-in and the safe allowed -> unknown reset
+-- that happens when the email address changes. Service-role unsubscribe/import flows bypass
+-- this tenant-role check but still pass through normalization/history triggers.
+create or replace function public.guard_client_marketing_preference_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_is_manager boolean := false;
+  v_safe_email_reset boolean := false;
+begin
+  if tg_op = 'UPDATE'
+    and new.email is distinct from old.email
+    and old.marketing_email_status = 'allowed'
+  then
+    new.marketing_email_status := 'unknown';
+    new.marketing_email_consent_at := null;
+    new.marketing_email_consent_source := null;
+    new.marketing_email_source := 'manual';
+    new.marketing_email_updated_at := now();
+    new.marketing_email_updated_by := auth.uid();
+    v_safe_email_reset := true;
+  end if;
+
+  if coalesce(auth.role(), '') = 'service_role' then
+    return new;
+  end if;
+
+  v_is_manager := public.has_organization_role(
+    new.organization_id,
+    array['owner', 'admin', 'manager']::public.organization_role[]
+  );
+
+  if tg_op = 'INSERT' then
+    if new.marketing_email_status = 'unknown' then
+      return new;
+    end if;
+
+    if new.marketing_email_status = 'allowed'
+      and new.marketing_email_source = 'online_booking'
+      and new.marketing_email_consent_source = 'online_booking'
+      and new.email is not null
+      and exists (
+        select 1
+        from public.online_booking_requests request
+        where request.organization_id = new.organization_id
+          and lower(request.client_email) = lower(new.email)
+          and request.marketing_email_opt_in = true
+          and request.marketing_email_opt_in_at is not null
+          and request.marketing_email_opt_in_at = new.marketing_email_consent_at
+          and request.status = 'pending'
+      )
+    then
+      return new;
+    end if;
+
+    if v_is_manager then
+      return new;
+    end if;
+
+    raise exception 'MARKETING_PREFERENCE_FORBIDDEN';
+  end if;
+
+  if v_safe_email_reset then
+    return new;
+  end if;
+
+  if new.marketing_email_status is distinct from old.marketing_email_status
+    or new.marketing_email_consent_at is distinct from old.marketing_email_consent_at
+    or new.marketing_email_consent_source is distinct from old.marketing_email_consent_source
+    or new.marketing_email_source is distinct from old.marketing_email_source
+    or new.marketing_email_updated_by is distinct from old.marketing_email_updated_by
+  then
+    if v_is_manager then
+      return new;
+    end if;
+
+    raise exception 'MARKETING_PREFERENCE_FORBIDDEN';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists clients_guard_marketing_preference_mutation on public.clients;
+create trigger clients_guard_marketing_preference_mutation
+before insert or update of email, marketing_email_status, marketing_email_consent_at,
+  marketing_email_consent_source, marketing_email_source, marketing_email_updated_by
+on public.clients
+for each row execute function public.guard_client_marketing_preference_mutation();
+
 comment on column public.clients.marketing_email_status is
   'Marketing/retention email preference only. Operational appointment emails are governed separately.';
 comment on table public.client_marketing_preference_events is
