@@ -41,6 +41,16 @@ function capabilityLabel(code: SalonCapabilityCode, locale: AppLocale) {
       en: "Automatic waitlist matching",
       it: "Abbinamento automatico lista d'attesa",
     },
+    crm_insights: {
+      hr: "CRM uvidi",
+      en: "CRM insights",
+      it: "Analisi CRM",
+    },
+    attendance_insights: {
+      hr: "Analiza dolaznosti",
+      en: "Attendance insights",
+      it: "Analisi delle presenze",
+    },
     advanced_reports: {
       hr: "Napredni izvještaji",
       en: "Advanced reports",
