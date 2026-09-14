@@ -8,7 +8,7 @@ This document records the audited commercial capability split for the current Sa
 - **Partial** — meaningful implementation exists, but it must be finished or tenant-hardened before it is enforced or advertised as fully available.
 - **Planned** — commercial roadmap capability; do not market it as currently delivered.
 
-Entitlement enforcement is now implemented for Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders and Audit Log. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
+Entitlement enforcement is now implemented for Managed Email notifications, Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders and Audit Log. Remaining Growth/Pro capabilities stay unenforced until their dedicated batch is completed.
 
 ## Trial rule
 
@@ -27,8 +27,7 @@ Starter must remain a complete day-to-day salon-management product. Safety-relat
 | Services, rooms and equipment | Available | Service/resource CRUD plus employee/service, service/room and service/equipment mappings. |
 | Employees and schedules | Available | Employees, default schedules, quick ranges, breaks and date overrides. |
 | Appearance and basic branding | Available | Theme, logo and tenant presentation settings. |
-| Online booking | Available | Public tenant booking page/API, availability and dashboard request handling. |
-| Booking notifications | Available | Tenant-aware email accept/reject messages for online booking plus email confirmation when a manual appointment is created or its scheduled date/time changes. These are operational booking messages, not the premium 24h reminder capability. |
+| Online booking | Available | Public tenant booking page/API, availability and dashboard request handling. Starter can receive, accept and reject booking requests even though managed outbound email is a Growth capability. |
 | Basic operational overview | Available | Main dashboard counts and daily operational overview. This is the Starter reporting surface. |
 
 ### Starter enforcement note
@@ -37,12 +36,15 @@ Do **not** gate core appointment availability rules, salon hours, employee sched
 
 Client contact data, salon notes, upcoming/history records, treatment notes, total appointment count, completed appointment count and last/next appointment stay available in Starter. Phone numbers remain normal contact data even though SalonFlow does not send SMS.
 
+Starter does not receive SalonFlow-paid automatic client email delivery. Booking and appointment mutations still complete normally; only the outbound managed notification is unavailable. The public booking success message is intentionally channel-neutral so it does not promise an email on Starter.
+
 ## Growth
 
-Growth adds utilization, retention and management insight on top of the Starter foundation.
+Growth adds managed client communication, utilization, retention and management insight on top of the Starter foundation.
 
 | Capability | Status | Current implementation / enforcement target |
 | --- | --- | --- |
+| Managed email notifications | Available | **Enforced.** Booking acceptance/rejection, manual appointment creation and schedule-change emails use the managed tenant email layer. Growth/Pro and Trial are eligible. Starter is blocked before quota reservation. Settings exposes provider state and monthly usage. |
 | Waitlist | Available | **Enforced.** `/dashboard/waitlist`, waitlist mutations and database RLS require Growth/Pro or Trial. Starter keeps existing rows but cannot read or mutate them. |
 | Automatic waitlist opportunities | Available | **Covered by Waitlist enforcement.** Dashboard waitlist queries/panel are skipped entirely for Starter. Event-driven persistence remains maintained internally so waitlist state is not destroyed by plan changes. |
 | CRM insights | Available | **Enforced.** Client segmentation, favorite service/employee, visit cadence and CRM warning signals are calculated and returned only for Growth/Pro or Trial. Starter sees a locked CRM-insights entry point without losing the core client profile. |
@@ -52,7 +54,11 @@ Growth adds utilization, retention and management insight on top of the Starter 
 
 ### Growth enforcement notes
 
-The sidebar and main dashboard expose clear locked states rather than silently failing. Direct URLs are protected server-side where a capability has its own page. Waitlist server actions are also guarded, and the main Starter dashboard does not execute waitlist count/opportunity queries.
+The sidebar, Settings and main dashboard expose clear locked states rather than silently presenting unavailable premium configuration. Direct URLs are protected server-side where a capability has its own page. Waitlist server actions are also guarded, and the main Starter dashboard does not execute waitlist count/opportunity queries.
+
+Managed email enforcement happens inside the centralized delivery layer before quota reservation or provider delivery. Therefore a Starter booking can still be accepted/rejected and a Starter appointment can still be created/edited without consuming shared email quota. The `Settings -> Email & notifications` page is Growth/Pro/Trial-only and displays managed provider status, effective Reply-To and current monthly usage.
+
+Managed tenant email uses per-organization and global monthly safety caps. Usage stores attempted, sent and failed counts. Failed provider sends intentionally remain counted as attempts so repeated failures cannot bypass cost protection. Production sender infrastructure should use a SalonFlow-owned product domain rather than a personal/M.i.T. domain.
 
 CRM enforcement differs from Waitlist because Starter legitimately needs the same appointment records for client history and continuity of care. Therefore the underlying appointment rows are **not** hidden by RLS. Instead, the server query layer checks the entitlement before calculating or returning segmentation, favourites, cadence, attendance rates and CRM signals.
 
@@ -66,7 +72,8 @@ Pro is the governance/automation tier. The current product has one clearly finis
 | --- | --- | --- |
 | Audit log and export | Available | **Enforced.** Pro/Trial management users can read the audit page and CSV export. Audit events continue to be written for all plans so historical governance data is preserved for a later upgrade. Database RLS also protects direct audit-log reads. |
 | Advanced CRM workflow | Planned | Future retention action lists, follow-up workflow and CRM-driven tasks. Existing client insights belong to Growth, not this capability. |
-| Automated review requests | Partial | The old single-salon cron has been removed. The reusable email template remains, but a future implementation must store a tenant-specific Google review URL/configuration and run with tenant/plan checks before this can be exposed as a Pro feature. |
+| Automated review requests | Partial | The old single-salon cron has been removed. A reusable email approach can be added later, but a future implementation must store a tenant-specific Google review URL/configuration and run with tenant/plan checks before this can be exposed as a Pro feature. |
+| Custom email provider/domain | Planned | Future Bring Your Own Provider/domain option. Must use a credential-safe secret design before enabling; plain tenant-readable API keys are not acceptable. |
 | Advanced automations | Planned | Future follow-up and operational automations beyond existing booking flows. |
 | Advanced integrations | Planned | Future third-party integrations. |
 | Priority support | Planned | Commercial support entitlement; operational process still to be defined. |
@@ -97,7 +104,9 @@ Client allergies/sensitivities, contraindications, treatment preferences and tre
 
 SalonFlow communication is intentionally **email-only**. Phone numbers remain stored as contact information, but the application has no Twilio/SMS delivery path.
 
-Booking confirmation/status communication remains a Starter operational capability. The premium reminder boundary is specifically the proactive 24h email reminder.
+SalonFlow Managed Email is now a **Growth** capability. The centralized managed-email layer handles entitlement, per-tenant/global quota protection, provider abstraction and tenant Reply-To resolution. Active booking acceptance/rejection emails plus manual appointment creation/schedule-change emails use `booking_notifications`. The proactive 24h email reminder uses the separate `appointment_reminders` Growth capability.
+
+The current managed provider implementation is Resend behind an abstraction. Production should eventually send from a SalonFlow-owned product domain. A future Pro custom-provider option may allow a salon to bring its own provider/domain, but credentials must not be stored until a secure secrets/encryption design exists.
 
 The reminder delivery job is tenant-aware and plan-aware. It:
 
@@ -114,7 +123,7 @@ Reminder delivery state is reset only when date/time/email target changes or a p
 
 ### Review automation
 
-The previous `/api/cron/review-requests` implementation was removed because it contained a hardcoded Body & Soul review URL and single-salon assumptions. The email template remains reusable, but automated review requests stay Pro / Partial until each tenant can configure its own review destination and the background job is tenant/entitlement-aware.
+The previous `/api/cron/review-requests` implementation was removed because it contained a hardcoded Body & Soul review URL and single-salon assumptions. Automated review requests stay Pro / Partial until each tenant can configure its own review destination and the background job is tenant/entitlement-aware.
 
 ### Audit log
 
@@ -124,15 +133,16 @@ Audit storage remains tenant-aware and immutable from the application. The first
 
 Staged enforcement remains the rule:
 
-1. **Navigation/upgrade states** — implemented for Waitlist, Reports and Audit Log; CRM uses an in-profile locked upgrade state because the Clients module itself remains Starter.
-2. **Page/server guards** — implemented for Waitlist, Reports and Audit Log/export.
+1. **Navigation/upgrade states** — implemented for Managed Email settings, Waitlist, Reports and Audit Log; CRM uses an in-profile locked upgrade state because the Clients module itself remains Starter.
+2. **Page/server guards** — implemented for Managed Email settings, Waitlist, Reports and Audit Log/export.
 3. **Mutation/data guards** — implemented for waitlist actions and waitlist/audit RLS. CRM advanced values are guarded in the server query layer because the underlying appointment history is Starter data.
-4. **CRM insight enforcement** — implemented for segmentation, favourites, cadence, attendance rates and CRM signals.
-5. **Background reminder enforcement** — implemented at send time for 24h email appointment reminders; tenant context and current plan/lifecycle are authoritative.
-6. **Background review automation** — still requires tenant-specific review configuration and tenant-hardening before Pro enforcement.
-7. **Public booking/API behavior** — keep Starter booking stable; only gate capabilities that are explicitly premium.
-8. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
+4. **Managed email enforcement** — implemented centrally before quota reservation/provider send for booking notifications; per-tenant/global usage safety caps are active.
+5. **CRM insight enforcement** — implemented for segmentation, favourites, cadence, attendance rates and CRM signals.
+6. **Background reminder enforcement** — implemented at send time for 24h email appointment reminders; tenant context and current plan/lifecycle are authoritative.
+7. **Background review automation** — still requires tenant-specific review configuration and tenant-hardening before Pro enforcement.
+8. **Public booking/API behavior** — Starter booking remains available; user-facing success copy does not promise managed email when the plan does not include it.
+9. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
 
 ## Pricing
 
-No prices are committed in code or database yet. The working commercial discussion has considered three tiers, but final prices should be decided before Stripe Products/Prices are created.
+No prices are committed in code or database yet. The working commercial discussion has considered three tiers, but final prices and commercial email quotas should be decided before Stripe Products/Prices are created.
