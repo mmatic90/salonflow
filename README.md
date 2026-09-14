@@ -11,6 +11,7 @@ The project is being evolved from a single-salon application into a reusable mul
 - clients, services, rooms and equipment
 - online booking requests
 - tenant-aware email booking notifications
+- client marketing/retention communication preferences with opt-in and unsubscribe foundation
 - Growth 24h email appointment reminders
 - Pro CRM retention action queue with snooze/history workflow
 - Pro automated Google review requests after completed appointments
@@ -77,14 +78,16 @@ The product foundation covers:
 - onboarding, commercial-plan and billing foundations
 - email-only automated client communication so the product remains portable across markets
 - derived Pro CRM action workflows without duplicating core client/appointment data
+- separation of operational appointment communication from optional marketing/retention communication preferences
 
-See [`docs/PRODUCT_FOUNDATION.md`](docs/PRODUCT_FOUNDATION.md) for the current implementation roadmap.
+See [`docs/PRODUCT_FOUNDATION.md`](docs/PRODUCT_FOUNDATION.md) for the current implementation roadmap and [`docs/MARKETING_COMMUNICATION_PREFERENCES.md`](docs/MARKETING_COMMUNICATION_PREFERENCES.md) for the marketing-email preference model.
 
 ## Security
 
 - Never commit `.env` files or real credentials.
 - Do not expose Supabase service-role, Resend or cron secrets to the browser.
 - Keep production customer data out of the repository.
+- Marketing/retention email must fail closed unless the server-side preference gate returns an eligible client and unsubscribe URL.
 
 ## Status
 
