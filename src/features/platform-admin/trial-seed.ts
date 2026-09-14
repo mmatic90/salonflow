@@ -377,7 +377,7 @@ export async function seedSalesTrialOrganization(args: {
     const [hour, minute] = spec.startTime.split(":").map(Number);
     const endMinutes = hour * 60 + minute + Number(service.duration_minutes ?? 60);
     const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
-    const appointment = await insertOrThrow(
+    const appointment = await insertOrThrow<{ id: string }>(
       supabase
         .from("appointments")
         .insert({
