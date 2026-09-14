@@ -228,10 +228,10 @@ export async function POST(request: Request) {
       requestId: requestRow.id,
       message:
         lang === "en"
-          ? "Booking request sent. The salon will review it and send confirmation by email."
+          ? "Booking request sent. The salon will review and confirm it."
           : lang === "it"
-            ? "Richiesta di prenotazione inviata. Il salone la verificherà e invierà la conferma via email."
-            : "Zahtjev za rezervaciju je poslan. Salon će provjeriti termin i poslati potvrdu emailom.",
+            ? "Richiesta di prenotazione inviata. Il salone la verificherà e la confermerà."
+            : "Zahtjev za rezervaciju je poslan. Salon će ga provjeriti i potvrditi.",
     });
   } catch (error) {
     console.error("Public booking route failed:", error);
