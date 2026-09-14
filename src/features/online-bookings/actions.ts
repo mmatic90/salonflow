@@ -177,6 +177,9 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
   const notificationLang: NotificationLang =
     request.language === "en" ? "en" : request.language === "it" ? "it" : "hr";
   const { firstName, lastName } = splitFullName(request.client_full_name);
+  const marketingOptIn = request.marketing_email_opt_in === true;
+  const marketingPreferenceAt =
+    request.marketing_email_opt_in_at || request.created_at || new Date().toISOString();
 
   const { data: client, error: clientError } = await supabase
     .from("clients")
@@ -193,7 +196,13 @@ export async function acceptOnlineBookingRequestAction(formData: FormData) {
           : notificationLang === "it"
             ? "Cliente creato da una richiesta di prenotazione online."
             : "Klijent kreiran iz online zahtjeva za rezervaciju."),
-      marketing_consent: false,
+      marketing_consent: marketingOptIn,
+      marketing_email_status: marketingOptIn ? "allowed" : "unknown",
+      marketing_email_consent_at: marketingOptIn ? marketingPreferenceAt : null,
+      marketing_email_consent_source: marketingOptIn ? "online_booking" : null,
+      marketing_email_source: "online_booking",
+      marketing_email_updated_at: marketingPreferenceAt,
+      marketing_email_updated_by: null,
       is_active: true,
     })
     .select("id")
