@@ -57,6 +57,10 @@ Development has small safety fallbacks only. Production fails closed when the li
 
 The current default limit is configuration, not finalized commercial pricing. Per-tenant overrides are stored in the database so future plan/contract-specific quotas can be introduced without redesigning delivery.
 
+Platform Admin has a dedicated per-salon managed-email screen. It shows the current UTC-month usage, effective tenant limit, remaining quota, provider state, sender and Reply-To context. Usage counters are intentionally read-only. Platform Admin can only set a positive per-tenant `monthly_limit_override` or return the salon to the platform default. A tenant override never bypasses the global SalonFlow safety ceiling.
+
+The Platform Admin usage card surfaces warning states at 80% utilization and at quota exhaustion. Manual usage reset is intentionally not supported because it would undermine cost protection and usage accounting.
+
 ## Sender strategy
 
 Local Resend testing may use `onboarding@resend.dev` when allowed by Resend testing rules. Production should use a verified domain owned by the SalonFlow SaaS product, not a personal or M.i.T. Informatika sender domain.
