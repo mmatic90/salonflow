@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getSmartAvailability } from "@/features/availability/smart-availability";
+import { getPublicBookingAvailability } from "@/features/public-booking/availability";
 import type { AppointmentServiceInput } from "@/features/appointments/types";
 
 type PublicAvailabilityBody = {
@@ -79,7 +79,8 @@ export async function POST(request: Request) {
   ];
 
   try {
-    const result = await getSmartAvailability({
+    const result = await getPublicBookingAvailability({
+      organizationId: organization.id,
       date,
       items,
       intervalMinutes: 30,
