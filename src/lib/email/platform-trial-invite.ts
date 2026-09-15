@@ -15,6 +15,29 @@ function managedFromAddress() {
   return "onboarding@resend.dev";
 }
 
+function siteUrl() {
+  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (raw) return raw.replace(/\/$/, "");
+  if (process.env.NODE_ENV !== "production") return "http://localhost:3000";
+  throw new Error("NEXT_PUBLIC_SITE_URL is required for trial activation links.");
+}
+
+function buildActivationLink(actionLink: string, locale: TrialInviteLocale) {
+  try {
+    const supabaseLink = new URL(actionLink);
+    const tokenHash = supabaseLink.searchParams.get("token");
+    if (!tokenHash) return actionLink;
+
+    const activationUrl = new URL("/set-password", `${siteUrl()}/`);
+    activationUrl.searchParams.set("token_hash", tokenHash);
+    activationUrl.searchParams.set("type", "invite");
+    activationUrl.searchParams.set("locale", locale);
+    return activationUrl.toString();
+  } catch {
+    return actionLink;
+  }
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -86,7 +109,7 @@ export async function sendPlatformTrialInvite(args: {
   const text = copy(args.locale);
   const ownerName = escapeHtml(args.ownerName.trim());
   const salonName = escapeHtml(args.salonName.trim());
-  const actionLink = escapeHtml(args.actionLink);
+  const actionLink = escapeHtml(buildActivationLink(args.actionLink, args.locale));
   const from = `SalonFlow <${managedFromAddress()}>`;
   const replyTo =
     process.env.SALONFLOW_EMAIL_DEFAULT_REPLY_TO?.trim() ||
