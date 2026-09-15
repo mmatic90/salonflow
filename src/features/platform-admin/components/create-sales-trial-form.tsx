@@ -72,7 +72,7 @@ export default function CreateSalesTrialForm() {
           </label>
 
           <label className="space-y-2">
-            <span className="text-sm font-semibold text-slate-800">Jezik aplikacije i pozivnice</span>
+            <span className="text-sm font-semibold text-slate-800">Jezik aplikacije, pozivnice i demo podataka</span>
             <select
               name="locale"
               defaultValue="hr"
@@ -127,7 +127,7 @@ export default function CreateSalesTrialForm() {
               <Sparkles className="h-4 w-4" /> Popuni realističnim demo podacima
             </span>
             <span className="mt-1 block text-xs leading-5 text-slate-600">
-              Dodaje zaposlenike, usluge, klijente, termine, listu čekanja i jedan online zahtjev. Demo klijenti nemaju email adrese pa automatske poruke ne mogu otići stvarnim osobama.
+              Dodaje lokalizirane zaposlenike, usluge, klijente, termine, listu čekanja i jedan online zahtjev prema jeziku odabranom iznad. Demo klijenti nemaju email adrese pa automatske poruke ne mogu otići stvarnim osobama.
             </span>
           </span>
         </label>
