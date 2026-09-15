@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getPublicBookingAvailability } from "@/features/public-booking/availability";
+import type { AppointmentServiceInput } from "@/features/appointments/types";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 type Slot = {
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { data: organization, error: organizationError } = await supabase
       .from("organizations")
@@ -102,6 +104,43 @@ export async function POST(request: Request) {
       );
     }
 
+    const items: AppointmentServiceInput[] = [
+      {
+        service_id: service.id,
+        duration_minutes: service.duration_minutes,
+      },
+    ];
+
+    const availability = await getPublicBookingAvailability({
+      organizationId: organization.id,
+      date,
+      items,
+      intervalMinutes: 30,
+      maxSuggestions: 999,
+    });
+
+    const verifiedSlot = availability.suggestions.find(
+      (suggestion) =>
+        suggestion.start_time === slot.start_time &&
+        suggestion.end_time === slot.end_time &&
+        suggestion.employee_id === slot.employee_id &&
+        suggestion.room_id === slot.room_id,
+    );
+
+    if (!verifiedSlot) {
+      return NextResponse.json(
+        {
+          error:
+            lang === "en"
+              ? "This appointment time is no longer available. Please choose another slot."
+              : lang === "it"
+                ? "Questo orario non è più disponibile. Scegli un altro appuntamento."
+                : "Ovaj termin više nije dostupan. Molimo odaberi drugi termin.",
+        },
+        { status: 409 },
+      );
+    }
+
     // Prevent duplicate click / duplicate submit for the same email, service,
     // date and time within the previous 60 seconds.
     const { data: recentDuplicateRequest, error: recentDuplicateError } =
@@ -112,7 +151,7 @@ export async function POST(request: Request) {
         .eq("client_email", email)
         .eq("service_id", serviceId)
         .eq("requested_date", date)
-        .eq("start_time", slot.start_time)
+        .eq("start_time", verifiedSlot.start_time)
         .gte("created_at", new Date(Date.now() - 60 * 1000).toISOString())
         .limit(1);
 
@@ -136,8 +175,8 @@ export async function POST(request: Request) {
         .select("id")
         .eq("organization_id", organization.id)
         .eq("requested_date", date)
-        .eq("start_time", slot.start_time)
-        .eq("suggested_employee_id", slot.employee_id)
+        .eq("start_time", verifiedSlot.start_time)
+        .eq("suggested_employee_id", verifiedSlot.employee_id)
         .eq("status", "pending")
         .maybeSingle();
 
@@ -164,8 +203,8 @@ export async function POST(request: Request) {
         .select("id")
         .eq("organization_id", organization.id)
         .eq("appointment_date", date)
-        .eq("start_time", slot.start_time)
-        .eq("employee_id", slot.employee_id)
+        .eq("start_time", verifiedSlot.start_time)
+        .eq("employee_id", verifiedSlot.employee_id)
         .in("status", ["scheduled", "confirmed", "completed"])
         .maybeSingle();
 
@@ -192,13 +231,13 @@ export async function POST(request: Request) {
         organization_id: organization.id,
         service_id: serviceId,
         requested_date: date,
-        start_time: slot.start_time,
-        end_time: slot.end_time,
+        start_time: verifiedSlot.start_time,
+        end_time: verifiedSlot.end_time,
         duration_minutes: service.duration_minutes,
-        suggested_employee_id: slot.employee_id,
-        suggested_room_id: slot.room_id,
-        final_employee_id: slot.employee_id,
-        final_room_id: slot.room_id,
+        suggested_employee_id: verifiedSlot.employee_id,
+        suggested_room_id: verifiedSlot.room_id,
+        final_employee_id: verifiedSlot.employee_id,
+        final_room_id: verifiedSlot.room_id,
         final_duration_minutes: service.duration_minutes,
         client_full_name: fullName,
         client_phone: phone,
