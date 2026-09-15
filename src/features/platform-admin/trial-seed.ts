@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const SALES_TRIAL_SEED_VERSION = 1;
+export const SALES_TRIAL_SEED_VERSION = 2;
 
 type TrialLocale = "hr" | "en" | "it";
 
@@ -352,8 +352,8 @@ export async function seedSalesTrialOrganization(args: {
   });
 
   appointmentSpecs.push(
-    { date: weekdayRelative(-84), employeeIndex: 2, serviceIndex: 6, clientIndex: 0, roomIndex: 2, startTime: "13:00", status: "completed" },
-    { date: weekdayRelative(-49), employeeIndex: 2, serviceIndex: 6, clientIndex: 0, roomIndex: 2, startTime: "13:00", status: "completed" },
+    { date: weekdayRelative(-91), employeeIndex: 2, serviceIndex: 6, clientIndex: 1, roomIndex: 2, startTime: "13:00", status: "completed" },
+    { date: weekdayRelative(-56), employeeIndex: 2, serviceIndex: 6, clientIndex: 1, roomIndex: 2, startTime: "13:00", status: "completed" },
   );
 
   const futureOffsets = [1, 2, 3, 5, 7, 9, 12];
