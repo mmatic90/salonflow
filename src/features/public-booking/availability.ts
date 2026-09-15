@@ -53,18 +53,27 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
 }
 
-function intersectIds(serviceIds: string[], rows: Array<{ service_id: string; target_id: string }>) {
+function intersectIds(
+  serviceIds: string[],
+  rows: Array<{ service_id: string; target_id: string }>,
+) {
   let result: Set<string> | null = null;
 
   for (const serviceId of serviceIds) {
-    const current = new Set(
-      rows.filter((row) => row.service_id === serviceId).map((row) => row.target_id),
+    const current: Set<string> = new Set<string>(
+      rows
+        .filter((row) => row.service_id === serviceId)
+        .map((row) => row.target_id),
     );
 
-    result =
-      result === null
-        ? current
-        : new Set(Array.from(result).filter((id) => current.has(id)));
+    if (result === null) {
+      result = current;
+    } else {
+      const previousIds: string[] = Array.from(result);
+      result = new Set<string>(
+        previousIds.filter((id: string) => current.has(id)),
+      );
+    }
   }
 
   return result ?? new Set<string>();
