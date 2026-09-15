@@ -9,6 +9,13 @@ import { createClient } from "@/lib/supabase/client";
 type Locale = "hr" | "en" | "it";
 
 function browserLocale(): Locale {
+  if (typeof window !== "undefined") {
+    const requested = new URLSearchParams(window.location.search).get("locale");
+    if (requested === "hr" || requested === "en" || requested === "it") {
+      return requested;
+    }
+  }
+
   if (typeof navigator === "undefined") return "hr";
   const value = navigator.language.toLowerCase();
   if (value.startsWith("it")) return "it";
@@ -22,9 +29,15 @@ function browserInviteError() {
   return Boolean(hash.get("error") || hash.get("error_code"));
 }
 
+function browserInviteTokenHash() {
+  if (typeof window === "undefined") return "";
+  return new URLSearchParams(window.location.search).get("token_hash")?.trim() || "";
+}
+
 const subscribeToBrowserSnapshot = () => () => {};
 const getServerLocale = (): Locale => "hr";
 const getServerInviteError = () => false;
+const getServerInviteTokenHash = () => "";
 
 function copy(locale: Locale) {
   if (locale === "it") {
@@ -91,6 +104,11 @@ export default function SetPasswordPage() {
     browserInviteError,
     getServerInviteError,
   );
+  const inviteTokenHash = useSyncExternalStore(
+    subscribeToBrowserSnapshot,
+    browserInviteTokenHash,
+    getServerInviteTokenHash,
+  );
   const [ready, setReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [password, setPassword] = useState("");
@@ -99,8 +117,8 @@ export default function SetPasswordPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const text = copy(locale);
-  const isReady = inviteError || ready;
-  const canSetPassword = !inviteError && hasSession;
+  const isReady = inviteError || Boolean(inviteTokenHash) || ready;
+  const canSetPassword = !inviteError && (Boolean(inviteTokenHash) || hasSession);
 
   useEffect(() => {
     if (inviteError) return;
@@ -140,6 +158,28 @@ export default function SetPasswordPage() {
     }
 
     setSaving(true);
+
+    if (!hasSession) {
+      if (!inviteTokenHash) {
+        setError(text.invalid);
+        setSaving(false);
+        return;
+      }
+
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        token_hash: inviteTokenHash,
+        type: "invite",
+      });
+
+      if (verifyError) {
+        setError(text.invalid);
+        setSaving(false);
+        return;
+      }
+
+      setHasSession(true);
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
       setError(updateError.message);
