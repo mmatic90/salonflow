@@ -47,21 +47,7 @@ export default function LoginPage() {
       return;
     }
 
-    const { data: membership, error: membershipError } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("user_id", data.user.id)
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
-
-    if (membershipError) {
-      setErrorMessage(t.salonCheckError);
-      setLoading(false);
-      return;
-    }
-
-    router.push(membership ? "/dashboard" : "/onboarding");
+    router.replace("/post-login");
     router.refresh();
   }
 
