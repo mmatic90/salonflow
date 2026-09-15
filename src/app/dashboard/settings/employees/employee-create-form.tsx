@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 import {
   createEmployeeAction,
   type EmployeeActionState,
@@ -20,7 +21,8 @@ const initialState: EmployeeActionState = {
   },
 };
 
-export default function EmployeeCreateForm() {
+export default function EmployeeCreateForm({ locale = "hr" }: { locale?: AppLocale }) {
+  const t = getDictionary(locale).settings;
   const [state, formAction, pending] = useActionState(
     createEmployeeAction,
     initialState,
@@ -43,7 +45,7 @@ export default function EmployeeCreateForm() {
     <form action={formAction} className="space-y-4">
       <input
         name="display_name"
-        placeholder="Ime i prezime djelatnika"
+        placeholder={t.employees.fullNamePlaceholder}
         defaultValue={state.values.display_name}
         className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
         required
@@ -52,7 +54,7 @@ export default function EmployeeCreateForm() {
       <input
         name="email"
         type="email"
-        placeholder="Email adresa"
+        placeholder={t.employees.emailPlaceholder}
         defaultValue={state.values.email}
         className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
         required
@@ -60,13 +62,13 @@ export default function EmployeeCreateForm() {
 
       <input
         name="phone"
-        placeholder="Telefon"
+        placeholder={t.phone}
         defaultValue={state.values.phone}
         className="w-full rounded-xl border border-neutral-300 px-4 py-3 outline-none"
       />
 
       <div className="space-y-2">
-        <label className="block text-sm font-medium">Boja</label>
+        <label className="block text-sm font-medium">{t.color}</label>
 
         <div className="flex items-center gap-3">
           <input
@@ -77,14 +79,13 @@ export default function EmployeeCreateForm() {
           />
 
           <span className="text-sm text-neutral-600">
-            Odaberi boju djelatnika
+            {t.employees.chooseColor}
           </span>
         </div>
       </div>
 
       <p className="text-sm text-neutral-600">
-        Kod kreiranja djelatnika automatski se stvara korisnički račun. Početna
-        lozinka bit će <span className="font-medium">1234</span>.
+        {t.employees.accountHint}
       </p>
 
       <div className="flex justify-end">
@@ -93,7 +94,7 @@ export default function EmployeeCreateForm() {
           disabled={pending}
           className="rounded-xl bg-black px-5 py-3 font-medium text-white disabled:opacity-50"
         >
-          {pending ? "Dodavanje..." : "Dodaj djelatnika"}
+          {pending ? t.employees.adding : t.employees.add}
         </button>
       </div>
     </form>

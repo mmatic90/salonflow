@@ -1,0 +1,175 @@
+# SalonFlow Plan Capability Matrix
+
+This document records the audited commercial capability split for the current SalonFlow codebase and the staged enforcement status.
+
+## Status meanings
+
+- **Available** — implemented and suitable for tenant use in the current multi-tenant foundation.
+- **Partial** — meaningful implementation exists, but it must be finished or tenant-hardened before it is enforced or advertised as fully available.
+- **Planned** — commercial roadmap capability; do not market it as currently delivered.
+
+Entitlement enforcement is now implemented for Managed Email notifications, Waitlist, CRM/attendance insights, Advanced Reports, Appointment Reminders, Audit Log, Advanced CRM Retention and Automated Review Requests. Remaining planned capabilities stay unenforced until their dedicated batch is completed.
+
+## Trial rule
+
+A tenant in `trial` lifecycle receives the effective **Pro entitlement set** for the duration of the trial, regardless of the stored paid-plan choice. Trial expiration does not yet transition the tenant automatically.
+
+## Starter
+
+Starter must remain a complete day-to-day salon-management product. Safety-related client information and communication preferences are intentionally not paywalled.
+
+| Capability | Status | Current implementation / enforcement target |
+| --- | --- | --- |
+| Calendar | Available | `/dashboard/calendar`, week and time-grid views. |
+| Appointment management | Available | Create/edit appointments, multi-service appointments, statuses and availability validation. |
+| Clients and history | Available | Client CRUD, appointment history/upcoming visits and rebook flow. |
+| Communication preferences | Available | Core client marketing/retention preference with `unknown / allowed / not_allowed`, consent/source metadata, append-only history, optional public-booking opt-in and public unsubscribe. This data is available on every plan; premium automation is gated separately. |
+| Care and safety | Available | Allergies/sensitivities, contraindications, treatment preferences and per-visit treatment notes. Keep in Starter because it is safety/continuity-of-care data. |
+| Services, rooms and equipment | Available | Service/resource CRUD plus employee/service, service/room and service/equipment mappings. |
+| Employees and schedules | Available | Employees, default schedules, quick ranges, breaks and date overrides. |
+| Appearance and basic branding | Available | Theme, logo and tenant presentation settings. |
+| Online booking | Available | Public tenant booking page/API, availability and dashboard request handling. Starter can receive, accept and reject booking requests even though managed outbound email is a Growth capability. The optional marketing opt-in is independent of plan. |
+| Basic operational overview | Available | Main dashboard counts and daily operational overview. This is the Starter reporting surface. |
+
+### Starter enforcement note
+
+Do **not** gate core appointment availability rules, salon hours, employee schedules, room/resource conflict validation, communication preferences or care/safety data separately. They are part of a reliable core booking/client product.
+
+Client contact data, salon notes, upcoming/history records, treatment notes, communication preferences, total appointment count, completed appointment count and last/next appointment stay available in Starter. Phone numbers remain normal contact data even though SalonFlow does not send SMS.
+
+Marketing preference and operational appointment communication are separate. `unknown` is not consent, `not_allowed` blocks future marketing/retention delivery, and neither status suppresses operational appointment messages. Existing legacy `marketing_consent=false` values migrate to `unknown`, not to an explicit refusal.
+
+Starter does not receive SalonFlow-paid automatic client email delivery. Booking and appointment mutations still complete normally; only the outbound managed notification is unavailable. The public booking form and success response are intentionally channel-neutral so Starter never promises an automatic email that its plan does not include.
+
+## Growth
+
+Growth adds managed client communication, utilization, retention insight and management analytics on top of the Starter foundation.
+
+| Capability | Status | Current implementation / enforcement target |
+| --- | --- | --- |
+| Managed email notifications | Available | **Enforced.** Booking acceptance/rejection, manual appointment creation and schedule-change emails use the managed tenant email layer. Growth/Pro and Trial are eligible. Starter is blocked before quota reservation. Settings exposes provider state and monthly usage. |
+| Waitlist | Available | **Enforced.** `/dashboard/waitlist`, waitlist mutations and database RLS require Growth/Pro or Trial. Starter keeps existing rows but cannot read or mutate them. |
+| Automatic waitlist opportunities | Available | **Covered by Waitlist enforcement.** Dashboard waitlist queries/panel are skipped entirely for Starter. Event-driven persistence remains maintained internally so waitlist state is not destroyed by plan changes. |
+| CRM insights | Available | **Enforced.** Client segmentation, favorite service/employee, visit cadence and CRM warning signals are calculated and returned only for Growth/Pro or Trial. Starter sees a locked CRM-insights entry point without losing the core client profile. |
+| Attendance insights | Available | **Enforced with CRM insights.** Cancelled/no-show counts and history-aware rates are returned only for Growth/Pro or Trial. Completed-count and visit-history data remain basic client information. |
+| Advanced reports | Available | **Enforced.** Full `/dashboard/reports` module requires Growth/Pro or Trial through a server page guard; Starter retains only the dashboard operational overview. |
+| Appointment reminders | Available | **Enforced at delivery time.** The 24h email reminder job resolves tenant plan/lifecycle, locale, timezone and branding before sending. Growth/Pro and Trial are eligible; Starter and suspended tenants do not receive premium reminders. |
+
+### Growth enforcement notes
+
+The sidebar, Settings and main dashboard expose clear locked states rather than silently presenting unavailable premium configuration. Direct URLs are protected server-side where a capability has its own page. Waitlist server actions are also guarded, and the main Starter dashboard does not execute waitlist count/opportunity queries.
+
+Managed email enforcement happens inside the centralized delivery layer before quota reservation or provider delivery. Therefore a Starter booking can still be accepted/rejected and a Starter appointment can still be created/edited without consuming shared email quota. The `Settings -> Email & notifications` page is Growth/Pro/Trial-only and displays managed provider status, effective Reply-To and current monthly usage.
+
+Managed tenant email uses per-organization and global monthly safety caps. Usage stores attempted, sent and failed counts. Failed provider attempts intentionally remain counted as attempts so repeated failures cannot bypass the safety cap. Production sender infrastructure should use a SalonFlow-owned product domain rather than a personal/M.i.T. domain.
+
+CRM enforcement differs from Waitlist because Starter legitimately needs the same appointment records for client history and continuity of care. Therefore the underlying appointment rows are **not** hidden by RLS. Instead, the server query layer checks the entitlement before calculating or returning segmentation, favourites, cadence, attendance rates and CRM signals.
+
+Appointment reminders are a background capability rather than a dashboard page. Their authoritative entitlement check happens immediately before email delivery. This prevents a reminder from leaking through after a downgrade and lets already-existing future appointments become reminder-eligible immediately after an upgrade.
+
+## Pro
+
+Pro is the governance/action/automation tier. Audit Log, Advanced CRM Retention and Automated Review Requests are finished Pro-specific product capabilities; remaining items stay roadmap/planned until their dedicated implementation is complete.
+
+| Capability | Status | Current implementation / enforcement target |
+| --- | --- | --- |
+| Audit log and export | Available | **Enforced.** Pro/Trial management users can read the audit page and CSV export. Audit events continue to be written for all plans so historical governance data is preserved for a later upgrade. Database RLS also protects direct audit-log reads. |
+| Advanced CRM workflow | Available | **Enforced.** `/dashboard/retention` derives an action queue from current visit cadence, inactivity, missing future bookings and attendance-risk signals. The strongest current signal per client is shown with priority, contact/rebook shortcuts and `contacted / snoozed / resolved / ignored` actions. Decisions are stored append-only in `crm_retention_actions`; Pro-only RLS preserves history across downgrades without exposing it to lower plans. |
+| Automated review requests | Available | **Enforced.** Pro/Trial tenants can configure their own Google review URL, enable/disable automation and choose a 2h or 24h delay. Only `completed` appointments are eligible; historical visits from before activation are not contacted. Delivery is email-only through Managed Email, with tenant/global quota accounting and duplicate/retry protection. |
+| Custom email provider/domain | Planned | Future Bring Your Own Provider/domain option. Must use a credential-safe secret design before enabling; plain tenant-readable API keys are not acceptable. |
+| Advanced automations | Planned | Future consent-gated CRM follow-up delivery and operational automations beyond the current manual retention queue and review automation. |
+| Advanced integrations | Planned | Future third-party integrations. |
+| Priority support | Planned | Commercial support entitlement; operational process still to be defined. |
+
+## Important implementation findings
+
+### Reports
+
+The existing `/dashboard/reports` page is already substantially more than a basic report: monthly status quality, no-show rate, online-booking conversion, activity trends, top employees/services and busiest days. Therefore the **full Reports page belongs to Growth**. Starter uses the existing dashboard operational overview as its basic reporting surface.
+
+### CRM
+
+The client profile computes segments, attendance rates, favorite service/employee, average visit cadence and warning signals. These remain the **Growth CRM insights** and are enforced at the server-query and UI layers.
+
+The query contract separates:
+
+- `basic_stats` — Starter-safe completed count and last completed visit;
+- `crm_insights` — Growth segmentation, favorites, cadence and CRM signals;
+- `attendance_insights` — Growth cancellation/no-show counts and rates.
+
+Pro `advanced_crm` is a distinct operational workflow rather than another analytics card. `/dashboard/retention` derives current candidates from tenant appointments/clients and displays only the strongest current reason per client. Initial signal rules cover overdue visit cadence, >120-day inactivity, returning clients with no future booking and attendance risk.
+
+The queue is intentionally derived rather than persisted. A new completed visit, new future booking or new attendance event changes the current signal automatically. Only human operator decisions are stored in `crm_retention_actions`. Each decision is tied to a deterministic signal generation key, so `contacted`, `resolved` and `ignored` suppress that generation while 7/14/30-day snoozes return after expiry. A later client event can create a new signal generation without deleting history.
+
+The action table is append-only from the tenant application: there are no update/delete RLS policies. Reads and inserts require a management role plus Pro-equivalent entitlement at the database boundary. The server action also recalculates the live queue before insert so a stale or fabricated browser signal cannot be recorded as current.
+
+### Communication preferences
+
+Marketing/retention preference is part of the core client record rather than a premium feature. The richer status model is authoritative while the old boolean remains synchronized temporarily for compatibility.
+
+Manual preference changes are restricted to management in the application and at the database mutation boundary. A legitimate online-booking opt-in can create an `allowed` client when the accepted request contains a matching checked opt-in/timestamp. Changing an email address while a client is `allowed` forces the status back to `unknown`, including for direct tenant updates, so permission is not silently transferred to another address.
+
+Explicit status changes are stored in append-only `client_marketing_preference_events`. Opaque unsubscribe tokens are not readable by tenant users. The public unsubscribe route can only move a client to `not_allowed` and cannot access profile or appointment data.
+
+Future marketing/retention email must call `getMarketingEmailDeliveryContext({ organizationId, clientId })` before Managed Email quota reservation/provider delivery. The helper returns an email target and unsubscribe URL only for an active client with an email and `marketing_email_status = allowed`; all other states fail closed.
+
+### Care and safety
+
+Client allergies/sensitivities, contraindications, treatment preferences and treatment notes are implemented. They remain Starter functionality and must not be used as an upsell boundary.
+
+### Notifications and reminders
+
+SalonFlow communication is intentionally **email-only**. Phone numbers remain stored as contact information, but the application has no Twilio/SMS delivery path.
+
+SalonFlow Managed Email is a **Growth** capability. The centralized managed-email layer handles entitlement, per-tenant/global quota protection, provider abstraction and tenant Reply-To resolution. Active booking acceptance/rejection emails plus manual appointment creation/schedule-change emails use `booking_notifications`. The proactive 24h email reminder uses the separate `appointment_reminders` Growth capability.
+
+The current managed provider implementation is Resend behind an abstraction. Production should eventually send from a SalonFlow-owned product domain. A future Pro custom-provider option may allow a salon to bring its own provider/domain, but credentials must not be stored until a secure secrets/encryption design exists.
+
+The reminder delivery job is tenant-aware and plan-aware. It:
+
+- resolves each appointment's organization before delivery;
+- uses the organization's current plan/lifecycle, with Trial receiving Pro-equivalent access;
+- skips Starter and suspended organizations;
+- uses organization locale for HR/EN/IT message language;
+- converts appointment wall-clock date/time using organization timezone rather than server timezone;
+- passes salon name, phone, address and logo to reminder email branding;
+- sends only to appointments that have a client email address;
+- stores email sent/error state to avoid duplicate delivery.
+
+Reminder delivery state is reset only when date/time/email target changes or a previously inactive appointment becomes active again. Routine note/resource edits therefore do not create duplicate reminders.
+
+### Review automation
+
+Automated review requests are a finished Pro/Trial tenant capability. Each salon has its own `organization_review_settings` row with an opt-in toggle, Google review URL, 2h/24h delay and activation timestamp.
+
+The flow deliberately prevents retroactive campaigns: only appointments whose scheduled end is at or after the latest automation activation time are eligible. A request is sent only when the appointment status is `completed`, the configured delay has elapsed and a client email exists.
+
+Delivery reuses `sendManagedTenantEmail` with the `review_requests` capability, so current plan/lifecycle and managed-email quota are checked immediately before provider delivery. Review request state is stored per appointment. An atomic database claim prevents overlapping cron executions from normally sending the same request twice, and failed deliveries are limited to three attempts with at least one hour between attempts.
+
+The active review cron contains no Body & Soul URL or single-tenant assumptions. Platform Admin can see whether the automation is configured, its delay and activation state without access to clients, appointments or message content.
+
+Netlify `email-automations` runs hourly and invokes both the 24h reminder route and review-request route using `CRON_SECRET`. Business logic remains inside the tenant-aware Next API routes rather than being duplicated in the scheduler.
+
+### Audit log
+
+Audit storage remains tenant-aware and immutable from the application. The first enforcement batch additionally restricts reads to Pro/Trial management users at both the application and RLS layers. Inserts remain available to all authenticated tenant members so a future upgrade does not start with an empty history.
+
+## Enforcement order
+
+Staged enforcement remains the rule:
+
+1. **Navigation/upgrade states** — implemented for Managed Email settings, Google Review settings, Waitlist, CRM Retention, Reports and Audit Log; Growth CRM insight remains an in-profile locked state because the Clients module itself remains Starter.
+2. **Page/server guards** — implemented for Managed Email settings, Google Review settings/actions, Waitlist, CRM Retention, Reports and Audit Log/export.
+3. **Mutation/data guards** — implemented for waitlist actions/RLS, audit-log read RLS, review settings, CRM Retention, and marketing-preference integrity/history. Retention actions require current server-revalidated signal data plus Pro-only append-only RLS. Growth CRM advanced values remain guarded in the query layer because the underlying appointment history is Starter data.
+4. **Managed email enforcement** — implemented centrally before quota reservation/provider send for booking notifications and review requests; per-tenant/global usage safety caps are active.
+5. **Marketing delivery gate** — foundation implemented. Future retention/promotional delivery must additionally resolve an `allowed` client and opaque unsubscribe URL through the server-side helper before Managed Email is called.
+6. **CRM insight enforcement** — implemented for segmentation, favourites, cadence, attendance rates and CRM signals.
+7. **Pro CRM action workflow** — implemented with derived current signals, contact/rebook shortcuts, action history and snooze lifecycle.
+8. **Background reminder enforcement** — implemented at send time for 24h email appointment reminders; tenant context and current plan/lifecycle are authoritative.
+9. **Background review automation** — implemented for Pro/Trial with tenant-specific URL/configuration, hourly scheduler, activation cutoff and duplicate/retry protection.
+10. **Public booking/API behavior** — Starter booking remains available; public copy is plan-neutral and the optional marketing checkbox is unchecked by default.
+11. **Regression QA across Starter, Growth, Pro and Trial** — Trial must behave as Pro entitlement without changing its stored paid plan.
+
+## Pricing
+
+No prices are committed in code or database yet. The working commercial discussion has considered three tiers, but final prices and commercial email quotas should be decided before Stripe Products/Prices are created.

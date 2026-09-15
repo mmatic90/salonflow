@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import TimeGridLegendFilters from "@/components/time-grid-legend-filters";
 
-type AppointmentStatus = "scheduled" | "completed" | "cancelled" | "no_show";
+type AppointmentStatus = "scheduled" | "confirmed" | "completed" | "cancelled" | "no_show";
 
 type AppointmentItem = {
   id: string;

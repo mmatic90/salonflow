@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSmartAvailability } from "@/features/availability/smart-availability";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 export type OnlineBookingStatus =
   | "today"
@@ -8,6 +9,40 @@ export type OnlineBookingStatus =
   | "pending"
   | "accepted"
   | "rejected";
+
+type BookingEmployeeRelation = {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  is_active?: boolean | null;
+};
+
+type NormalizedEmployee = {
+  id: string;
+  display_name: string;
+};
+
+type ActiveRoom = {
+  id: string;
+  name: string;
+  is_active?: boolean | null;
+};
+
+export type OnlineBookingAvailabilityIssue =
+  | "salon_closed"
+  | "outside_salon_hours"
+  | "no_mapped_employee"
+  | "no_available_employee"
+  | "no_mapped_room"
+  | "no_available_room";
+
+export type OnlineBookingLiveAvailability = {
+  employee: NormalizedEmployee | null;
+  room: ActiveRoom | null;
+  generalIssue: OnlineBookingAvailabilityIssue | null;
+  employeeIssue: OnlineBookingAvailabilityIssue | null;
+  roomIssue: OnlineBookingAvailabilityIssue | null;
+};
 
 const onlineBookingSelect = `
   *,
@@ -18,7 +53,8 @@ const onlineBookingSelect = `
   ),
   suggested_employee:employees!online_booking_requests_suggested_employee_id_fkey (
     id,
-    display_name
+    first_name,
+    last_name
   ),
   suggested_room:rooms!online_booking_requests_suggested_room_id_fkey (
     id,
@@ -26,13 +62,46 @@ const onlineBookingSelect = `
   ),
   final_employee:employees!online_booking_requests_final_employee_id_fkey (
     id,
-    display_name
+    first_name,
+    last_name
   ),
   final_room:rooms!online_booking_requests_final_room_id_fkey (
     id,
     name
   )
 `;
+
+function normalizeEmployee(
+  value: BookingEmployeeRelation | BookingEmployeeRelation[] | null | undefined,
+): NormalizedEmployee | null {
+  const employee = Array.isArray(value) ? value[0] ?? null : value ?? null;
+  if (!employee) return null;
+  return {
+    id: String(employee.id),
+    display_name:
+      [employee.first_name, employee.last_name].filter(Boolean).join(" ") ||
+      "Zaposlenik",
+  };
+}
+
+function normalizeBookingRow<
+  T extends {
+    suggested_employee?: BookingEmployeeRelation | BookingEmployeeRelation[] | null;
+    final_employee?: BookingEmployeeRelation | BookingEmployeeRelation[] | null;
+  },
+>(row: T) {
+  return {
+    ...row,
+    suggested_employee: normalizeEmployee(row.suggested_employee),
+    final_employee: normalizeEmployee(row.final_employee),
+  };
+}
+
+async function getActiveOrganizationId() {
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) throw new Error("Nemate pristup aktivnom salonu.");
+  return permissions.organizationId;
+}
 
 function getTodayValue() {
   const date = new Date();
@@ -46,10 +115,12 @@ function getTodayValue() {
 
 export async function getOnlineBookings(status: OnlineBookingStatus = "pending") {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
 
   let query = supabase
     .from("online_booking_requests")
     .select(onlineBookingSelect)
+    .eq("organization_id", organizationId)
     .order("created_at", { ascending: false });
 
   if (status === "archive") {
@@ -70,7 +141,56 @@ export async function getOnlineBookings(status: OnlineBookingStatus = "pending")
     throw new Error(error.message);
   }
 
-  return data ?? [];
+  const normalized = (data ?? []).map(normalizeBookingRow);
+
+  return Promise.all(
+    normalized.map(async (booking) => {
+      if (booking.status !== "pending") {
+        return {
+          ...booking,
+          live_availability: null as OnlineBookingLiveAvailability | null,
+        };
+      }
+
+      try {
+        const availability = await getOnlineBookingAcceptOptions({
+          serviceId: String(booking.service_id),
+          date: String(booking.requested_date),
+          startTime: String(booking.start_time),
+          durationMinutes: Number(
+            booking.final_duration_minutes ?? booking.duration_minutes ?? 0,
+          ),
+        });
+
+        return {
+          ...booking,
+          live_availability: {
+            employee: availability.employees[0] ?? null,
+            room: availability.rooms[0] ?? null,
+            generalIssue: availability.generalIssue,
+            employeeIssue: availability.employeeIssue,
+            roomIssue: availability.roomIssue,
+          } satisfies OnlineBookingLiveAvailability,
+        };
+      } catch (availabilityError) {
+        console.error(
+          "Online booking availability check failed:",
+          booking.id,
+          availabilityError,
+        );
+        return {
+          ...booking,
+          live_availability: {
+            employee: null,
+            room: null,
+            generalIssue: null,
+            employeeIssue: "no_available_employee",
+            roomIssue: "no_available_room",
+          } satisfies OnlineBookingLiveAvailability,
+        };
+      }
+    }),
+  );
 }
 
 export async function getPendingOnlineBookings() {
@@ -79,6 +199,7 @@ export async function getPendingOnlineBookings() {
 
 export async function getOnlineBookingCounts() {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
   const todayValue = getTodayValue();
 
   const [
@@ -92,35 +213,41 @@ export async function getOnlineBookingCounts() {
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("requested_date", todayValue),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("status", "pending"),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("status", "accepted"),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .is("archived_at", null)
       .eq("status", "rejected"),
 
     supabase
       .from("online_booking_requests")
       .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
       .not("archived_at", "is", null),
   ]);
 
@@ -136,10 +263,12 @@ export async function getOnlineBookingCounts() {
 
 export async function getOnlineBookingRequestById(id: string) {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
 
   const { data, error } = await supabase
     .from("online_booking_requests")
     .select(onlineBookingSelect)
+    .eq("organization_id", organizationId)
     .eq("id", id)
     .maybeSingle();
 
@@ -147,7 +276,7 @@ export async function getOnlineBookingRequestById(id: string) {
     throw new Error(error.message);
   }
 
-  return data;
+  return data ? normalizeBookingRow(data) : null;
 }
 
 function timeToMinutes(value: string) {
@@ -169,6 +298,11 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
   return aStart < bEnd && bStart < aEnd;
 }
 
+function dayOfWeekForDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
 export async function getOnlineBookingAcceptOptions(args: {
   serviceId: string;
   date: string;
@@ -176,12 +310,44 @@ export async function getOnlineBookingAcceptOptions(args: {
   durationMinutes: number;
 }) {
   const supabase = await createClient();
+  const organizationId = await getActiveOrganizationId();
 
   const startTime = args.startTime.slice(0, 5);
   const endTime = addMinutesToTimeString(startTime, args.durationMinutes);
-
   const startMinutes = timeToMinutes(startTime);
   const endMinutes = timeToMinutes(endTime);
+
+  const { data: salonDay, error: salonHoursError } = await supabase
+    .from("salon_working_hours")
+    .select("opens_at, closes_at, is_closed")
+    .eq("organization_id", organizationId)
+    .eq("day_of_week", dayOfWeekForDate(args.date))
+    .maybeSingle();
+
+  if (salonHoursError) throw new Error(salonHoursError.message);
+
+  if (!salonDay || salonDay.is_closed) {
+    return {
+      employees: [] as NormalizedEmployee[],
+      rooms: [] as ActiveRoom[],
+      generalIssue: "salon_closed" as OnlineBookingAvailabilityIssue,
+      employeeIssue: null as OnlineBookingAvailabilityIssue | null,
+      roomIssue: null as OnlineBookingAvailabilityIssue | null,
+    };
+  }
+
+  if (
+    startMinutes < timeToMinutes(salonDay.opens_at) ||
+    endMinutes > timeToMinutes(salonDay.closes_at)
+  ) {
+    return {
+      employees: [] as NormalizedEmployee[],
+      rooms: [] as ActiveRoom[],
+      generalIssue: "outside_salon_hours" as OnlineBookingAvailabilityIssue,
+      employeeIssue: null as OnlineBookingAvailabilityIssue | null,
+      roomIssue: null as OnlineBookingAvailabilityIssue | null,
+    };
+  }
 
   const [
     { data: employeeMappings, error: employeeMappingsError },
@@ -195,11 +361,13 @@ export async function getOnlineBookingAcceptOptions(args: {
         employee_id,
         employees (
           id,
-          display_name,
+          first_name,
+          last_name,
           is_active
         )
       `,
       )
+      .eq("organization_id", organizationId)
       .eq("service_id", args.serviceId),
 
     supabase
@@ -214,44 +382,71 @@ export async function getOnlineBookingAcceptOptions(args: {
         )
       `,
       )
+      .eq("organization_id", organizationId)
       .eq("service_id", args.serviceId),
 
     supabase
       .from("appointments")
       .select("id, employee_id, room_id, start_time, end_time, status")
+      .eq("organization_id", organizationId)
       .eq("appointment_date", args.date)
-      .in("status", ["scheduled", "completed"]),
+      .in("status", ["scheduled", "confirmed", "completed"]),
   ]);
 
   if (employeeMappingsError) throw new Error(employeeMappingsError.message);
   if (roomMappingsError) throw new Error(roomMappingsError.message);
   if (appointmentsError) throw new Error(appointmentsError.message);
 
-  const mappedEmployees =
-    employeeMappings
-      ?.map((row: any) => row.employees)
-      .filter((employee: any) => employee?.is_active) ?? [];
+  const mappedEmployees = (employeeMappings ?? [])
+    .map((row) => {
+      const employee = Array.isArray(row.employees)
+        ? row.employees[0] ?? null
+        : row.employees ?? null;
 
-  const mappedRooms =
-    roomMappings
-      ?.map((row: any) => row.rooms)
-      .filter((room: any) => room?.is_active) ?? [];
+      if (!employee?.is_active) return null;
+
+      return {
+        id: String(employee.id),
+        display_name:
+          [employee.first_name, employee.last_name]
+            .filter(Boolean)
+            .join(" ") || "Zaposlenik",
+      };
+    })
+    .filter((employee): employee is NormalizedEmployee => employee !== null);
+
+  const mappedRooms: ActiveRoom[] = (roomMappings ?? []).flatMap((row) => {
+    const room = Array.isArray(row.rooms)
+      ? row.rooms[0] ?? null
+      : row.rooms ?? null;
+
+    if (!room?.is_active) return [];
+
+    return [
+      {
+        id: String(room.id),
+        name: String(room.name),
+        is_active: room.is_active,
+      },
+    ];
+  });
 
   const employeesWithAvailability = await Promise.all(
-    mappedEmployees.map(async (employee: any) => {
-      const { data: scheduleRows, error: scheduleError } = await supabase.rpc(
-        "get_employee_effective_schedule",
-        {
+    mappedEmployees.map(async (employee) => {
+      const [scheduleResult, breakResult] = await Promise.all([
+        supabase.rpc("get_employee_effective_schedule", {
           p_employee_id: employee.id,
           p_date: args.date,
-        },
-      );
+        }),
+        supabase.rpc("get_employee_effective_break", {
+          p_employee_id: employee.id,
+          p_date: args.date,
+        }),
+      ]);
 
-      if (scheduleError) {
-        return null;
-      }
+      if (scheduleResult.error) return null;
 
-      const schedule = scheduleRows?.[0];
+      const schedule = scheduleResult.data?.[0];
 
       if (
         !schedule?.is_working ||
@@ -268,31 +463,22 @@ export async function getOnlineBookingAcceptOptions(args: {
         return null;
       }
 
-      const hasConflict = (existingAppointments ?? []).some(
-        (appointment: any) => {
-          if (appointment.employee_id !== employee.id) return false;
+      const employeeBreak = breakResult.error ? null : breakResult.data?.[0];
+      if (
+        employeeBreak?.break_start_time &&
+        employeeBreak.break_end_time &&
+        overlaps(
+          startMinutes,
+          endMinutes,
+          timeToMinutes(employeeBreak.break_start_time),
+          timeToMinutes(employeeBreak.break_end_time),
+        )
+      ) {
+        return null;
+      }
 
-          return overlaps(
-            startMinutes,
-            endMinutes,
-            timeToMinutes(appointment.start_time),
-            timeToMinutes(appointment.end_time),
-          );
-        },
-      );
-
-      if (hasConflict) return null;
-
-      return employee;
-    }),
-  );
-
-  const availableEmployees = employeesWithAvailability.filter(Boolean);
-
-  const availableRooms = mappedRooms.filter((room: any) => {
-    const hasConflict = (existingAppointments ?? []).some(
-      (appointment: any) => {
-        if (appointment.room_id !== room.id) return false;
+      const hasConflict = (existingAppointments ?? []).some((appointment) => {
+        if (appointment.employee_id !== employee.id) return false;
 
         return overlaps(
           startMinutes,
@@ -300,15 +486,51 @@ export async function getOnlineBookingAcceptOptions(args: {
           timeToMinutes(appointment.start_time),
           timeToMinutes(appointment.end_time),
         );
-      },
-    );
+      });
+
+      return hasConflict ? null : employee;
+    }),
+  );
+
+  const availableEmployees = employeesWithAvailability.filter(
+    (employee): employee is NormalizedEmployee => employee !== null,
+  );
+
+  const availableRooms = mappedRooms.filter((room) => {
+    const hasConflict = (existingAppointments ?? []).some((appointment) => {
+      if (appointment.room_id !== room.id) return false;
+
+      return overlaps(
+        startMinutes,
+        endMinutes,
+        timeToMinutes(appointment.start_time),
+        timeToMinutes(appointment.end_time),
+      );
+    });
 
     return !hasConflict;
   });
 
+  const employeeIssue: OnlineBookingAvailabilityIssue | null =
+    mappedEmployees.length === 0
+      ? "no_mapped_employee"
+      : availableEmployees.length === 0
+        ? "no_available_employee"
+        : null;
+
+  const roomIssue: OnlineBookingAvailabilityIssue | null =
+    mappedRooms.length === 0
+      ? "no_mapped_room"
+      : availableRooms.length === 0
+        ? "no_available_room"
+        : null;
+
   return {
     employees: availableEmployees,
     rooms: availableRooms,
+    generalIssue: null as OnlineBookingAvailabilityIssue | null,
+    employeeIssue,
+    roomIssue,
   };
 }
 

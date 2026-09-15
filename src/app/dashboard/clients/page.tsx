@@ -1,23 +1,29 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getClientsList } from "@/features/clients/queries";
 import { deleteClientAction } from "@/features/clients/actions";
 import EmptyStateCard from "@/components/empty-state-card";
 import PageShell from "@/components/page-shell";
-import PageHeader from "@/components/page-header";
-import PageSection from "@/components/page-section";
 import SettingsDeleteButton from "@/components/settings-delete-button";
+import {
+  CalendarClock,
+  Mail,
+  Phone,
+  Plus,
+  Search,
+  Users,
+} from "lucide-react";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 type SearchParams = Promise<{
   q?: string;
 }>;
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, locale: "hr" | "en" | "it") {
   if (!value) return "-";
 
   const date = new Date(`${value}T00:00:00`);
-  return new Intl.DateTimeFormat("hr-HR", {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale === "it" ? "it-IT" : "hr-HR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -29,125 +35,194 @@ export default async function ClientsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    redirect("/login");
-  }
-
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams.q || "";
 
-  const clients = await getClientsList(query);
+  const [permissions, clients] = await Promise.all([
+    requireDashboardUser(),
+    getClientsList(query),
+  ]);
+
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.clients;
+  const clientsWithUpcoming = clients.filter((client) => client.next_appointment).length;
+  const totalAppointments = clients.reduce((sum, client) => sum + client.appointments_count, 0);
+  const averageAppointments = clients.length ? Math.round(totalAppointments / clients.length) : 0;
 
   return (
     <PageShell maxWidth="max-w-7xl">
-      <PageHeader
-        title="Klijenti"
-        description="Pregled klijenata i njihove povijesti termina."
-        actions={
-          <Link
-            href="/dashboard/clients/new"
-            className="inline-flex rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-          >
-            Novi klijent
-          </Link>
-        }
-      />
+      <section className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
+        <div className="bg-gradient-to-br from-white via-white to-app-bg p-5 sm:p-6 md:p-7">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-app-soft bg-white/85 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-app-accent shadow-sm">
+                <Users className="h-3.5 w-3.5" />
+                {t.badge}
+              </div>
+              <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-app-text md:text-4xl">{t.title}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-app-muted sm:text-base">
+                {t.intro}
+              </p>
+            </div>
 
-      <PageSection>
-        <form action="/dashboard/clients">
-          <input
-            type="text"
-            name="q"
-            defaultValue={query}
-            placeholder="Pretraži po imenu, telefonu ili emailu..."
-            className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none placeholder:text-app-muted"
-          />
-        </form>
-      </PageSection>
-
-      <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse">
-            <thead className="bg-app-table-head">
-              <tr className="text-left text-sm text-app-muted">
-                <th className="px-4 py-3 font-semibold">Klijent</th>
-                <th className="px-4 py-3 font-semibold">Telefon</th>
-                <th className="px-4 py-3 font-semibold">Email</th>
-                <th className="px-4 py-3 font-semibold">Broj termina</th>
-                <th className="px-4 py-3 font-semibold">Zadnji termin</th>
-                <th className="px-4 py-3 font-semibold">Sljedeći termin</th>
-                <th className="px-4 py-3 font-semibold">Akcije</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {clients.map((client) => (
-                <tr
-                  key={client.id}
-                  className="border-t border-app-soft text-sm transition hover:bg-app-card-alt"
-                >
-                  <td className="px-4 py-4 font-medium text-app-text">
-                    {client.full_name}
-                  </td>
-                  <td className="px-4 py-4 text-app-muted">
-                    {client.phone || "-"}
-                  </td>
-                  <td className="px-4 py-4 text-app-muted">
-                    {client.email || "-"}
-                  </td>
-                  <td className="px-4 py-4 text-app-text">
-                    {client.appointments_count}
-                  </td>
-                  <td className="px-4 py-4 text-app-muted">
-                    {formatDate(client.last_appointment)}
-                  </td>
-                  <td className="px-4 py-4 text-app-muted">
-                    {formatDate(client.next_appointment)}
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/dashboard/clients/${client.id}`}
-                        className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
-                      >
-                        Otvori
-                      </Link>
-
-                      <Link
-                        href={`/dashboard/clients/${client.id}/edit`}
-                        className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
-                      >
-                        Uredi
-                      </Link>
-
-                      <SettingsDeleteButton
-                        label={client.full_name}
-                        onDelete={deleteClientAction.bind(null, client.id)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <Link
+              href="/dashboard/clients/new"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-app-accent px-5 py-2.5 font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <Plus className="h-4 w-4" />
+              {t.newClient}
+            </Link>
+          </div>
         </div>
+      </section>
 
-        {clients.length === 0 ? (
-          <div className="mt-4">
-            <EmptyStateCard
-              title="Nema pronađenih klijenata"
-              description="Pokušaj s drugim pojmom pretrage ili dodaj novog klijenta."
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.activeClients}</p>
+          <p className="mt-2 text-2xl font-extrabold text-app-text">{clients.length}</p>
+        </div>
+        <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.withUpcoming}</p>
+          <p className="mt-2 text-2xl font-extrabold text-app-text">{clientsWithUpcoming}</p>
+        </div>
+        <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.totalAppointments}</p>
+          <p className="mt-2 text-2xl font-extrabold text-app-text">{totalAppointments}</p>
+        </div>
+        <div className="rounded-2xl border border-app-soft bg-white p-4 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.1em] text-app-muted">{t.averagePerClient}</p>
+          <p className="mt-2 text-2xl font-extrabold text-app-text">{averageAppointments}</p>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-app-soft bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] sm:p-5">
+        <form action="/dashboard/clients" className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-app-muted" />
+            <input
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder={t.searchPlaceholder}
+              className="w-full rounded-xl border border-app-soft bg-white py-3 pl-11 pr-4 text-app-text outline-none transition placeholder:text-app-muted focus:border-app-accent focus:ring-2 focus:ring-app-accent/10"
             />
           </div>
-        ) : null}
-      </div>
+          <button type="submit" className="rounded-xl bg-app-card-alt px-5 py-3 text-sm font-semibold text-app-text transition hover:bg-app-bg">
+            {t.search}
+          </button>
+          {query ? (
+            <Link href="/dashboard/clients" className="inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-semibold text-app-muted transition hover:bg-app-bg hover:text-app-text">
+              {t.clear}
+            </Link>
+          ) : null}
+        </form>
+      </section>
+
+      {clients.length === 0 ? (
+        <EmptyStateCard
+          title={t.noClientsTitle}
+          description={t.noClientsDescription}
+          action={<Link href="/dashboard/clients/new" className="inline-flex rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white">{t.addClient}</Link>}
+        />
+      ) : (
+        <>
+          <div className="grid gap-4 md:hidden">
+            {clients.map((client) => (
+              <article key={client.id} className="overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
+                <Link href={`/dashboard/clients/${client.id}`} className="block p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-accent/10 font-extrabold text-app-accent">
+                        {client.full_name.split(" ").map((part) => part[0]).slice(0,2).join("").toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-lg font-bold text-app-text">{client.full_name}</h2>
+                        <p className="mt-1 text-xs font-semibold text-app-muted">{client.appointments_count} {t.appointments}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-app-bg px-2.5 py-1 text-xs font-semibold text-app-text">
+                      {client.next_appointment ? t.active : t.noUpcoming}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-2 text-sm text-app-muted">
+                    {client.phone ? <div className="flex items-center gap-2"><Phone className="h-4 w-4" />{client.phone}</div> : null}
+                    {client.email ? <div className="flex items-center gap-2"><Mail className="h-4 w-4" /><span className="truncate">{client.email}</span></div> : null}
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl bg-app-bg p-3">
+                      <p className="text-xs text-app-muted">{t.lastAppointment}</p>
+                      <p className="mt-1 font-bold text-app-text">{formatDate(client.last_appointment, permissions.organizationLocale)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-app-bg p-3">
+                      <p className="text-xs text-app-muted">{t.nextAppointment}</p>
+                      <p className="mt-1 font-bold text-app-text">{formatDate(client.next_appointment, permissions.organizationLocale)}</p>
+                    </div>
+                  </div>
+                </Link>
+
+                <div className="flex gap-2 border-t border-app-soft bg-app-bg/40 p-4">
+                  <Link href={`/dashboard/clients/${client.id}`} className="flex-1 rounded-xl bg-app-accent px-3 py-2 text-center text-sm font-semibold text-white">{t.open}</Link>
+                  <Link href={`/dashboard/clients/${client.id}/edit`} className="flex-1 rounded-xl border border-app-soft bg-white px-3 py-2 text-center text-sm font-semibold text-app-text">{t.edit}</Link>
+                  <SettingsDeleteButton label={client.full_name} onDelete={deleteClientAction.bind(null, client.id)} />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-3xl border border-app-soft bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)] md:block">
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse">
+                <thead className="bg-app-table-head">
+                  <tr className="text-left text-sm text-app-muted">
+                    <th className="px-5 py-3 font-semibold">{t.client}</th>
+                    <th className="px-5 py-3 font-semibold">{t.contact}</th>
+                    <th className="px-5 py-3 font-semibold">{t.totalAppointments}</th>
+                    <th className="px-5 py-3 font-semibold">{t.lastAppointment}</th>
+                    <th className="px-5 py-3 font-semibold">{t.nextAppointment}</th>
+                    <th className="px-5 py-3 font-semibold">{t.actions}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {clients.map((client) => (
+                    <tr key={client.id} className="border-t border-app-soft text-sm transition hover:bg-app-card-alt">
+                      <td className="px-5 py-4">
+                        <Link href={`/dashboard/clients/${client.id}`} className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-app-accent/10 font-extrabold text-app-accent">
+                            {client.full_name.split(" ").map((part) => part[0]).slice(0,2).join("").toUpperCase()}
+                          </div>
+                          <div><p className="font-bold text-app-text">{client.full_name}</p><p className="mt-1 text-xs text-app-muted">{client.next_appointment ? t.hasUpcoming : t.noUpcoming}</p></div>
+                        </Link>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="space-y-1 text-app-muted">
+                          <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" />{client.phone || "-"}</p>
+                          <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /><span className="max-w-[220px] truncate">{client.email || "-"}</span></p>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4"><span className="rounded-full bg-app-bg px-3 py-1 font-semibold text-app-text">{client.appointments_count}</span></td>
+                      <td className="px-5 py-4 font-medium text-app-muted">{formatDate(client.last_appointment, permissions.organizationLocale)}</td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold ${client.next_appointment ? "bg-emerald-50 text-emerald-700" : "bg-app-bg text-app-muted"}`}>
+                          <CalendarClock className="h-3.5 w-3.5" />{formatDate(client.next_appointment, permissions.organizationLocale)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <Link href={`/dashboard/clients/${client.id}`} className="rounded-xl border border-app-soft bg-white px-3 py-2 font-semibold text-app-text hover:bg-app-bg">{t.open}</Link>
+                          <Link href={`/dashboard/clients/${client.id}/edit`} className="rounded-xl border border-app-soft bg-white px-3 py-2 font-semibold text-app-text hover:bg-app-bg">{t.edit}</Link>
+                          <SettingsDeleteButton label={client.full_name} onDelete={deleteClientAction.bind(null, client.id)} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </PageShell>
   );
 }

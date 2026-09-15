@@ -32,6 +32,8 @@ export type FeedbackRow = {
   created_by: string;
   created_by_email: string | null;
   created_by_name: string | null;
+  organization_id: string | null;
+  organization_name: string | null;
   type: FeedbackType;
   priority: FeedbackPriority;
   title: string;
