@@ -141,7 +141,9 @@ export default function CreateSalesTrialForm() {
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {isPending ? "Kreiram privatni trial..." : "Kreiraj trial i pošalji pozivnicu"}
           </button>
-          <span className="text-xs text-slate-500">14 dana · Pro mogućnosti · osnovni plan nakon isteka</span>
+          <span className="text-xs text-slate-500">
+            7 dana · Pro mogućnosti · pristup se zaključava nakon isteka, podaci ostaju sačuvani
+          </span>
         </div>
       </form>
 
