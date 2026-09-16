@@ -25,6 +25,17 @@ export type PublicBookingOrganization = {
   logo_url: string | null;
 };
 
+function isExpiredTrial(organization: {
+  lifecycle_status: string | null;
+  trial_ends_at: string | null;
+}) {
+  if (organization.lifecycle_status !== "trial") return false;
+  if (!organization.trial_ends_at) return true;
+
+  const trialEnd = new Date(organization.trial_ends_at).getTime();
+  return !Number.isFinite(trialEnd) || trialEnd <= Date.now();
+}
+
 export async function getPublicBookingOrganizationBySlug(
   slug: string,
 ): Promise<PublicBookingOrganization | null> {
@@ -33,7 +44,7 @@ export async function getPublicBookingOrganizationBySlug(
   const { data, error } = await supabase
     .from("organizations")
     .select(
-      "id, name, slug, locale, theme, phone, email, address_line_1, address_line_2, city, postal_code, logo_url",
+      "id, name, slug, locale, theme, phone, email, address_line_1, address_line_2, city, postal_code, logo_url, lifecycle_status, trial_ends_at",
     )
     .eq("slug", slug)
     .eq("is_active", true)
@@ -44,13 +55,22 @@ export async function getPublicBookingOrganizationBySlug(
     throw new Error("Nije moguće dohvatiti salon.");
   }
 
-  if (!data) return null;
+  if (!data || isExpiredTrial(data)) return null;
 
   return {
-    ...data,
+    id: data.id,
+    name: data.name,
+    slug: data.slug,
     locale: data.locale === "en" || data.locale === "it" ? data.locale : "hr",
     theme: data.theme === "rose" || data.theme === "slate" ? data.theme : "sand",
-  } as PublicBookingOrganization;
+    phone: data.phone,
+    email: data.email,
+    address_line_1: data.address_line_1,
+    address_line_2: data.address_line_2,
+    city: data.city,
+    postal_code: data.postal_code,
+    logo_url: data.logo_url,
+  };
 }
 
 export async function getOnlineBookableServices(
