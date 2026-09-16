@@ -16,7 +16,7 @@ A new Sales Trial is provisioned with:
 - a dedicated owner auth user and owner membership;
 - underlying plan `starter`;
 - lifecycle `trial`;
-- 14-day trial window;
+- 7-day trial window;
 - effective Pro capabilities only while `trial_ends_at` is in the future;
 - Google review automation OFF;
 - CRM retention automation OFF;
@@ -24,7 +24,7 @@ A new Sales Trial is provisioned with:
 - optional localized demo data;
 - a localized account activation email generated through the SalonFlow email provider.
 
-After the trial expires, the account is not deleted or suspended. The tenant keeps its data and falls back to the stored Starter entitlement until a plan is activated.
+After the trial expires, the tenant data is retained but dashboard access is locked until a paid plan is activated. The public booking page and public booking APIs are also disabled for that expired trial tenant.
 
 ## Generic demo dataset
 
@@ -113,9 +113,11 @@ Use an email address you own that does not already have a SalonFlow auth account
 9. Confirm the trial banner shows Pro trial and the remaining days.
 10. Check Calendar, Clients, Online bookings, Waitlist, Reports and CRM actions.
 11. Confirm seeded demo clients contain no external email addresses.
-12. Confirm Google review automation is OFF.
-13. Confirm automatic CRM follow-up is OFF.
+12. Confirm Google review automation is OFF and uses a clear ON/OFF switch.
+13. Confirm automatic CRM follow-up is OFF and uses a clear ON/OFF switch.
 14. Open the public booking page for the new salon slug.
+15. Confirm matching consecutive working days are grouped in the public hours display, for example `Pon–Sub 08:00–20:00`.
+16. Submit one controlled public booking request and confirm it appears as pending in Online bookings.
 
 ## Trial expiry QA
 
@@ -124,10 +126,11 @@ For a disposable test tenant only, temporarily set `trial_ends_at` into the past
 Expected behavior:
 
 - lifecycle may still display `trial`;
-- banner says the trial ended;
-- core Starter features remain available;
-- Growth/Pro pages are plan-gated;
-- Managed Email premium flows refuse sends that require a higher capability;
+- navigating to the dashboard redirects to the dedicated trial-expired page;
+- no Starter, Growth or Pro workspace features remain usable while the expired tenant is still a trial;
+- tenant data remains stored and is not deleted;
+- the public booking page is no longer available;
+- public availability and booking submission APIs reject the expired trial;
 - reminder/review/retention schedulers do not treat the expired trial as Pro.
 
 Restore or delete the disposable test tenant afterward.
