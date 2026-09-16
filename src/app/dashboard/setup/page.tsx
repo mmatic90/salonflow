@@ -2,11 +2,15 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
+  BellRing,
+  Bot,
   CheckCircle2,
   Circle,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { requireAdminForSettings } from "@/lib/page-guards";
+import { canUseCapability } from "@/lib/permissions";
 import { getGuidedSetupState } from "@/features/guided-setup/queries";
 import {
   ConfirmSetupStepButton,
@@ -33,16 +37,26 @@ function copy(locale: AppLocale) {
       complete: "Salon is ready",
       working: "Saving...",
       completionHelp:
-        "The final button becomes available after every step has been reviewed and all required configuration checks pass.",
+        "The final button becomes available after every required step has been reviewed and all mandatory configuration checks pass.",
       completedTitle: "Salon setup completed",
       completedBody:
         "You can reopen this guide whenever you want to review the configuration again.",
       dashboard: "Open dashboard",
+      optionalTitle: "Automation options in your plan",
+      optionalDescription:
+        "These options do not block setup completion. Review the ones included in your plan when you are ready.",
+      optionalSafety:
+        "Outbound automations stay OFF until you deliberately enable and save them.",
+      notifications: "Email notifications & reminders",
+      reviews: "Google review requests",
+      retention: "Automatic CRM follow-up",
+      noOptional:
+        "Your current plan has no additional automation setup to review here.",
       steps: {
         profile: {
           title: "Salon profile and appearance",
           description:
-            "Confirm the salon identity, language and visual appearance before sharing the workspace with the team.",
+            "Confirm the salon identity, contact details, language and visual appearance before sharing the workspace with the team.",
         },
         working_hours: {
           title: "Salon working hours",
@@ -77,7 +91,7 @@ function copy(locale: AppLocale) {
         online_booking: {
           title: "Online booking",
           description:
-            "Decide which services are bookable online and preview the public booking page before sharing it with clients.",
+            "Decide which services are bookable online and preview the public booking page before sharing it with clients. Online booking may intentionally remain disabled.",
         },
       },
     };
@@ -101,16 +115,26 @@ function copy(locale: AppLocale) {
       complete: "Il salone è pronto",
       working: "Salvataggio...",
       completionHelp:
-        "Il pulsante finale si attiva dopo aver controllato tutti i passaggi e completato le impostazioni obbligatorie.",
+        "Il pulsante finale si attiva dopo aver controllato tutti i passaggi obbligatori e completato le impostazioni richieste.",
       completedTitle: "Configurazione del salone completata",
       completedBody:
         "Puoi riaprire questa guida in qualsiasi momento per ricontrollare le impostazioni.",
       dashboard: "Apri dashboard",
+      optionalTitle: "Automazioni incluse nel tuo piano",
+      optionalDescription:
+        "Queste opzioni non bloccano la configurazione. Controlla quelle incluse nel tuo piano quando vuoi.",
+      optionalSafety:
+        "Le automazioni in uscita rimangono OFF finché non le attivi e salvi esplicitamente.",
+      notifications: "Email e promemoria",
+      reviews: "Richieste recensioni Google",
+      retention: "Follow-up CRM automatico",
+      noOptional:
+        "Il piano attuale non include altre automazioni da configurare in questa sezione.",
       steps: {
         profile: {
           title: "Profilo e aspetto del salone",
           description:
-            "Controlla identità, lingua e aspetto visivo del salone prima di iniziare il lavoro quotidiano.",
+            "Controlla identità, contatti, lingua e aspetto visivo del salone prima di iniziare il lavoro quotidiano.",
         },
         working_hours: {
           title: "Orari del salone",
@@ -145,7 +169,7 @@ function copy(locale: AppLocale) {
         online_booking: {
           title: "Prenotazione online",
           description:
-            "Scegli i servizi prenotabili online e controlla la pagina pubblica prima di condividerla con i clienti.",
+            "Scegli i servizi prenotabili online e controlla la pagina pubblica prima di condividerla con i clienti. La prenotazione online può anche rimanere volutamente disattivata.",
         },
       },
     };
@@ -168,16 +192,26 @@ function copy(locale: AppLocale) {
     complete: "Salon je spreman",
     working: "Spremanje...",
     completionHelp:
-      "Završni gumb postaje dostupan kada pregledaš svaki korak i kada sve obavezne provjere postavki prođu.",
+      "Završni gumb postaje dostupan kada pregledaš svaki obavezni korak i kada sve potrebne provjere postavki prođu.",
     completedTitle: "Postavljanje salona je završeno",
     completedBody:
       "Ovaj vodič možeš ponovno otvoriti u bilo kojem trenutku ako želiš provjeriti postavke.",
     dashboard: "Otvori dashboard",
+    optionalTitle: "Automatizacije dostupne u tvom planu",
+    optionalDescription:
+      "Ove stavke ne blokiraju završetak postavljanja. Pregledaj one koje tvoj paket podržava kada ti odgovara.",
+    optionalSafety:
+      "Automatizacije koje šalju poruke ostaju OFF dok ih svjesno ne uključiš i spremiš.",
+    notifications: "Email obavijesti i podsjetnici",
+    reviews: "Zahtjevi za Google recenziju",
+    retention: "Automatski CRM follow-up",
+    noOptional:
+      "Trenutni paket nema dodatnih automatizacija koje treba postaviti u ovom koraku.",
     steps: {
       profile: {
         title: "Profil i izgled salona",
         description:
-          "Provjeri identitet, jezik i vizualni izgled salona prije početka svakodnevnog rada.",
+          "Provjeri identitet, kontaktne podatke, jezik i vizualni izgled salona prije početka svakodnevnog rada.",
       },
       working_hours: {
         title: "Radno vrijeme salona",
@@ -212,7 +246,7 @@ function copy(locale: AppLocale) {
       online_booking: {
         title: "Online rezervacije",
         description:
-          "Odaberi usluge dostupne online i pregledaj javnu booking stranicu prije nego je podijeliš klijentima.",
+          "Odaberi usluge dostupne online i pregledaj javnu booking stranicu prije nego je podijeliš klijentima. Online booking može namjerno ostati isključen.",
       },
     },
   };
@@ -222,9 +256,14 @@ export default async function SetupPage() {
   const permissions = await requireAdminForSettings();
   const state = await getGuidedSetupState(permissions.organizationId);
   const t = copy(permissions.organizationLocale);
-  const stepByCode = Object.fromEntries(
-    state.steps.map((step) => [step.code, step]),
-  ) as Record<(typeof state.steps)[number]["code"], (typeof state.steps)[number]>;
+  const canUseNotifications = canUseCapability(
+    permissions,
+    "booking_notifications",
+  );
+  const canUseReviews = canUseCapability(permissions, "review_requests");
+  const canUseRetention = canUseCapability(permissions, "automations");
+  const hasOptionalAutomation =
+    canUseNotifications || canUseReviews || canUseRetention;
 
   const details = {
     profile: `${state.organization.name} · ${permissions.organizationLocale.toUpperCase()}`,
@@ -248,7 +287,10 @@ export default async function SetupPage() {
   };
 
   const links = {
-    profile: [{ href: "/dashboard/settings/appearance", label: t.open }],
+    profile: [
+      { href: "/dashboard/settings/profile", label: t.open },
+      { href: "/dashboard/settings/appearance", label: t.open },
+    ],
     working_hours: [{ href: "/dashboard/settings/salon-hours", label: t.open }],
     employees: [{ href: "/dashboard/settings/employees", label: t.open }],
     services: [{ href: "/dashboard/settings/services", label: t.open }],
@@ -390,7 +432,11 @@ export default async function SetupPage() {
                         <Link
                           key={`${step.code}-${linkIndex}`}
                           href={link.href}
-                          target={step.code === "online_booking" && linkIndex === 1 ? "_blank" : undefined}
+                          target={
+                            step.code === "online_booking" && linkIndex === 1
+                              ? "_blank"
+                              : undefined
+                          }
                           className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg"
                         >
                           {link.label} <ArrowRight className="h-4 w-4" />
@@ -412,6 +458,57 @@ export default async function SetupPage() {
             );
           })}
         </div>
+
+        <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm sm:p-6">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-app-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.1em] text-app-accent">
+              <Sparkles className="h-3.5 w-3.5" /> Optional
+            </div>
+            <h2 className="mt-3 text-xl font-bold text-app-text">{t.optionalTitle}</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-app-muted">
+              {t.optionalDescription}
+            </p>
+            <p className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-900">
+              {t.optionalSafety}
+            </p>
+          </div>
+
+          {hasOptionalAutomation ? (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {canUseNotifications ? (
+                <Link
+                  href="/dashboard/settings/notifications"
+                  className="rounded-2xl border border-app-soft bg-app-bg p-4 transition hover:-translate-y-0.5 hover:bg-white"
+                >
+                  <BellRing className="h-5 w-5 text-app-accent" />
+                  <p className="mt-3 font-bold text-app-text">{t.notifications}</p>
+                </Link>
+              ) : null}
+              {canUseReviews ? (
+                <Link
+                  href="/dashboard/settings/reviews"
+                  className="rounded-2xl border border-app-soft bg-app-bg p-4 transition hover:-translate-y-0.5 hover:bg-white"
+                >
+                  <Star className="h-5 w-5 text-app-accent" />
+                  <p className="mt-3 font-bold text-app-text">{t.reviews}</p>
+                </Link>
+              ) : null}
+              {canUseRetention ? (
+                <Link
+                  href="/dashboard/settings/retention-automation"
+                  className="rounded-2xl border border-app-soft bg-app-bg p-4 transition hover:-translate-y-0.5 hover:bg-white"
+                >
+                  <Bot className="h-5 w-5 text-app-accent" />
+                  <p className="mt-3 font-bold text-app-text">{t.retention}</p>
+                </Link>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-5 rounded-2xl bg-app-bg px-4 py-3 text-sm text-app-muted">
+              {t.noOptional}
+            </p>
+          )}
+        </section>
 
         {!state.progress?.completedAt ? (
           <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm sm:p-6">
