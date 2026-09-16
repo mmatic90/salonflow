@@ -58,7 +58,7 @@ export const salonPlanRank: Record<SalonPlanCode, number> = {
   pro: 2,
 };
 
-export const DEFAULT_TRIAL_DAYS = 14;
+export const DEFAULT_TRIAL_DAYS = 7;
 
 export function isSalonPlanCode(value: unknown): value is SalonPlanCode {
   return (
