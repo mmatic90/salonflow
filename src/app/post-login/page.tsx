@@ -29,5 +29,24 @@ export default async function PostLoginPage() {
     redirect("/login");
   }
 
-  redirect(membership ? "/dashboard" : "/onboarding");
+  if (!membership) {
+    redirect("/onboarding");
+  }
+
+  const { data: setupProgress, error: setupError } = await supabase
+    .from("organization_setup_progress")
+    .select("dismissed_at, completed_at")
+    .eq("organization_id", membership.organization_id)
+    .maybeSingle();
+
+  if (
+    !setupError &&
+    setupProgress &&
+    !setupProgress.completed_at &&
+    !setupProgress.dismissed_at
+  ) {
+    redirect("/dashboard/setup");
+  }
+
+  redirect("/dashboard");
 }
