@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import ToggleSwitch from "@/components/toggle-switch";
 import { saveRetentionAutomationSettings } from "@/features/retention-automation/actions";
 import type { AppLocale } from "@/lib/i18n";
 
@@ -83,21 +84,20 @@ export default function RetentionAutomationForm({
 
   return (
     <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm sm:p-6">
-      <label className="flex cursor-pointer items-start gap-3">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(event) => setEnabled(event.target.checked)}
-          disabled={pending}
-          className="mt-1 h-4 w-4 rounded border-app-soft accent-app-accent"
-        />
-        <span>
-          <span className="block font-semibold text-app-text">{t.enabled}</span>
-          <span className="mt-1 block text-sm leading-6 text-app-muted">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="font-semibold text-app-text">{t.enabled}</p>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-app-muted">
             {t.enabledHelp}
-          </span>
-        </span>
-      </label>
+          </p>
+        </div>
+        <ToggleSwitch
+          checked={enabled}
+          onCheckedChange={setEnabled}
+          disabled={pending}
+          ariaLabel={t.enabled}
+        />
+      </div>
 
       <div className="mt-6 max-w-sm">
         <label className="block text-sm font-semibold text-app-text" htmlFor="retention-daily-limit">
