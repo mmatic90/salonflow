@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPlatformTrialInvite } from "@/lib/email/platform-trial-invite";
+import { DEFAULT_TRIAL_DAYS } from "@/lib/plans";
 import {
   SALES_TRIAL_SEED_VERSION,
   seedSalesTrialOrganization,
@@ -184,7 +185,9 @@ export async function createSalesTrialAction(
     const slug = await uniqueSlug(salonName);
     const market = marketSettings(input.countryCode);
     const trialStartedAt = new Date();
-    const trialEndsAt = new Date(trialStartedAt.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const trialEndsAt = new Date(
+      trialStartedAt.getTime() + DEFAULT_TRIAL_DAYS * 24 * 60 * 60 * 1000,
+    );
 
     const { data: organization, error: organizationError } = await supabase
       .from("organizations")
