@@ -25,6 +25,7 @@ export default function ToggleSwitch({
     >
       <input
         type="checkbox"
+        role="switch"
         className="peer sr-only"
         checked={checked}
         onChange={(event) => onCheckedChange(event.target.checked)}
