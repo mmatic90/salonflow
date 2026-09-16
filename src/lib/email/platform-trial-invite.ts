@@ -1,4 +1,5 @@
 import { createManagedEmailProvider } from "@/lib/email/provider";
+import { DEFAULT_TRIAL_DAYS } from "@/lib/plans";
 
 type TrialInviteLocale = "hr" | "en" | "it";
 
@@ -55,7 +56,7 @@ function copy(locale: TrialInviteLocale) {
       intro: (salonName: string) =>
         `Abbiamo preparato uno spazio SalonFlow privato per ${salonName}.`,
       trial:
-        "Hai 14 giorni di prova con le funzionalità Pro attive. I dati del tuo salone restano separati dagli altri account.",
+        `Hai ${DEFAULT_TRIAL_DAYS} giorni di prova con le funzionalità Pro attive. Alla scadenza l'accesso viene bloccato, ma i dati del salone restano salvati e separati dagli altri account.`,
       demo:
         "Se sono presenti dati dimostrativi, puoi modificarli liberamente per provare calendario, clienti, prenotazioni, report e CRM.",
       cta: "Imposta la password e apri SalonFlow",
@@ -72,7 +73,7 @@ function copy(locale: TrialInviteLocale) {
       intro: (salonName: string) =>
         `We prepared a private SalonFlow workspace for ${salonName}.`,
       trial:
-        "You have a 14-day trial with Pro features enabled. Your salon data stays separated from other accounts.",
+        `You have a ${DEFAULT_TRIAL_DAYS}-day trial with Pro features enabled. When the trial ends, access is locked while your salon data remains saved and separated from other accounts.`,
       demo:
         "If demo data is included, feel free to change it while exploring the calendar, clients, online booking, reports and CRM.",
       cta: "Set your password and open SalonFlow",
@@ -88,7 +89,7 @@ function copy(locale: TrialInviteLocale) {
     intro: (salonName: string) =>
       `Pripremili smo privatni SalonFlow prostor za ${salonName}.`,
     trial:
-      "Imaš 14 dana probnog razdoblja s uključenim Pro funkcionalnostima. Podaci tvog salona odvojeni su od drugih korisničkih računa.",
+      `Imaš ${DEFAULT_TRIAL_DAYS} dana probnog razdoblja s uključenim Pro funkcionalnostima. Nakon isteka pristup se zaključava, ali podaci salona ostaju sačuvani i odvojeni od drugih korisničkih računa.`,
     demo:
       "Ako su uključeni demo podaci, slobodno ih mijenjaj dok isprobavaš kalendar, klijente, online rezervacije, izvještaje i CRM.",
     cta: "Postavi lozinku i otvori SalonFlow",
