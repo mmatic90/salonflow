@@ -14,6 +14,10 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import AdminFooter from "@/components/admin-footer";
 import FeedbackWidget from "@/features/feedback/components/feedback-widget";
+import {
+  getGuidedSetupProgress,
+  getGuidedSetupState,
+} from "@/features/guided-setup/queries";
 import { getDictionary } from "@/lib/i18n";
 
 function trialBannerCopy(locale: "hr" | "en" | "it", daysLeft: number, endDate: string, active: boolean) {
@@ -30,6 +34,25 @@ function trialBannerCopy(locale: "hr" | "en" | "it", daysLeft: number, endDate: 
   return active
     ? `Pro probno razdoblje · još ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"} · završava ${endDate}`
     : "Probno razdoblje je završilo. Trenutno su dostupne Starter funkcionalnosti.";
+}
+
+function setupBannerCopy(locale: "hr" | "en" | "it", percentage: number) {
+  if (locale === "it") {
+    return {
+      text: `Configurazione salone ${percentage}% completata`,
+      action: "Continua configurazione",
+    };
+  }
+  if (locale === "en") {
+    return {
+      text: `Salon setup ${percentage}% complete`,
+      action: "Continue setup",
+    };
+  }
+  return {
+    text: `Postavljanje salona ${percentage}% dovršeno`,
+    action: "Nastavi postavljanje",
+  };
 }
 
 function formatTrialEnd(value: string, locale: "hr" | "en" | "it") {
@@ -80,6 +103,23 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     permissions.organizationLifecycleStatus,
     trialEnd,
   );
+
+  let setupState: Awaited<ReturnType<typeof getGuidedSetupState>> | null = null;
+  if (!isTrial && permissions.role === "admin") {
+    try {
+      const setupProgress = await getGuidedSetupProgress(
+        permissions.organizationId,
+      );
+      if (setupProgress && !setupProgress.completedAt) {
+        setupState = await getGuidedSetupState(permissions.organizationId);
+      }
+    } catch (error) {
+      console.error("Could not load guided salon setup progress:", error);
+    }
+  }
+  const setupBanner = setupState
+    ? setupBannerCopy(permissions.organizationLocale, setupState.percentage)
+    : null;
 
   return (
     <div
@@ -137,6 +177,30 @@ export default async function DashboardLayout({ children }: { children: ReactNod
                         : "Pogledaj Pro"}
                   </Link>
                 ) : null}
+              </div>
+            </div>
+          ) : null}
+          {setupState && setupBanner ? (
+            <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-950 sm:px-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-semibold">{setupBanner.text}</span>
+                    <span className="text-xs font-bold">{setupState.percentage}%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-emerald-100">
+                    <div
+                      className="h-full rounded-full bg-emerald-600"
+                      style={{ width: `${setupState.percentage}%` }}
+                    />
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard/setup"
+                  className="shrink-0 font-bold underline decoration-current/30 underline-offset-4 hover:decoration-current"
+                >
+                  {setupBanner.action}
+                </Link>
               </div>
             </div>
           ) : null}
