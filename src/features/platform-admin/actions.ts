@@ -40,6 +40,31 @@ function revalidateSalon(organizationId: string) {
   revalidatePath("/dashboard", "layout");
 }
 
+async function startGuidedSetupAfterTrialConversion(
+  organizationId: string,
+  now: string,
+) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("organization_setup_progress")
+    .upsert(
+      {
+        organization_id: organizationId,
+        source: "trial_conversion",
+        confirmed_steps: [],
+        started_at: now,
+        dismissed_at: null,
+        completed_at: null,
+        updated_at: now,
+      },
+      { onConflict: "organization_id" },
+    );
+
+  if (error) {
+    console.error("Could not start guided salon setup after trial conversion:", error);
+  }
+}
+
 export async function updatePlatformSalonLifecycleAction(input: {
   organizationId: string;
   planCode: unknown;
@@ -127,24 +152,7 @@ export async function updatePlatformSalonLifecycleAction(input: {
   if (!data) return { ok: false, error: "Salon više ne postoji." };
 
   if (convertingTrialToPaid) {
-    const { error: setupError } = await supabase
-      .from("organization_setup_progress")
-      .upsert(
-        {
-          organization_id: input.organizationId,
-          source: "trial_conversion",
-          confirmed_steps: [],
-          started_at: now,
-          dismissed_at: null,
-          completed_at: null,
-          updated_at: now,
-        },
-        { onConflict: "organization_id" },
-      );
-
-    if (setupError) {
-      console.error("Could not start guided salon setup after trial conversion:", setupError);
-    }
+    await startGuidedSetupAfterTrialConversion(input.organizationId, now);
   }
 
   revalidateSalon(input.organizationId);
@@ -169,6 +177,15 @@ export async function setPlatformSalonActiveAction(
   }
 
   const supabase = createAdminClient();
+  const { data: current, error: currentError } = await supabase
+    .from("organizations")
+    .select("lifecycle_status")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (currentError) return { ok: false, error: currentError.message };
+  if (!current) return { ok: false, error: "Salon više ne postoji." };
+
   const { data, error } = await supabase
     .from("organizations")
     .update({ lifecycle_status: isActive ? "active" : "suspended" })
@@ -182,6 +199,13 @@ export async function setPlatformSalonActiveAction(
 
   if (!data) {
     return { ok: false, error: "Salon više ne postoji." };
+  }
+
+  if (isActive && current.lifecycle_status === "trial") {
+    await startGuidedSetupAfterTrialConversion(
+      organizationId,
+      new Date().toISOString(),
+    );
   }
 
   revalidateSalon(organizationId);
