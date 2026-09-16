@@ -57,6 +57,24 @@ export default async function TrialExpiredPage() {
   );
 
   if (permissions.organizationLifecycleStatus !== "trial" || trialActive) {
+    if (permissions.organizationLifecycleStatus === "active") {
+      const supabase = await createClient();
+      const { data: setupProgress, error: setupError } = await supabase
+        .from("organization_setup_progress")
+        .select("dismissed_at, completed_at")
+        .eq("organization_id", permissions.organizationId)
+        .maybeSingle();
+
+      if (
+        !setupError &&
+        setupProgress &&
+        !setupProgress.completed_at &&
+        !setupProgress.dismissed_at
+      ) {
+        redirect("/dashboard/setup");
+      }
+    }
+
     redirect("/dashboard");
   }
 
