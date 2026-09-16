@@ -61,15 +61,20 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     redirect(user ? "/onboarding" : "/login");
   }
 
-  const dictionary = getDictionary(permissions.organizationLocale);
-  const canUseWaitlist = canUseCapability(permissions, "waitlist");
-  const canUseReports = canUseCapability(permissions, "advanced_reports");
-  const canUseAdvancedCrm = canUseCapability(permissions, "advanced_crm");
   const isTrial = permissions.organizationLifecycleStatus === "trial";
   const trialActive = isTrialEntitlementActive(
     permissions.organizationLifecycleStatus,
     permissions.organizationTrialEndsAt,
   );
+
+  if (isTrial && !trialActive) {
+    redirect("/trial-expired");
+  }
+
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const canUseWaitlist = canUseCapability(permissions, "waitlist");
+  const canUseReports = canUseCapability(permissions, "advanced_reports");
+  const canUseAdvancedCrm = canUseCapability(permissions, "advanced_crm");
   const trialEnd = permissions.organizationTrialEndsAt;
   const trialDaysLeft = getTrialDaysLeft(
     permissions.organizationLifecycleStatus,
