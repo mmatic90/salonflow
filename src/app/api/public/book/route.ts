@@ -13,6 +13,17 @@ type Slot = {
   room_name: string;
 };
 
+function isExpiredTrial(organization: {
+  lifecycle_status: string | null;
+  trial_ends_at: string | null;
+}) {
+  if (organization.lifecycle_status !== "trial") return false;
+  if (!organization.trial_ends_at) return true;
+
+  const trialEnd = new Date(organization.trial_ends_at).getTime();
+  return !Number.isFinite(trialEnd) || trialEnd <= Date.now();
+}
+
 export async function POST(request: Request) {
   try {
     const forwardedFor = request.headers.get("x-forwarded-for");
@@ -68,7 +79,7 @@ export async function POST(request: Request) {
 
     const { data: organization, error: organizationError } = await supabase
       .from("organizations")
-      .select("id, slug, is_active")
+      .select("id, slug, is_active, lifecycle_status, trial_ends_at")
       .eq("slug", organizationSlug)
       .eq("is_active", true)
       .maybeSingle();
@@ -79,6 +90,20 @@ export async function POST(request: Request) {
 
     if (!organization) {
       return NextResponse.json({ error: "Salon nije pronađen." }, { status: 404 });
+    }
+
+    if (isExpiredTrial(organization)) {
+      return NextResponse.json(
+        {
+          error:
+            lang === "en"
+              ? "Online booking is currently unavailable."
+              : lang === "it"
+                ? "La prenotazione online non è attualmente disponibile."
+                : "Online rezervacije trenutačno nisu dostupne.",
+        },
+        { status: 403 },
+      );
     }
 
     const { data: service, error: serviceError } = await supabase
@@ -141,8 +166,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Prevent duplicate click / duplicate submit for the same email, service,
-    // date and time within the previous 60 seconds.
     const { data: recentDuplicateRequest, error: recentDuplicateError } =
       await supabase
         .from("online_booking_requests")
