@@ -9,6 +9,17 @@ type PublicAvailabilityBody = {
   serviceId?: string;
 };
 
+function isExpiredTrial(organization: {
+  lifecycle_status: string | null;
+  trial_ends_at: string | null;
+}) {
+  if (organization.lifecycle_status !== "trial") return false;
+  if (!organization.trial_ends_at) return true;
+
+  const trialEnd = new Date(organization.trial_ends_at).getTime();
+  return !Number.isFinite(trialEnd) || trialEnd <= Date.now();
+}
+
 export async function POST(request: Request) {
   let body: PublicAvailabilityBody;
 
@@ -38,7 +49,7 @@ export async function POST(request: Request) {
 
   const { data: organization, error: organizationError } = await supabase
     .from("organizations")
-    .select("id")
+    .select("id, lifecycle_status, trial_ends_at")
     .eq("slug", organizationSlug)
     .eq("is_active", true)
     .maybeSingle();
@@ -49,6 +60,13 @@ export async function POST(request: Request) {
 
   if (!organization) {
     return NextResponse.json({ error: "Salon nije pronađen." }, { status: 404 });
+  }
+
+  if (isExpiredTrial(organization)) {
+    return NextResponse.json(
+      { error: "Online rezervacije trenutačno nisu dostupne." },
+      { status: 403 },
+    );
   }
 
   const { data: service, error: serviceError } = await supabase
