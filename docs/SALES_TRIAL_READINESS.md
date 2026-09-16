@@ -28,7 +28,7 @@ After the trial expires, the tenant data is retained but dashboard access is loc
 
 When Platform Admin converts a trial tenant to an active paid plan, SalonFlow starts the tenant-scoped guided setup. The owner can review salon profile/contact data, working hours, employees, services, employee schedules, employee/service mappings, optional room/equipment resources and online booking. Setup is resumable: **Continue later** returns to the dashboard while a progress banner remains visible until setup is completed. Plan-specific email/review/CRM automations are shown as optional setup items and remain OFF until explicitly enabled.
 
-Existing trial data is preserved during conversion. A destructive demo reset is intentionally not performed by the guided setup because older seed data is not yet comprehensively tagged at entity level; deleting it blindly could remove real data entered during the trial.
+Existing trial data is preserved during conversion. If the converted tenant was provisioned with SalonFlow's seeded Sales Trial demo dataset, Settings exposes a guarded one-time **Start with a clean salon** flow. It requires the exact salon name as confirmation, works only for an active converted Sales Trial, and removes the tenant's operational/demo data before resetting guided setup to 0%. Organization identity, owner membership/access, paid plan, billing metadata and platform/audit history are preserved. After the reset the option disappears permanently for that tenant.
 
 ## Generic demo dataset
 
@@ -102,6 +102,7 @@ Apply all unapplied Supabase migrations, including:
 
 - `supabase/migrations/20260914234500_add_sales_trial_foundation.sql`
 - `supabase/migrations/20260916123000_add_guided_setup_progress.sql`
+- `supabase/migrations/20260916170000_add_sales_trial_fresh_start.sql`
 
 ## First controlled end-to-end QA
 
@@ -151,6 +152,22 @@ For the disposable expired trial tenant:
 7. Confirm plan-specific automation links match the activated plan and all outbound automations remain OFF until explicitly enabled.
 8. Click **Continue later** and confirm the dashboard opens with a persistent setup-progress banner.
 9. Reopen the guide from that banner, finish all required checks, click **Salon is ready**, and confirm the progress banner disappears.
+10. Confirm **Guided salon setup** remains available from Settings but is not the first settings card.
+
+## Converted demo fresh-start QA
+
+Use only a disposable converted Sales Trial tenant. This flow is intentionally destructive.
+
+1. Confirm the tenant is lifecycle `active` and was originally created with **Seed demo data** enabled.
+2. Open Settings and confirm **Start with a clean salon** is available.
+3. Open the fresh-start screen and confirm the destructive-data warning is explicit.
+4. Confirm the action remains disabled until the exact salon name is entered.
+5. Run the reset once.
+6. Confirm appointments, clients, employees, services, rooms, equipment, waitlist entries, online booking requests and salon working hours are removed for that tenant.
+7. Confirm organization identity, owner access, active paid plan and billing/platform metadata remain intact.
+8. Confirm guided setup returns to 0% and now requires real salon configuration.
+9. Confirm Google review and CRM retention automations are OFF after the reset.
+10. Confirm the **Start with a clean salon** option disappears and cannot be used a second time.
 
 ## Scheduled jobs
 
@@ -169,7 +186,6 @@ Do not block the first prospect trial on these items:
 - Stripe Checkout/subscription billing;
 - automated self-service conversion/payment from trial to paid plan;
 - self-service public signup;
-- destructive demo reset without entity-level seed tagging;
 - multi-location management;
 - custom salon-owned email provider credentials;
 - native mobile apps;
@@ -177,14 +193,14 @@ Do not block the first prospect trial on these items:
 
 ## Next product step after trial provisioning is validated
 
-Once the private Sales Trial, expiry lockout and guided trial-to-paid setup are validated, the next platform batch can add:
+Once the private Sales Trial, expiry lockout, guided trial-to-paid setup and guarded fresh-start flow are validated, the next platform batch can add:
 
 1. resend/reissue owner access links;
-2. entity-level demo seed tagging plus a guarded reset flow;
-3. billing metadata and paid subscription state;
-4. Stripe Checkout / Customer Portal after pricing is intentionally finalized;
-5. self-service conversion from trial to paid plan.
+2. billing metadata and paid subscription state;
+3. Stripe Checkout / Customer Portal after pricing is intentionally finalized;
+4. self-service conversion from trial to paid plan;
+5. richer entity-level seed provenance if future demo-reset requirements become more granular.
 
 ## Merge rule
 
-Do not merge `feature/multi-tenant-foundation` to `main` only because the Sales Trial flow works locally. Validate the migration, real invite delivery, password setup, tenant isolation, trial expiry and trial-to-paid guided setup behavior first. Merge only after explicit approval.
+Do not merge `feature/multi-tenant-foundation` to `main` only because the Sales Trial flow works locally. Validate the migration, real invite delivery, password setup, tenant isolation, trial expiry, trial-to-paid guided setup and guarded fresh-start behavior first. Merge only after explicit approval.
