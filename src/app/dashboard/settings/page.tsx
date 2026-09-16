@@ -67,6 +67,48 @@ const groupLabels: Record<
   },
 };
 
+const profileCardCopy: Record<
+  AppLocale,
+  { title: string; description: string }
+> = {
+  hr: {
+    title: "Profil salona",
+    description:
+      "Naziv, email, telefon i adresa salona koji se koriste kroz aplikaciju i javni booking.",
+  },
+  en: {
+    title: "Salon profile",
+    description:
+      "Salon name, email, phone and address used across the app and public booking.",
+  },
+  it: {
+    title: "Profilo del salone",
+    description:
+      "Nome, email, telefono e indirizzo usati nell'app e nella prenotazione pubblica.",
+  },
+};
+
+const guidedSetupCardCopy: Record<
+  AppLocale,
+  { title: string; description: string }
+> = {
+  hr: {
+    title: "Vođeno postavljanje salona",
+    description:
+      "Prođi korak po korak kroz djelatnike, usluge, rasporede, mapiranja, resurse i online booking.",
+  },
+  en: {
+    title: "Guided salon setup",
+    description:
+      "Review employees, services, schedules, mappings, resources and online booking step by step.",
+  },
+  it: {
+    title: "Configurazione guidata del salone",
+    description:
+      "Controlla passo per passo collaboratori, servizi, orari, mappature, risorse e prenotazione online.",
+  },
+};
+
 const emailCardCopy: Record<
   AppLocale,
   { title: string; description: string }
@@ -136,6 +178,8 @@ export default async function SettingsPage() {
   const t = dictionary.settings;
   const scheduleT = dictionary.schedule;
   const groups = groupLabels[permissions.organizationLocale];
+  const profileCopy = profileCardCopy[permissions.organizationLocale];
+  const guidedSetupCopy = guidedSetupCardCopy[permissions.organizationLocale];
   const emailCopy = emailCardCopy[permissions.organizationLocale];
   const reviewCopy = reviewCardCopy[permissions.organizationLocale];
   const automationCopy = retentionAutomationCopy[permissions.organizationLocale];
@@ -177,6 +221,18 @@ export default async function SettingsPage() {
 
       <PageSection title={groups.essentials}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <SettingsCard
+            href="/dashboard/setup"
+            title={guidedSetupCopy.title}
+            description={guidedSetupCopy.description}
+          />
+
+          <SettingsCard
+            href="/dashboard/settings/profile"
+            title={profileCopy.title}
+            description={profileCopy.description}
+          />
+
           <SettingsCard
             href="/dashboard/settings/appearance"
             title={t.appearance.title}
