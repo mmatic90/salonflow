@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { ExternalLink, Loader2, Save, Star } from "lucide-react";
 import { toast } from "sonner";
+import ToggleSwitch from "@/components/toggle-switch";
 import { updateReviewSettingsAction } from "@/features/review-settings/actions";
 import type { ReviewSettings } from "@/features/review-settings/queries";
 import type { AppLocale } from "@/lib/i18n";
@@ -123,16 +124,12 @@ export default function ReviewSettingsForm({
                   {t.enabledHelp}
                 </p>
               </div>
-              <label className="inline-flex shrink-0 cursor-pointer items-center gap-3 rounded-2xl border border-app-soft bg-app-bg px-4 py-3 text-sm font-semibold text-app-text">
-                <input
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(event) => setEnabled(event.target.checked)}
-                  disabled={pending}
-                  className="h-4 w-4 accent-current"
-                />
-                {enabled ? "ON" : "OFF"}
-              </label>
+              <ToggleSwitch
+                checked={enabled}
+                onCheckedChange={setEnabled}
+                disabled={pending}
+                ariaLabel={t.enabled}
+              />
             </div>
 
             <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_260px]">
