@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export const guidedSetupStepCodes = [
@@ -77,6 +78,21 @@ export async function getGuidedSetupProgress(
     dismissedAt: data.dismissed_at ?? null,
     completedAt: data.completed_at ?? null,
   };
+}
+
+export async function getGuidedSetupDemoResetAvailability(
+  organizationId: string,
+): Promise<boolean> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("organization_trial_metadata")
+    .select("demo_data_seeded, last_demo_reset_at")
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+
+  return Boolean(data?.demo_data_seeded && !data.last_demo_reset_at);
 }
 
 export async function getGuidedSetupState(
