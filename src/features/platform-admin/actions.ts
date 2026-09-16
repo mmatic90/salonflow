@@ -86,6 +86,8 @@ export async function updatePlatformSalonLifecycleAction(input: {
   const planChanged = current.plan_code !== input.planCode;
   const enteringTrial =
     input.lifecycleStatus === "trial" && current.lifecycle_status !== "trial";
+  const convertingTrialToPaid =
+    current.lifecycle_status === "trial" && input.lifecycleStatus === "active";
   const trialStartedAt =
     enteringTrial && !current.trial_started_at ? now : current.trial_started_at;
   const trialEndsAt = trialEndsOn
@@ -123,6 +125,27 @@ export async function updatePlatformSalonLifecycleAction(input: {
 
   if (error) return { ok: false, error: error.message };
   if (!data) return { ok: false, error: "Salon više ne postoji." };
+
+  if (convertingTrialToPaid) {
+    const { error: setupError } = await supabase
+      .from("organization_setup_progress")
+      .upsert(
+        {
+          organization_id: input.organizationId,
+          source: "trial_conversion",
+          confirmed_steps: [],
+          started_at: now,
+          dismissed_at: null,
+          completed_at: null,
+          updated_at: now,
+        },
+        { onConflict: "organization_id" },
+      );
+
+    if (setupError) {
+      console.error("Could not start guided salon setup after trial conversion:", setupError);
+    }
+  }
 
   revalidateSalon(input.organizationId);
 
