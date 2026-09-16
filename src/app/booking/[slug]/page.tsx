@@ -47,10 +47,20 @@ function formatWorkingHours(
     en: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     it: ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"],
   }[lang];
+  const weekOrder = [1, 2, 3, 4, 5, 6, 0];
+  const dayPosition = new Map(
+    weekOrder.map((day, index) => [day, index]),
+  );
 
   const open = rows
     .filter((row) => !row.is_closed && row.opens_at && row.closes_at)
-    .sort((a, b) => a.day_of_week - b.day_of_week);
+    .map((row) => ({
+      ...row,
+      opens_at: String(row.opens_at).slice(0, 5),
+      closes_at: String(row.closes_at).slice(0, 5),
+      position: dayPosition.get(row.day_of_week) ?? 99,
+    }))
+    .sort((a, b) => a.position - b.position);
 
   if (!open.length) {
     return lang === "en"
@@ -60,13 +70,46 @@ function formatWorkingHours(
         : "Radno vrijeme prema narudžbi";
   }
 
-  return open
-    .map(
-      (row) =>
-        `${labels[row.day_of_week]} ${String(row.opens_at).slice(0, 5)}–${String(
-          row.closes_at,
-        ).slice(0, 5)}`,
-    )
+  const groups: Array<{
+    startDay: number;
+    endDay: number;
+    startPosition: number;
+    endPosition: number;
+    opensAt: string;
+    closesAt: string;
+  }> = [];
+
+  for (const row of open) {
+    const previous = groups.at(-1);
+    const sameHours =
+      previous?.opensAt === row.opens_at && previous?.closesAt === row.closes_at;
+    const consecutiveDay =
+      previous !== undefined && row.position === previous.endPosition + 1;
+
+    if (previous && sameHours && consecutiveDay) {
+      previous.endDay = row.day_of_week;
+      previous.endPosition = row.position;
+      continue;
+    }
+
+    groups.push({
+      startDay: row.day_of_week,
+      endDay: row.day_of_week,
+      startPosition: row.position,
+      endPosition: row.position,
+      opensAt: row.opens_at,
+      closesAt: row.closes_at,
+    });
+  }
+
+  return groups
+    .map((group) => {
+      const dayLabel =
+        group.startDay === group.endDay
+          ? labels[group.startDay]
+          : `${labels[group.startDay]}–${labels[group.endDay]}`;
+      return `${dayLabel} ${group.opensAt}–${group.closesAt}`;
+    })
     .join(" · ");
 }
 
