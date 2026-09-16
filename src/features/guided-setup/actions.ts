@@ -31,6 +31,7 @@ function revalidateSetup() {
 function freshStartCopy(locale: "hr" | "en" | "it") {
   if (locale === "en") {
     return {
+      ownerOnly: "Only the salon owner can perform the one-time fresh start.",
       confirmation: "Enter the salon name exactly to confirm the fresh start.",
       activePlan: "A fresh start is available only after a paid plan is active.",
       unavailable:
@@ -41,6 +42,8 @@ function freshStartCopy(locale: "hr" | "en" | "it") {
 
   if (locale === "it") {
     return {
+      ownerOnly:
+        "Solo il proprietario del salone può eseguire il nuovo inizio una tantum.",
       confirmation:
         "Inserisci esattamente il nome del salone per confermare il nuovo inizio.",
       activePlan:
@@ -52,6 +55,8 @@ function freshStartCopy(locale: "hr" | "en" | "it") {
   }
 
   return {
+    ownerOnly:
+      "Samo vlasnik salona može pokrenuti jednokratno postavljanje ispočetka.",
     confirmation:
       "Upiši točan naziv salona kako bi potvrdio postavljanje ispočetka.",
     activePlan:
@@ -170,6 +175,10 @@ export async function resetTrialDemoDataForFreshSetupAction(
 ): Promise<SetupActionResult> {
   const permissions = await requireAdminForSettings();
   const copy = freshStartCopy(permissions.organizationLocale);
+
+  if (permissions.organizationRole !== "owner") {
+    return { ok: false, error: copy.ownerOnly };
+  }
 
   if (
     typeof confirmation !== "string" ||
