@@ -3,6 +3,7 @@ import { LockKeyhole } from "lucide-react";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import { canUseCapability } from "@/lib/permissions";
 import { buildCapabilityUpgradePath } from "@/lib/entitlements";
+import { getGuidedSetupDemoResetAvailability } from "@/features/guided-setup/queries";
 import PageShell from "@/components/page-shell";
 import PageHeader from "@/components/page-header";
 import PageSection from "@/components/page-section";
@@ -109,6 +110,27 @@ const guidedSetupCardCopy: Record<
   },
 };
 
+const freshStartCardCopy: Record<
+  AppLocale,
+  { title: string; description: string }
+> = {
+  hr: {
+    title: "Postavi salon ispočetka",
+    description:
+      "Jednokratno ukloni trial demo podatke i pripremi plaćeni salon s pravim djelatnicima, uslugama i radnim vremenom.",
+  },
+  en: {
+    title: "Start with a clean salon",
+    description:
+      "Remove seeded trial data once and configure the paid salon with real employees, services and working hours.",
+  },
+  it: {
+    title: "Configura il salone da zero",
+    description:
+      "Rimuovi una sola volta i dati demo della prova e configura il salone a pagamento con collaboratori, servizi e orari reali.",
+  },
+};
+
 const emailCardCopy: Record<
   AppLocale,
   { title: string; description: string }
@@ -174,12 +196,16 @@ const retentionAutomationCopy: Record<
 
 export default async function SettingsPage() {
   const permissions = await requireAdminForSettings();
+  const canFreshStart = await getGuidedSetupDemoResetAvailability(
+    permissions.organizationId,
+  );
   const dictionary = getDictionary(permissions.organizationLocale);
   const t = dictionary.settings;
   const scheduleT = dictionary.schedule;
   const groups = groupLabels[permissions.organizationLocale];
   const profileCopy = profileCardCopy[permissions.organizationLocale];
   const guidedSetupCopy = guidedSetupCardCopy[permissions.organizationLocale];
+  const freshStartCopy = freshStartCardCopy[permissions.organizationLocale];
   const emailCopy = emailCardCopy[permissions.organizationLocale];
   const reviewCopy = reviewCardCopy[permissions.organizationLocale];
   const automationCopy = retentionAutomationCopy[permissions.organizationLocale];
@@ -222,12 +248,6 @@ export default async function SettingsPage() {
       <PageSection title={groups.essentials}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <SettingsCard
-            href="/dashboard/setup"
-            title={guidedSetupCopy.title}
-            description={guidedSetupCopy.description}
-          />
-
-          <SettingsCard
             href="/dashboard/settings/profile"
             title={profileCopy.title}
             description={profileCopy.description}
@@ -262,6 +282,20 @@ export default async function SettingsPage() {
             title={scheduleT.title}
             description={scheduleT.description}
           />
+
+          <SettingsCard
+            href="/dashboard/setup"
+            title={guidedSetupCopy.title}
+            description={guidedSetupCopy.description}
+          />
+
+          {canFreshStart ? (
+            <SettingsCard
+              href="/dashboard/settings/fresh-start"
+              title={freshStartCopy.title}
+              description={freshStartCopy.description}
+            />
+          ) : null}
         </div>
       </PageSection>
 
