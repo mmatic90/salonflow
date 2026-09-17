@@ -12,93 +12,92 @@ function getMonthStartValue(date: Date) {
   return formatDateInputValue(new Date(date.getFullYear(), date.getMonth(), 1));
 }
 
-function safeRate(part: number, total: number) {
-  if (total <= 0) return 0;
-  return Math.round((part / total) * 100);
-}
-
-export async function getDashboardOverviewStats() {
+export async function getDashboardOverviewStats(organizationId: string) {
   const supabase = await createClient();
 
   const today = new Date();
-
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
 
   const todayValue = formatDateInputValue(today);
   const tomorrowValue = formatDateInputValue(tomorrow);
   const monthStartValue = getMonthStartValue(today);
+  const nextMonthStart = new Date(today.getFullYear(), today.getMonth() + 1, 1).toISOString();
+  const monthStartIso = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
   const [
-    { count: pendingOnlineCount },
-    { count: todayOnlineCount },
-    { count: todayAppointmentsCount },
-    { count: tomorrowAppointmentsCount },
-    { count: completedThisMonthCount },
-    { count: noShowThisMonthCount },
-    { count: onlineThisMonthCount },
-    { count: onlineAcceptedThisMonthCount },
+    todayResult,
+    tomorrowResult,
+    completedResult,
+    noShowResult,
+    pendingOnlineResult,
+    todayOnlineResult,
+    onlineMonthResult,
   ] = await Promise.all([
-    supabase
-      .from("online_booking_requests")
-      .select("id", { count: "exact", head: true })
-      .is("archived_at", null)
-      .eq("status", "pending"),
+      supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("appointment_date", todayValue)
+        .in("status", ["scheduled", "confirmed"]),
+      supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("appointment_date", tomorrowValue)
+        .in("status", ["scheduled", "confirmed"]),
+      supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .gte("appointment_date", monthStartValue)
+        .eq("status", "completed"),
+      supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .gte("appointment_date", monthStartValue)
+        .eq("status", "no_show"),
+      supabase
+        .from("online_booking_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .is("archived_at", null)
+        .eq("status", "pending"),
+      supabase
+        .from("online_booking_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .is("archived_at", null)
+        .eq("requested_date", todayValue),
+      supabase
+        .from("online_booking_requests")
+        .select("id, status, created_at")
+        .eq("organization_id", organizationId)
+        .gte("created_at", monthStartIso)
+        .lt("created_at", nextMonthStart),
+    ]);
 
-    supabase
-      .from("online_booking_requests")
-      .select("id", { count: "exact", head: true })
-      .is("archived_at", null)
-      .eq("requested_date", todayValue),
+  const appointmentHasError = [todayResult, tomorrowResult, completedResult, noShowResult].some(
+    (result) => Boolean(result.error),
+  );
 
-    supabase
-      .from("appointments")
-      .select("id", { count: "exact", head: true })
-      .eq("appointment_date", todayValue)
-      .eq("status", "scheduled"),
-
-    supabase
-      .from("appointments")
-      .select("id", { count: "exact", head: true })
-      .eq("appointment_date", tomorrowValue)
-      .eq("status", "scheduled"),
-
-    supabase
-      .from("appointments")
-      .select("id", { count: "exact", head: true })
-      .gte("appointment_date", monthStartValue)
-      .eq("status", "completed"),
-
-    supabase
-      .from("appointments")
-      .select("id", { count: "exact", head: true })
-      .gte("appointment_date", monthStartValue)
-      .eq("status", "no_show"),
-
-    supabase
-      .from("online_booking_requests")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", `${monthStartValue}T00:00:00`),
-
-    supabase
-      .from("online_booking_requests")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", `${monthStartValue}T00:00:00`)
-      .eq("status", "accepted"),
-  ]);
-
-  const onlineThisMonth = onlineThisMonthCount ?? 0;
-  const onlineAcceptedThisMonth = onlineAcceptedThisMonthCount ?? 0;
+  const onlineRows = onlineMonthResult.error ? [] : (onlineMonthResult.data ?? []);
+  const onlineThisMonthCount = onlineRows.length;
+  const onlineAcceptedThisMonthCount = onlineRows.filter((item) => item.status === "accepted").length;
+  const onlineConversionRate = onlineThisMonthCount > 0
+    ? Math.round((onlineAcceptedThisMonthCount / onlineThisMonthCount) * 100)
+    : 0;
 
   return {
-    pendingOnlineCount: pendingOnlineCount ?? 0,
-    todayOnlineCount: todayOnlineCount ?? 0,
-    todayAppointmentsCount: todayAppointmentsCount ?? 0,
-    tomorrowAppointmentsCount: tomorrowAppointmentsCount ?? 0,
-    completedThisMonthCount: completedThisMonthCount ?? 0,
-    noShowThisMonthCount: noShowThisMonthCount ?? 0,
-    onlineThisMonthCount: onlineThisMonth,
-    onlineAcceptedThisMonthCount: onlineAcceptedThisMonth,
-    onlineConversionRate: safeRate(onlineAcceptedThisMonth, onlineThisMonth),
+    pendingOnlineCount: pendingOnlineResult.error ? 0 : (pendingOnlineResult.count ?? 0),
+    todayOnlineCount: todayOnlineResult.error ? 0 : (todayOnlineResult.count ?? 0),
+    todayAppointmentsCount: appointmentHasError ? 0 : (todayResult.count ?? 0),
+    tomorrowAppointmentsCount: appointmentHasError ? 0 : (tomorrowResult.count ?? 0),
+    completedThisMonthCount: appointmentHasError ? 0 : (completedResult.count ?? 0),
+    noShowThisMonthCount: appointmentHasError ? 0 : (noShowResult.count ?? 0),
+    onlineThisMonthCount,
+    onlineAcceptedThisMonthCount,
+    onlineConversionRate,
   };
 }

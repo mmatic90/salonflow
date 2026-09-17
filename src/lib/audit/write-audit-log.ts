@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 type WriteAuditLogArgs = {
   action: string;
@@ -18,30 +19,15 @@ export async function writeAuditLog({
   details = {},
 }: WriteAuditLogArgs) {
   try {
+    const permissions = await getCurrentUserPermissions();
+    if (!permissions) return;
+
     const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    let actorDisplayName: string | null = null;
-    let actorEmail: string | null = user?.email ?? null;
-
-    if (user?.id) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("display_name, email")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      actorDisplayName = profile?.display_name ?? null;
-      actorEmail = profile?.email ?? actorEmail;
-    }
-
     const { error } = await supabase.from("audit_logs").insert({
-      actor_user_id: user?.id ?? null,
-      actor_email: actorEmail,
-      actor_display_name: actorDisplayName,
+      organization_id: permissions.organizationId,
+      actor_user_id: permissions.userId,
+      actor_email: permissions.email,
+      actor_display_name: permissions.displayName,
       action,
       entity_type: entityType,
       entity_id: entityId,
@@ -49,10 +35,13 @@ export async function writeAuditLog({
       details,
     });
 
-    if (error) {
-      console.error("Audit log insert error:", error);
+    if (error && error.code !== "PGRST205") {
+      console.warn("Audit log insert failed:", error.message);
     }
   } catch (error) {
-    console.error("writeAuditLog error:", error);
+    console.warn(
+      "Audit log write failed:",
+      error instanceof Error ? error.message : String(error),
+    );
   }
 }

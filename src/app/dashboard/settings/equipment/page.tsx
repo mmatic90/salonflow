@@ -4,9 +4,12 @@ import EquipmentTable from "./equipment-table";
 import EquipmentCreateForm from "./equipment-create-form";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import EmptyStateCard from "@/components/empty-state-card";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function SettingsEquipmentPage() {
-  await requireAdminForSettings();
+  const permissions = await requireAdminForSettings();
+  const settings = getDictionary(permissions.organizationLocale).settings;
+  const t = settings.equipment;
 
   const equipment = await getEquipment();
 
@@ -16,9 +19,9 @@ export default async function SettingsEquipmentPage() {
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-app-text">Oprema</h1>
+              <h1 className="text-3xl font-bold text-app-text">{t.title}</h1>
               <p className="mt-2 text-app-muted">
-                Dodaj i upravljaj opremom salona.
+                {t.intro}
               </p>
             </div>
 
@@ -26,28 +29,28 @@ export default async function SettingsEquipmentPage() {
               href="/dashboard/settings"
               className="rounded-xl border border-app-soft bg-white px-4 py-2 font-medium text-app-text transition hover:bg-app-bg"
             >
-              Natrag
+              {settings.back}
             </Link>
           </div>
         </div>
 
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-app-text">Nova oprema</h2>
+          <h2 className="text-xl font-semibold text-app-text">{t.newTitle}</h2>
           <div className="mt-4">
-            <EquipmentCreateForm />
+            <EquipmentCreateForm locale={permissions.organizationLocale} />
           </div>
         </div>
 
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-app-text">Popis opreme</h2>
+          <h2 className="text-xl font-semibold text-app-text">{t.listTitle}</h2>
           <div className="mt-4">
             {equipment.length === 0 ? (
               <EmptyStateCard
-                title="Nema opreme"
-                description="Dodaj prvu stavku opreme kako bi se mogla povezivati s uslugama."
+                title={t.emptyTitle}
+                description={t.emptyDescription}
               />
             ) : (
-              <EquipmentTable equipment={equipment} />
+              <EquipmentTable locale={permissions.organizationLocale} equipment={equipment} />
             )}
           </div>
         </div>

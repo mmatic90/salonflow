@@ -32,13 +32,10 @@ export default function ClientCombobox({
   onUseTypedAsNew,
   onClearSelection,
 }: Props) {
-  const [query, setQuery] = useState(clientName);
+  const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setQuery(clientName);
-  }, [clientName]);
+  const displayedQuery = open ? query : clientName;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -74,13 +71,18 @@ export default function ClientCombobox({
     return clients.some((client) => normalize(client.full_name) === q);
   }, [clients, query]);
 
+  function openSearch() {
+    setQuery(clientName);
+    setOpen(true);
+  }
+
   return (
     <div className="relative" ref={wrapperRef}>
       <div className="flex gap-2">
         <input
           type="text"
-          value={query}
-          onFocus={() => setOpen(true)}
+          value={displayedQuery}
+          onFocus={openSearch}
           onChange={(e) => {
             const value = e.target.value;
             setQuery(value);
@@ -148,7 +150,7 @@ export default function ClientCombobox({
               className="mt-2 block w-full rounded-xl border border-dashed border-app-soft px-3 py-3 text-left transition hover:bg-app-bg"
             >
               <div className="font-medium text-app-text">
-                Dodaj novog klijenta: "{query}"
+                Dodaj novog klijenta: &quot;{query}&quot;
               </div>
               <div className="mt-1 text-xs text-app-muted">
                 Novi klijent će biti kreiran prilikom spremanja termina.

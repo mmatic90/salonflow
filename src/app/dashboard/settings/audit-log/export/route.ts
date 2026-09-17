@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminForSettings } from "@/lib/page-guards";
+import { requireAdminForAuditLog } from "@/lib/page-guards";
 import { getAuditLogsForExport } from "@/features/audit/queries";
 
 function actionLabel(action: string) {
@@ -70,7 +70,7 @@ function csvCell(value: string | null | undefined) {
 }
 
 export async function GET(request: NextRequest) {
-  await requireAdminForSettings();
+  await requireAdminForAuditLog();
 
   const searchParams = request.nextUrl.searchParams;
   const logs = await getAuditLogsForExport({

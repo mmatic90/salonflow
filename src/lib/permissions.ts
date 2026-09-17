@@ -1,14 +1,39 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  normalizeSalonLifecycleStatus,
+  normalizeSalonPlanCode,
+  type SalonLifecycleStatus,
+  type SalonPlanCode,
+} from "@/lib/plans";
+import {
+  getEffectiveEntitlementPlan,
+  organizationHasCapability,
+  type SalonCapabilityCode,
+} from "@/lib/entitlements";
 
+export type OrganizationRole = "owner" | "admin" | "manager" | "employee";
 export type AppRole = "admin" | "employee";
-
-const SYSTEM_DEVELOPER_EMAILS = new Set([
-  "maurizio@bodyandsoul.hr",
-]);
+export type OrganizationTheme =
+  | "sand"
+  | "rose"
+  | "slate"
+  | "sage"
+  | "ocean"
+  | "plum";
 
 export type CurrentUserPermissions = {
   userId: string;
   email: string | null;
+  organizationId: string;
+  organizationName: string;
+  organizationLocale: "hr" | "en" | "it";
+  organizationTheme: OrganizationTheme;
+  organizationLogoUrl: string | null;
+  organizationPlanCode: SalonPlanCode;
+  organizationLifecycleStatus: SalonLifecycleStatus;
+  organizationTrialEndsAt: string | null;
+  organizationEntitlementPlan: SalonPlanCode;
+  organizationRole: OrganizationRole;
   role: AppRole;
   employeeId: string | null;
   displayName: string;
@@ -17,8 +42,28 @@ export type CurrentUserPermissions = {
   isSystemDeveloper: boolean;
 };
 
-export function isSystemDeveloperEmail(email: string | null | undefined) {
-  return SYSTEM_DEVELOPER_EMAILS.has(String(email ?? "").trim().toLowerCase());
+export type SuspendedOrganizationContext = {
+  organizationId: string;
+  organizationName: string;
+  organizationLocale: "hr" | "en" | "it";
+  organizationLogoUrl: string | null;
+};
+
+function normalizeTheme(value: string | null | undefined): OrganizationTheme {
+  if (
+    value === "rose" ||
+    value === "slate" ||
+    value === "sage" ||
+    value === "ocean" ||
+    value === "plum"
+  ) {
+    return value;
+  }
+  return "sand";
+}
+
+function normalizeLocale(value: string | null | undefined) {
+  return value === "en" || value === "it" ? value : "hr";
 }
 
 export async function getCurrentUserPermissions(): Promise<CurrentUserPermissions | null> {
@@ -33,42 +78,141 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     return null;
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, email, role, display_name, is_active")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: membership, error: membershipError }, { data: platformAdmin }] =
+    await Promise.all([
+      supabase
+        .from("organization_members")
+        .select(
+          "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active, plan_code, lifecycle_status, trial_ends_at)",
+        )
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("platform_admins")
+        .select("user_id")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
 
-  if (profileError || !profile || profile.is_active === false) {
+  if (membershipError || !membership) {
     return null;
   }
 
-  const { data: employee, error: employeeError } = await supabase
+  const organization = Array.isArray(membership.organizations)
+    ? membership.organizations[0]
+    : membership.organizations;
+
+  if (!organization || organization.is_active === false) {
+    return null;
+  }
+
+  const { data: employee } = await supabase
     .from("employees")
-    .select("id, color_hex, is_active")
-    .eq("profile_id", user.id)
+    .select("id, color, is_active, first_name, last_name")
+    .eq("organization_id", membership.organization_id)
+    .eq("user_id", user.id)
     .maybeSingle();
-
-  if (employeeError) {
-    return null;
-  }
 
   if (employee && employee.is_active === false) {
     return null;
   }
 
-  const email = profile.email ?? user.email ?? null;
+  const organizationRole = membership.role as OrganizationRole;
+  const appRole: AppRole = organizationRole === "employee" ? "employee" : "admin";
+  const employeeName = employee
+    ? [employee.first_name, employee.last_name].filter(Boolean).join(" ")
+    : null;
+  const organizationPlanCode = normalizeSalonPlanCode(organization.plan_code);
+  const organizationLifecycleStatus = normalizeSalonLifecycleStatus(
+    organization.lifecycle_status,
+  );
+  const organizationTrialEndsAt = organization.trial_ends_at ?? null;
 
   return {
     userId: user.id,
-    email,
-    role: profile.role as AppRole,
+    email: user.email ?? null,
+    organizationId: membership.organization_id,
+    organizationName: organization.name,
+    organizationLocale: normalizeLocale(organization.locale),
+    organizationTheme: normalizeTheme(organization.theme),
+    organizationLogoUrl: organization.logo_url ?? null,
+    organizationPlanCode,
+    organizationLifecycleStatus,
+    organizationTrialEndsAt,
+    organizationEntitlementPlan: getEffectiveEntitlementPlan(
+      organizationPlanCode,
+      organizationLifecycleStatus,
+      organizationTrialEndsAt,
+    ),
+    organizationRole,
+    role: appRole,
     employeeId: employee?.id ?? null,
-    displayName: profile.display_name ?? user.email ?? "Korisnik",
-    colorHex: employee?.color_hex ?? null,
+    displayName:
+      membership.display_name ??
+      employeeName ??
+      user.user_metadata?.display_name ??
+      user.email ??
+      "Korisnik",
+    colorHex: employee?.color ?? null,
     isEmployee: Boolean(employee),
-    isSystemDeveloper: isSystemDeveloperEmail(email),
+    isSystemDeveloper: Boolean(platformAdmin),
   };
+}
+
+export async function getSuspendedOrganizationForCurrentUser(): Promise<SuspendedOrganizationContext | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) return null;
+
+  const { data: memberships, error } = await supabase
+    .from("organization_members")
+    .select(
+      "organization_id, is_active, organizations(name, locale, logo_url, is_active)",
+    )
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+
+  if (error) return null;
+
+  for (const membership of memberships ?? []) {
+    const organization = Array.isArray(membership.organizations)
+      ? membership.organizations[0]
+      : membership.organizations;
+
+    if (!organization || organization.is_active !== false) continue;
+
+    return {
+      organizationId: String(membership.organization_id),
+      organizationName: String(organization.name),
+      organizationLocale: normalizeLocale(organization.locale),
+      organizationLogoUrl: organization.logo_url ?? null,
+    };
+  }
+
+  return null;
+}
+
+export function canUseCapability(
+  permissions: Pick<
+    CurrentUserPermissions,
+    | "organizationPlanCode"
+    | "organizationLifecycleStatus"
+    | "organizationTrialEndsAt"
+  >,
+  capabilityCode: SalonCapabilityCode,
+) {
+  return organizationHasCapability(
+    permissions.organizationPlanCode,
+    permissions.organizationLifecycleStatus,
+    capabilityCode,
+    permissions.organizationTrialEndsAt,
+  );
 }
 
 export function isAdmin(role: AppRole) {
