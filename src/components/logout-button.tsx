@@ -7,6 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 import { getDictionary, type AppLocale } from "@/lib/i18n";
 
+function logoutErrorMessage(locale: AppLocale) {
+  if (locale === "it") return "Impossibile disconnettersi. Riprova.";
+  if (locale === "en") return "We could not sign you out. Please try again.";
+  return "Odjava nije uspjela. Pokušaj ponovno.";
+}
+
 export default function LogoutButton({
   locale = "hr",
   iconOnly = false,
@@ -25,7 +31,8 @@ export default function LogoutButton({
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      toast.error(error.message);
+      console.error("Logout failed:", error);
+      toast.error(logoutErrorMessage(locale));
       setLoading(false);
       return;
     }
