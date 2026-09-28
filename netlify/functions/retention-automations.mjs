@@ -3,9 +3,8 @@ const retentionAutomations = async () => {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!siteUrl || !cronSecret) {
-    return new Response("Missing URL or CRON_SECRET environment variable.", {
-      status: 500,
-    });
+    console.error("retention-automations is missing URL or CRON_SECRET.");
+    return new Response("Scheduled job is not configured.", { status: 500 });
   }
 
   try {
@@ -16,13 +15,16 @@ const retentionAutomations = async () => {
         accept: "application/json",
       },
     });
-    const body = await response.text();
+
+    if (!response.ok) {
+      const body = await response.text();
+      console.error(`[retention-automations] ${response.status}`, body.slice(0, 4000));
+    }
 
     return new Response(
       JSON.stringify({
         ok: response.ok,
         status: response.status,
-        body: body.slice(0, 4000),
       }),
       {
         status: response.ok ? 200 : 500,
@@ -30,12 +32,9 @@ const retentionAutomations = async () => {
       },
     );
   } catch (error) {
+    console.error("[retention-automations]", error);
     return new Response(
-      JSON.stringify({
-        ok: false,
-        status: 0,
-        body: error instanceof Error ? error.message : "Unknown error",
-      }),
+      JSON.stringify({ ok: false, status: 0 }),
       {
         status: 500,
         headers: { "content-type": "application/json" },
