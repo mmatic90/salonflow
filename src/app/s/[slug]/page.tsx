@@ -9,7 +9,6 @@ import {
   Phone,
   Sparkles,
 } from "lucide-react";
-import CookieConsent from "@/components/cookie-consent";
 import FloatingWhatsAppButton from "@/components/floating-whatsapp-button";
 import PublicFooter from "@/components/public-footer";
 import {
@@ -343,7 +342,6 @@ export default async function SalonPublicPage({
         </div>
       </section>
 
-      <CookieConsent />
       <PublicFooter salonName={organization.name} />
       {organization.phone ? (
         <FloatingWhatsAppButton phone={organization.phone} lang={lang} />
