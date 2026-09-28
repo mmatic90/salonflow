@@ -7,8 +7,8 @@ import PublicFooter from "@/components/public-footer";
 import {
   getOnlineBookableServices,
   getPublicBookingOrganizationBySlug,
+  getPublicSalonWorkingHours,
 } from "@/features/public-booking/queries";
-import { createClient } from "@/lib/supabase/server";
 
 type Lang = "hr" | "en" | "it";
 
@@ -157,18 +157,14 @@ export default async function TenantBookingPage({
 
   const lang = getLang(resolvedSearchParams?.lang, organization.locale);
   const t = copy[lang];
-  const supabase = await createClient();
 
-  const [services, { data: workingHours }] = await Promise.all([
+  const [services, workingHours] = await Promise.all([
     getOnlineBookableServices(organization.id),
-    supabase
-      .from("salon_working_hours")
-      .select("day_of_week, opens_at, closes_at, is_closed")
-      .eq("organization_id", organization.id),
+    getPublicSalonWorkingHours(organization.id),
   ]);
 
   const address = formatAddress(organization);
-  const hours = formatWorkingHours(workingHours ?? [], lang);
+  const hours = formatWorkingHours(workingHours, lang);
 
   return (
     <main
