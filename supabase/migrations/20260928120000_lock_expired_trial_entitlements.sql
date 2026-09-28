@@ -123,7 +123,7 @@ security invoker
 set search_path = public
 as $$
 begin
-  if coalesce(auth.role(), current_user) = 'service_role'
+  if coalesce(auth.role(), current_user::text) = 'service_role'
     or current_user in ('postgres', 'supabase_admin')
   then
     return new;
