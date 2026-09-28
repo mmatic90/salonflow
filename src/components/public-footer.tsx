@@ -1,19 +1,15 @@
-export default function PublicFooter() {
+type Props = {
+  salonName?: string;
+};
+
+export default function PublicFooter({ salonName = "SalonFlow" }: Props) {
   return (
-    <footer className="border-t border-[#eadbd2] bg-[#f8f3ef] px-6 py-8 text-center text-sm text-[#6f5a50]">
-      <p>© {new Date().getFullYear()} Body &amp; Soul. Sva prava pridržana.</p>
+    <footer className="border-t border-app-soft bg-app-bg px-6 py-8 text-center text-sm text-app-muted">
+      <p>© {new Date().getFullYear()} {salonName}. Sva prava pridržana.</p>
 
       <p className="mt-2">
-        Web stranica i booking sustav izradio{" "}
-        <a
-          href="https://mit-informatika.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-semibold text-[#2f2723] underline-offset-4 hover:underline"
-        >
-          M.i.T. informatika
-        </a>
-        .
+        Booking sustav pokreće{" "}
+        <span className="font-semibold text-app-text">SalonFlow</span>.
       </p>
     </footer>
   );

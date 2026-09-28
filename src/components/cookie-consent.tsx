@@ -1,28 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const COOKIE_KEY = "bodyandsoul_cookie_consent";
+const COOKIE_CHANGE_EVENT = "salonflow-cookie-consent-change";
+
+type ConsentSnapshot = "loading" | "accepted" | "rejected" | null;
+
+function getConsentSnapshot(): ConsentSnapshot {
+  const saved = window.localStorage.getItem(COOKIE_KEY);
+  return saved === "accepted" || saved === "rejected" ? saved : null;
+}
+
+function getConsentServerSnapshot(): ConsentSnapshot {
+  return "loading";
+}
+
+function subscribeToConsent(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener(COOKIE_CHANGE_EVENT, listener);
+
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener(COOKIE_CHANGE_EVENT, listener);
+  };
+}
+
+function saveConsent(value: "accepted" | "rejected") {
+  window.localStorage.setItem(COOKIE_KEY, value);
+  window.dispatchEvent(new Event(COOKIE_CHANGE_EVENT));
+}
 
 export default function CookieConsent() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem(COOKIE_KEY);
-    if (!saved) setVisible(true);
-  }, []);
+  const consent = useSyncExternalStore(
+    subscribeToConsent,
+    getConsentSnapshot,
+    getConsentServerSnapshot,
+  );
 
   function acceptCookies() {
-    window.localStorage.setItem(COOKIE_KEY, "accepted");
-    setVisible(false);
+    saveConsent("accepted");
   }
 
   function rejectCookies() {
-    window.localStorage.setItem(COOKIE_KEY, "rejected");
-    setVisible(false);
+    saveConsent("rejected");
   }
 
-  if (!visible) return null;
+  if (consent !== null) return null;
 
   return (
     <div className="fixed inset-x-4 bottom-4 z-50 mx-auto max-w-3xl rounded-2xl border border-[#eadbd2] bg-white p-5 shadow-2xl">

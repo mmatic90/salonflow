@@ -3,92 +3,110 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   BellRing,
   CalendarDays,
-  Clock3,
+  HeartHandshake,
   LayoutDashboard,
-  ListChecks,
+  ListPlus,
+  LockKeyhole,
   PanelLeft,
   PanelLeftClose,
   Settings,
+  ShieldCheck,
   Users,
   UserCircle2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import LogoutButton from "@/components/logout-button";
 import OnlineBookingBadge from "@/components/online-booking-badge";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
+import {
+  buildCapabilityUpgradePath,
+  type SalonCapabilityCode,
+} from "@/lib/entitlements";
 
 type AppRole = "admin" | "employee";
 
 type Props = {
   role: AppRole;
   displayName: string;
+  organizationName: string;
+  locale: AppLocale;
+  canUseWaitlist?: boolean;
+  canUseReports?: boolean;
+  canUseAdvancedCrm?: boolean;
+  isSystemDeveloper?: boolean;
 };
 
-const allNavItems = [
+type NavDefinition = {
+  href: string;
+  key:
+    | "dashboard"
+    | "onlineBookings"
+    | "calendar"
+    | "clients"
+    | "waitlist"
+    | "retention"
+    | "reports"
+    | "settings";
+  icon: typeof LayoutDashboard;
+  roles: AppRole[];
+  capability?: SalonCapabilityCode;
+};
+
+const SIDEBAR_STORAGE_KEY = "dashboard-sidebar-collapsed";
+const SIDEBAR_CHANGE_EVENT = "salonflow-sidebar-change";
+
+const navDefinitions: NavDefinition[] = [
   {
     href: "/dashboard",
-    label: "Dashboard",
+    key: "dashboard",
     icon: LayoutDashboard,
-    roles: ["admin", "employee"],
-  },
-  {
-    href: "/dashboard/online-bookings",
-    label: "Online rezervacije",
-    icon: BellRing,
-    roles: ["admin", "employee"],
-  },
-  {
-    href: "/dashboard/appointments",
-    label: "Termini",
-    icon: ListChecks,
     roles: ["admin", "employee"],
   },
   {
     href: "/dashboard/calendar",
-    label: "Kalendar",
+    key: "calendar",
     icon: CalendarDays,
     roles: ["admin", "employee"],
   },
   {
-    href: "/dashboard/calendar/week",
-    label: "Tjedni kalendar",
-    icon: CalendarDays,
-    roles: ["admin", "employee"],
-  },
-  {
-    href: "/dashboard/calendar/time-grid",
-    label: "Time Grid",
-    icon: Clock3,
+    href: "/dashboard/online-bookings",
+    key: "onlineBookings",
+    icon: BellRing,
     roles: ["admin", "employee"],
   },
   {
     href: "/dashboard/clients",
-    label: "Klijenti",
+    key: "clients",
     icon: Users,
     roles: ["admin", "employee"],
   },
   {
-    href: "/dashboard/account",
-    label: "Moj račun",
-    icon: UserCircle2,
+    href: "/dashboard/waitlist",
+    key: "waitlist",
+    icon: ListPlus,
     roles: ["admin", "employee"],
+    capability: "waitlist",
   },
   {
-    href: "/dashboard/schedule",
-    label: "Rasporedi",
-    icon: Users,
+    href: "/dashboard/retention",
+    key: "retention",
+    icon: HeartHandshake,
     roles: ["admin"],
+    capability: "advanced_crm",
   },
   {
     href: "/dashboard/reports",
-    label: "Reports",
-    icon: LayoutDashboard,
+    key: "reports",
+    icon: BarChart3,
     roles: ["admin"],
+    capability: "advanced_reports",
   },
   {
     href: "/dashboard/settings",
-    label: "Postavke",
+    key: "settings",
     icon: Settings,
     roles: ["admin"],
   },
@@ -99,45 +117,129 @@ function isActive(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-export default function DashboardSidebar({ role, displayName }: Props) {
+function getInitials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "SF"
+  );
+}
+
+function waitlistLabel(locale: AppLocale) {
+  if (locale === "en") return "Waitlist";
+  if (locale === "it") return "Lista d'attesa";
+  return "Lista čekanja";
+}
+
+function retentionLabel(locale: AppLocale) {
+  if (locale === "en") return "CRM actions";
+  if (locale === "it") return "Azioni CRM";
+  return "CRM akcije";
+}
+
+function subscribeToSidebarPreference(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener(SIDEBAR_CHANGE_EVENT, listener);
+
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener(SIDEBAR_CHANGE_EVENT, listener);
+  };
+}
+
+function getSidebarPreferenceSnapshot() {
+  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+}
+
+function getSidebarPreferenceServerSnapshot() {
+  return false;
+}
+
+export default function DashboardSidebar({
+  role,
+  displayName,
+  organizationName,
+  locale,
+  canUseWaitlist = true,
+  canUseReports = true,
+  canUseAdvancedCrm = true,
+  isSystemDeveloper = false,
+}: Props) {
   const pathname = usePathname();
-
+  const dictionary = getDictionary(locale);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
-
-  const navItems = useMemo(
-    () => allNavItems.filter((item) => item.roles.includes(role)),
-    [role],
+  const desktopCollapsed = useSyncExternalStore(
+    subscribeToSidebarPreference,
+    getSidebarPreferenceSnapshot,
+    getSidebarPreferenceServerSnapshot,
   );
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem("dashboard-sidebar-collapsed");
-    if (saved === "true") setDesktopCollapsed(true);
-  }, []);
+  const navItems = useMemo(
+    () =>
+      navDefinitions
+        .filter((item) => item.roles.includes(role))
+        .map((item) => {
+          const unlocked =
+            item.capability === "waitlist"
+              ? canUseWaitlist
+              : item.capability === "advanced_reports"
+                ? canUseReports
+                : item.capability === "advanced_crm"
+                  ? canUseAdvancedCrm
+                  : true;
+          const locked = Boolean(item.capability && !unlocked);
+          const label =
+            item.key === "waitlist"
+              ? waitlistLabel(locale)
+              : item.key === "retention"
+                ? retentionLabel(locale)
+                : dictionary.nav[item.key];
+
+          return {
+            ...item,
+            label,
+            locked,
+            targetHref:
+              locked && item.capability
+                ? buildCapabilityUpgradePath(item.capability, item.href)
+                : item.href,
+          };
+        }),
+    [
+      canUseAdvancedCrm,
+      canUseReports,
+      canUseWaitlist,
+      dictionary,
+      locale,
+      role,
+    ],
+  );
 
   function toggleDesktop() {
-    setDesktopCollapsed((prev) => {
-      const next = !prev;
-      window.localStorage.setItem("dashboard-sidebar-collapsed", String(next));
-      return next;
-    });
+    const next = !desktopCollapsed;
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+    window.dispatchEvent(new Event(SIDEBAR_CHANGE_EVENT));
   }
 
   return (
     <>
-      {/* MOBILE HEADER */}
       <div className="sticky top-0 z-50 border-b border-app-soft bg-app-card px-4 py-3 shadow-sm lg:hidden">
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-lg font-semibold text-app-text">
-              Body and Soul
+          <div className="min-w-0">
+            <div className="truncate text-lg font-semibold text-app-text">
+              {organizationName}
             </div>
-            <div className="text-xs text-app-muted">Salon admin</div>
+            <div className="text-xs text-app-muted">
+              {dictionary.salonAdminPanel}
+            </div>
           </div>
-
           <button
             type="button"
             onClick={() => setMobileOpen((prev) => !prev)}
+            aria-expanded={mobileOpen}
             className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg"
           >
             {mobileOpen ? (
@@ -148,76 +250,88 @@ export default function DashboardSidebar({ role, displayName }: Props) {
           </button>
         </div>
 
-        <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-app-soft bg-app-card-alt px-4 py-3">
-          <div className="text-sm text-app-muted">
-            Logiran kao:{" "}
-            <span className="font-medium text-app-text">{displayName}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard/account"
-              className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
-            >
-              Moj račun
-            </Link>
-            <LogoutButton />
-          </div>
-        </div>
+        {mobileOpen ? (
+          <div className="mt-4 space-y-3">
+            <nav className="space-y-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = !item.locked && isActive(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.targetHref}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                      active
+                        ? "bg-app-accent text-white shadow-sm"
+                        : "bg-app-card-alt text-app-text hover:bg-white"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                    {item.locked ? (
+                      <LockKeyhole className="ml-auto h-4 w-4 text-app-muted" />
+                    ) : item.href === "/dashboard/online-bookings" ? (
+                      <OnlineBookingBadge />
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
 
-        {mobileOpen && (
-          <div className="mt-4 space-y-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(pathname, item.href);
-
-              return (
+            <div className="rounded-2xl border border-app-soft bg-app-card-alt px-4 py-3">
+              <div className="text-sm text-app-muted">
+                {dictionary.loggedInAs}:{" "}
+                <span className="font-medium text-app-text">{displayName}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <Link
-                  key={item.href}
-                  href={item.href}
+                  href="/dashboard/account"
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
-                    active
-                      ? "bg-app-accent text-white shadow-sm"
-                      : "bg-app-card-alt text-app-text hover:bg-white"
-                  }`}
+                  className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-
-                  {/* ✅ BADGE (MOBILE) */}
-                  {item.href === "/dashboard/online-bookings" && (
-                    <OnlineBookingBadge />
-                  )}
+                  {dictionary.myAccount}
                 </Link>
-              );
-            })}
+                {isSystemDeveloper ? (
+                  <Link
+                    href="/platform"
+                    onClick={() => setMobileOpen(false)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> Platform Admin
+                  </Link>
+                ) : null}
+                <LogoutButton locale={locale} />
+              </div>
+            </div>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {/* DESKTOP SIDEBAR */}
       <aside
         className={`hidden lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:border-r lg:border-app-soft lg:bg-app-card lg:py-6 lg:shadow-sm transition-all duration-200 ${
           desktopCollapsed ? "lg:w-24" : "lg:w-72"
         }`}
       >
-        <div className="flex items-start justify-between gap-2 px-4 pb-6">
+        <div
+          className={`flex items-start gap-2 pb-6 ${
+            desktopCollapsed ? "justify-center px-3" : "justify-between px-4"
+          }`}
+        >
           {!desktopCollapsed ? (
-            <div>
-              <div className="text-xl font-bold text-app-text">
-                Body and Soul
+            <div className="min-w-0">
+              <div className="truncate text-xl font-bold text-app-text">
+                {organizationName}
               </div>
               <div className="mt-1 text-sm text-app-muted">
-                Salon admin panel
+                {dictionary.salonAdminPanel}
               </div>
             </div>
-          ) : (
-            <div className="text-sm font-bold text-app-text">B&S</div>
-          )}
-
+          ) : null}
           <button
             type="button"
             onClick={toggleDesktop}
+            title={organizationName}
             className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg"
           >
             {desktopCollapsed ? (
@@ -228,15 +342,23 @@ export default function DashboardSidebar({ role, displayName }: Props) {
           </button>
         </div>
 
+        {desktopCollapsed ? (
+          <div
+            className="mx-auto mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-app-card-alt text-xs font-bold text-app-text"
+            title={organizationName}
+          >
+            {getInitials(organizationName)}
+          </div>
+        ) : null}
+
         <nav className="flex-1 space-y-2 overflow-y-auto px-3">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const active = isActive(pathname, item.href);
-
+            const active = !item.locked && isActive(pathname, item.href);
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={item.targetHref}
                 className={`flex items-center rounded-2xl px-4 py-3 text-sm font-medium transition ${
                   desktopCollapsed ? "justify-center" : "gap-3"
                 } ${
@@ -247,60 +369,73 @@ export default function DashboardSidebar({ role, displayName }: Props) {
                 title={desktopCollapsed ? item.label : undefined}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-
                 {!desktopCollapsed ? (
                   <>
                     <span>{item.label}</span>
-
-                    {/* ✅ BADGE (DESKTOP NORMAL) */}
-                    {item.href === "/dashboard/online-bookings" && (
+                    {item.locked ? (
+                      <LockKeyhole className="ml-auto h-4 w-4 text-app-muted" />
+                    ) : item.href === "/dashboard/online-bookings" ? (
                       <OnlineBookingBadge />
-                    )}
+                    ) : null}
                   </>
-                ) : (
-                  item.href === "/dashboard/online-bookings" && (
-                    <OnlineBookingBadge />
-                  )
-                )}
+                ) : item.locked ? (
+                  <LockKeyhole className="ml-1 h-3 w-3 shrink-0 text-app-muted" />
+                ) : item.href === "/dashboard/online-bookings" ? (
+                  <OnlineBookingBadge />
+                ) : null}
               </Link>
             );
           })}
         </nav>
 
         <div className="mt-auto px-3 pt-6">
-          <div className="rounded-2xl border border-app-soft bg-app-card-alt p-4">
-            {!desktopCollapsed ? (
-              <>
-                <div className="text-sm text-app-muted">
-                  Logiran kao:{" "}
-                  <span className="font-medium text-app-text">
-                    {displayName}
-                  </span>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link
-                    href="/dashboard/account"
-                    className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
-                  >
-                    Moj račun
-                  </Link>
-                  <LogoutButton />
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
+          {!desktopCollapsed ? (
+            <div className="rounded-2xl border border-app-soft bg-app-card-alt p-4">
+              <div className="text-sm text-app-muted">
+                {dictionary.loggedInAs}:{" "}
+                <span className="font-medium text-app-text">{displayName}</span>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Link
                   href="/dashboard/account"
-                  title="Moj račun"
-                  className="rounded-xl border border-app-soft bg-white p-2 text-app-text transition hover:bg-app-bg"
+                  className="rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
                 >
-                  <UserCircle2 className="h-4 w-4" />
+                  {dictionary.myAccount}
                 </Link>
-                <LogoutButton />
+                {isSystemDeveloper ? (
+                  <Link
+                    href="/platform"
+                    className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-3 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg"
+                  >
+                    <ShieldCheck className="h-4 w-4" /> Platform Admin
+                  </Link>
+                ) : null}
+                <LogoutButton locale={locale} />
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 border-t border-app-soft pt-4">
+              <Link
+                href="/dashboard/account"
+                title={`${dictionary.myAccount} · ${displayName}`}
+                aria-label={dictionary.myAccount}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-app-soft bg-white text-app-text transition hover:bg-app-bg"
+              >
+                <UserCircle2 className="h-4 w-4" />
+              </Link>
+              {isSystemDeveloper ? (
+                <Link
+                  href="/platform"
+                  title="Platform Admin"
+                  aria-label="Platform Admin"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-app-soft bg-white text-app-text transition hover:bg-app-bg"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </Link>
+              ) : null}
+              <LogoutButton locale={locale} iconOnly />
+            </div>
+          )}
         </div>
       </aside>
     </>

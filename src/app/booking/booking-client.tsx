@@ -1,20 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Lang = "hr" | "en";
+type Lang = "hr" | "en" | "it";
 
 type Service = {
   id: string;
   name: string;
-  name_en: string | null;
   description: string | null;
-  description_en: string | null;
   duration_minutes: number;
-  price_cents: number | null;
-  service_group: string | null;
-  service_group_en: string | null;
+  price: number | null;
+  currency: string;
+  category: string | null;
 };
 
 type Slot = {
@@ -46,14 +44,17 @@ const text = {
     freeSlots: "Slobodni sati",
     contactTitle: "Kontakt podaci",
     contactText:
-      "Unesi svoje podatke kako bi salon mogao potvrditi rezervaciju. Broj telefona je obavezan jer ćeš SMS-om dobiti potvrdu ili povratnu informaciju.",
+      "Unesi svoje podatke kako bi salon mogao obraditi i potvrditi rezervaciju.",
     selectedSlot: "Odabrani termin",
     fullName: "Ime i prezime *",
-    phone: "Telefon *",
-    phoneHelp:
-      "SMS potvrde šalju se samo na hrvatske brojeve. Ako nemaš hrvatski broj, obavezno unesi email kako bi salon mogao poslati potvrdu emailom.",
-    email: "Email (opcionalno)",
+    phone: "Telefon (opcionalno)",
+    phoneHelp: "Broj telefona služi samo kao dodatni kontakt podatak.",
+    email: "Email *",
     note: "Napomena (opcionalno)",
+    marketingOptIn:
+      "Želim primati novosti, ponude i retention emailove ovog salona.",
+    marketingOptInHelp:
+      "Opcionalno. Ovo nije potrebno za rezervaciju i možeš se odjaviti u bilo kojem trenutku. Poruke o terminima vode se odvojeno.",
     submit: "Pošalji zahtjev za rezervaciju",
     submitting: "Slanje zahtjeva...",
     chooseSlotFirst: "Prvo odaberi slobodan sat.",
@@ -62,6 +63,7 @@ const text = {
     alerts: {
       missingSlot: "Odaberi uslugu, datum i termin.",
       missingName: "Ime i prezime je obavezno.",
+      missingEmail: "Email adresa je obavezna za potvrdu rezervacije.",
       availabilityError: "Greška pri dohvaćanju termina.",
       bookingError: "Greška pri rezervaciji.",
     },
@@ -84,14 +86,17 @@ const text = {
     freeSlots: "Available times",
     contactTitle: "Contact details",
     contactText:
-      "Enter your details so the salon can review your request. Phone number is required because you will receive confirmation or feedback by SMS.",
+      "Enter your details so the salon can review and confirm your request.",
     selectedSlot: "Selected appointment",
     fullName: "Full name *",
-    phone: "Phone *",
-    phoneHelp:
-      "SMS notifications are available only for Croatian phone numbers. If you do not have a Croatian number, please enter your email so the salon can send confirmation by email.",
-    email: "Email (optional)",
+    phone: "Phone (optional)",
+    phoneHelp: "Your phone number is kept only as an additional contact detail.",
+    email: "Email *",
     note: "Note (optional)",
+    marketingOptIn:
+      "I want to receive news, offers and retention emails from this salon.",
+    marketingOptInHelp:
+      "Optional. This is not required to book and you can unsubscribe at any time. Appointment service messages are handled separately.",
     submit: "Send booking request",
     submitting: "Sending request...",
     chooseSlotFirst: "Please choose an available time first.",
@@ -100,48 +105,80 @@ const text = {
     alerts: {
       missingSlot: "Please choose a service, date and time.",
       missingName: "Full name is required.",
+      missingEmail: "An email address is required for booking confirmation.",
       availabilityError: "Error loading available times.",
       bookingError: "Error sending booking request.",
     },
   },
+  it: {
+    min: "min",
+    back: "← Torna ai servizi",
+    backToCategories: "← Torna alle categorie",
+    chooseService: "Scegli un servizio",
+    chooseCategory: "Scegli una categoria",
+    categoryLabel: "Categoria",
+    chooseCategoryText:
+      "Scegli prima una categoria, poi seleziona il trattamento che vuoi prenotare.",
+    chooseServiceText:
+      "Sono mostrati solo i servizi disponibili per la prenotazione online.",
+    otherCategory: "Altro",
+    dateTime: "Data e ora",
+    selectedDate: "Data selezionata",
+    loading: "Caricamento degli orari disponibili...",
+    noSlots: "Nessun orario disponibile per la data selezionata.",
+    freeSlots: "Orari disponibili",
+    contactTitle: "Dati di contatto",
+    contactText:
+      "Inserisci i tuoi dati così il salone potrà verificare e confermare la richiesta.",
+    selectedSlot: "Appuntamento selezionato",
+    fullName: "Nome e cognome *",
+    phone: "Telefono (opzionale)",
+    phoneHelp: "Il numero di telefono viene conservato solo come contatto aggiuntivo.",
+    email: "Email *",
+    note: "Nota (opzionale)",
+    marketingOptIn:
+      "Desidero ricevere novità, offerte ed email retention da questo salone.",
+    marketingOptInHelp:
+      "Facoltativo. Non è necessario per prenotare e puoi disiscriverti in qualsiasi momento. Le comunicazioni operative sugli appuntamenti sono separate.",
+    submit: "Invia richiesta di prenotazione",
+    submitting: "Invio richiesta...",
+    chooseSlotFirst: "Seleziona prima un orario disponibile.",
+    serviceInfo: "Scegli data e ora di inizio. Durata del trattamento:",
+    priceLabel: "Prezzo",
+    alerts: {
+      missingSlot: "Seleziona servizio, data e ora.",
+      missingName: "Nome e cognome sono obbligatori.",
+      missingEmail: "L'indirizzo email è obbligatorio per la conferma della prenotazione.",
+      availabilityError: "Errore nel caricamento degli orari.",
+      bookingError: "Errore nell'invio della prenotazione.",
+    },
+  },
 };
 
-function getServiceDescription(service: Service, lang: Lang) {
-  if (lang === "en" && service.description_en?.trim())
-    return service.description_en;
+function getServiceDescription(service: Service) {
   return service.description;
 }
 
-function getServiceName(service: Service, lang: Lang) {
-  if (lang === "en" && service.name_en?.trim()) return service.name_en;
+function getServiceName(service: Service) {
   return service.name;
 }
 
-function getServiceGroup(service: Service, lang: Lang) {
-  if (lang === "en" && service.service_group_en?.trim()) {
-    return service.service_group_en;
-  }
-
-  return service.service_group;
+function getServiceGroup(service: Service) {
+  return service.category;
 }
 
-function formatPrice(priceCents: number | null | undefined) {
-  if (priceCents == null) return null;
-  return `${(priceCents / 100).toFixed(2).replace(".", ".")} €`;
+function formatPrice(price: number | null | undefined, currency: string) {
+  if (price == null) return null;
+  return new Intl.NumberFormat("hr-HR", {
+    style: "currency",
+    currency: currency || "EUR",
+  }).format(price);
 }
 
-function formatDateInputValue(date: unknown) {
+function formatDateInputValue(date: Date | string) {
   if (!date) return "";
 
-  let d: Date;
-
-  if (date instanceof Date) {
-    d = date;
-  } else if (typeof date === "string") {
-    d = new Date(`${date}T00:00:00`);
-  } else {
-    d = new Date(date as any);
-  }
+  const d = date instanceof Date ? date : new Date(`${date}T00:00:00`);
 
   if (Number.isNaN(d.getTime())) {
     console.error("Invalid date passed:", date);
@@ -169,7 +206,7 @@ function formatDateDisplay(date: string, lang: Lang) {
 
 function getVisibleDays(startDate: string, lang: Lang, days = 4) {
   const base = new Date(`${startDate}T00:00:00`);
-  const locale = lang === "en" ? "en-GB" : "hr-HR";
+  const locale = lang === "en" ? "en-GB" : lang === "it" ? "it-IT" : "hr-HR";
 
   return Array.from({ length: days }, (_, index) => {
     const date = new Date(base);
@@ -189,9 +226,11 @@ function getVisibleDays(startDate: string, lang: Lang, days = 4) {
 export default function BookingClient({
   services,
   lang,
+  organizationSlug,
 }: {
   services: Service[];
   lang: Lang;
+  organizationSlug: string;
 }) {
   const router = useRouter();
   const today = getTodayValue();
@@ -209,6 +248,7 @@ export default function BookingClient({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -219,20 +259,20 @@ export default function BookingClient({
     return Array.from(
       new Set(
         services.map(
-          (service) => getServiceGroup(service, lang) || t.otherCategory,
+          (service) => getServiceGroup(service) || t.otherCategory,
         ),
       ),
     );
-  }, [services, lang, t.otherCategory]);
+  }, [services, t.otherCategory]);
 
   const filteredServices = useMemo(() => {
     if (!selectedGroup) return [];
 
     return services.filter(
       (service) =>
-        (getServiceGroup(service, lang) || t.otherCategory) === selectedGroup,
+        (getServiceGroup(service) || t.otherCategory) === selectedGroup,
     );
-  }, [services, selectedGroup, lang, t.otherCategory]);
+  }, [services, selectedGroup, t.otherCategory]);
 
   async function loadAvailability(service: Service, date: string) {
     setLoading(true);
@@ -246,6 +286,7 @@ export default function BookingClient({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          organizationSlug,
           serviceId: service.id,
           date,
         }),
@@ -273,13 +314,6 @@ export default function BookingClient({
     }
   }
 
-  useEffect(() => {
-    if (selectedService && selectedDate) {
-      loadAvailability(selectedService, selectedDate);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedService]);
-
   async function submitBooking() {
     if (submitting) return;
 
@@ -293,27 +327,8 @@ export default function BookingClient({
       return;
     }
 
-    const normalizedPhone = phone.trim().replace(/\s+/g, "");
-    const hasCroatianPhone =
-      normalizedPhone.startsWith("+385") ||
-      normalizedPhone.startsWith("00385") ||
-      normalizedPhone.startsWith("09");
-
-    if (!phone.trim() && !email.trim()) {
-      alert(
-        lang === "en"
-          ? "Please enter a Croatian phone number or an email address."
-          : "Unesi hrvatski broj telefona ili email adresu.",
-      );
-      return;
-    }
-
-    if (!hasCroatianPhone && !email.trim()) {
-      alert(
-        lang === "en"
-          ? "SMS confirmations are available only for Croatian numbers. Please enter your email."
-          : "SMS potvrde šalju se samo na hrvatske brojeve. Molimo unesi email.",
-      );
+    if (!email.trim()) {
+      alert(t.alerts.missingEmail);
       return;
     }
 
@@ -326,6 +341,7 @@ export default function BookingClient({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          organizationSlug,
           serviceId: selectedService.id,
           date: selectedDate,
           slot: selectedSlot,
@@ -333,14 +349,34 @@ export default function BookingClient({
           phone,
           email,
           note,
+          marketingOptIn,
           lang,
         }),
       });
 
-      const data = await res.json();
+      const rawResponse = await res.text();
+
+      let data: {
+        ok?: boolean;
+        requestId?: string;
+        error?: string;
+      } = {};
+
+      if (rawResponse) {
+        try {
+          data = JSON.parse(rawResponse);
+        } catch {
+          console.error("Public booking returned a non-JSON response:", rawResponse);
+        }
+      }
 
       if (!res.ok) {
-        alert(data.error || t.alerts.bookingError);
+        alert(data.error || `${t.alerts.bookingError} (${res.status})`);
+        return;
+      }
+
+      if (!data.requestId) {
+        alert(t.alerts.bookingError);
         return;
       }
 
@@ -349,10 +385,10 @@ export default function BookingClient({
         id: data.requestId,
         date: selectedDate,
         time: selectedSlot.start_time,
-        service: getServiceName(selectedService, lang),
+        service: getServiceName(selectedService),
       });
 
-      router.push(`/booking/success?${params.toString()}`);
+      router.push(`/booking/${organizationSlug}/success?${params.toString()}`);
     } catch (error) {
       console.error(error);
       alert(t.alerts.bookingError);
@@ -410,7 +446,7 @@ export default function BookingClient({
 
               <div className="grid gap-4 md:grid-cols-2">
                 {filteredServices.map((service) => {
-                  const price = formatPrice(service.price_cents);
+                  const price = formatPrice(service.price, service.currency);
 
                   return (
                     <button
@@ -420,6 +456,7 @@ export default function BookingClient({
                         setSelectedService(service);
                         setSelectedDate(today);
                         setCalendarStartDate(today);
+                        void loadAvailability(service, today);
                       }}
                       className="group rounded-2xl border border-[#eadbd2] bg-[#f8f3ef] p-5 text-left transition hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
                     >
@@ -428,12 +465,12 @@ export default function BookingClient({
                       </div>
 
                       <div className="mt-2 text-lg font-semibold">
-                        {getServiceName(service, lang)}
+                        {getServiceName(service)}
                       </div>
 
                       {service.description ? (
                         <p className="mt-2 text-sm leading-6 text-[#6f5a50]">
-                          {getServiceDescription(service, lang)}
+                          {getServiceDescription(service)}
                         </p>
                       ) : null}
 
@@ -476,7 +513,7 @@ export default function BookingClient({
 
           <div className="mb-8 rounded-2xl border border-[#eadbd2] bg-[#f8f3ef] p-5">
             <h2 className="text-2xl font-semibold">
-              {getServiceName(selectedService, lang)}
+              {getServiceName(selectedService)}
             </h2>
 
             {selectedService.description ? (
@@ -489,9 +526,9 @@ export default function BookingClient({
               {t.serviceInfo} {selectedService.duration_minutes} {t.min}.
             </p>
 
-            {formatPrice(selectedService.price_cents) ? (
+            {formatPrice(selectedService.price, selectedService.currency) ? (
               <p className="mt-2 text-sm font-semibold text-[#2f2723]">
-                {t.priceLabel}: {formatPrice(selectedService.price_cents)}
+                {t.priceLabel}: {formatPrice(selectedService.price, selectedService.currency)}
               </p>
             ) : null}
           </div>
@@ -673,6 +710,23 @@ export default function BookingClient({
                 rows={4}
                 className="mt-4 w-full resize-none rounded-xl border border-[#eadbd2] px-4 py-3 outline-none"
               />
+
+              <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-[#eadbd2] bg-[#f8f3ef] p-4">
+                <input
+                  type="checkbox"
+                  checked={marketingOptIn}
+                  onChange={(e) => setMarketingOptIn(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[#2f2723]"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-[#2f2723]">
+                    {t.marketingOptIn}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-[#6f5a50]">
+                    {t.marketingOptInHelp}
+                  </span>
+                </span>
+              </label>
 
               <button
                 type="button"

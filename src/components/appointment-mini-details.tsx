@@ -7,6 +7,7 @@ type Props = {
   extraLine?: string;
 };
 
-export default function AppointmentMiniDetails(_props: Props) {
+export default function AppointmentMiniDetails(props: Props) {
+  void props;
   return null;
 }

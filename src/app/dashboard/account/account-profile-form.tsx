@@ -7,8 +7,10 @@ import {
   updateAccountProfileAction,
   type AccountActionState,
 } from "@/features/account/actions";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   initialDisplayName: string;
   initialColorHex: string | null;
   canEditColor: boolean;
@@ -20,10 +22,12 @@ const initialState: AccountActionState = {
 };
 
 export default function AccountProfileForm({
+  locale = "hr",
   initialDisplayName,
   initialColorHex,
   canEditColor,
 }: Props) {
+  const t = getDictionary(locale).account;
   const router = useRouter();
   const [state, formAction, pending] = useActionState(
     updateAccountProfileAction,
@@ -45,7 +49,7 @@ export default function AccountProfileForm({
     <form action={formAction} className="grid gap-4 md:grid-cols-2">
       <div className="md:col-span-2">
         <label className="mb-1 block text-sm font-medium text-app-text">
-          Prikazano ime
+          {t.displayName}
         </label>
         <input
           name="display_name"
@@ -57,7 +61,7 @@ export default function AccountProfileForm({
 
       <div>
         <label className="mb-1 block text-sm font-medium text-app-text">
-          Boja zaposlenika
+          {t.employeeColor}
         </label>
         <input
           name="color_hex"
@@ -71,7 +75,7 @@ export default function AccountProfileForm({
       <div className="flex items-end">
         {!canEditColor ? (
           <div className="text-sm text-app-muted">
-            Ovaj račun nema zaposlenički profil pa boja nije dostupna.
+            {t.noEmployeeProfile}
           </div>
         ) : null}
       </div>
@@ -82,7 +86,7 @@ export default function AccountProfileForm({
           disabled={pending}
           className="rounded-xl bg-app-accent px-5 py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
         >
-          {pending ? "Spremanje..." : "Spremi izmjene"}
+          {pending ? t.saving : t.saveChanges}
         </button>
       </div>
     </form>

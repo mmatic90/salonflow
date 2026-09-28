@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { calculateTotalDuration } from "@/features/appointments/calculate-total-duration";
 import type { AppointmentServiceInput } from "@/features/appointments/types";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 export function parseAppointmentServicesJson(
   formData: FormData,
@@ -47,6 +48,14 @@ export async function validateAppointmentServicesForEmployeeAndRoom(args: {
 }) {
   const { employeeId, roomId, items } = args;
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+
+  if (!permissions) {
+    return {
+      ok: false,
+      message: "Nemate pristup aktivnom salonu.",
+    };
+  }
 
   const serviceIds = items.map((item) => item.service_id);
 
@@ -57,12 +66,14 @@ export async function validateAppointmentServicesForEmployeeAndRoom(args: {
     supabase
       .from("employee_services")
       .select("service_id")
+      .eq("organization_id", permissions.organizationId)
       .eq("employee_id", employeeId)
       .in("service_id", serviceIds),
 
     supabase
       .from("service_rooms")
       .select("service_id")
+      .eq("organization_id", permissions.organizationId)
       .eq("room_id", roomId)
       .in("service_id", serviceIds),
   ]);

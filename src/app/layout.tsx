@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { productConfig } from "@/config/product";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Body & Soul",
-  description: "Salon booking and management app",
+  title: {
+    default: productConfig.name,
+    template: `%s | ${productConfig.name}`,
+  },
+  description: productConfig.description,
 };
 
 export default function RootLayout({
@@ -24,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="hr">
+    <html lang={productConfig.defaultLocale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} bg-app-bg text-app-text antialiased`}
       >

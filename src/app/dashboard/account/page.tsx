@@ -5,9 +5,11 @@ import PageHeader from "@/components/page-header";
 import PageSection from "@/components/page-section";
 import AccountProfileForm from "./account-profile-form";
 import ChangePasswordForm from "./change-password-form";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function AccountPage() {
   const permissions = await requireDashboardUser();
+  const t = getDictionary(permissions.organizationLocale).account;
   const supabase = await createClient();
 
   const { data: profile } = await supabase
@@ -30,12 +32,13 @@ export default async function AccountPage() {
   return (
     <PageShell maxWidth="max-w-5xl">
       <PageHeader
-        title="Moj račun"
-        description="Uredi prikazano ime, boju zaposlenika i lozinku."
+        title={t.title}
+        description={t.description}
       />
 
-      <PageSection title="Osnovni podaci" description={`Login email: ${email}`}>
+      <PageSection title={t.basicData} description={t.loginEmail + ": " + email}>
         <AccountProfileForm
+          locale={permissions.organizationLocale}
           initialDisplayName={displayName}
           initialColorHex={employee?.color_hex ?? permissions.colorHex}
           canEditColor={permissions.isEmployee}
@@ -43,10 +46,10 @@ export default async function AccountPage() {
       </PageSection>
 
       <PageSection
-        title="Promjena lozinke"
-        description="Nakon uspješne promjene lozinke bit ćeš automatski odjavljen."
+        title={t.changePassword}
+        description={t.changePasswordDescription}
       >
-        <ChangePasswordForm email={email} />
+        <ChangePasswordForm locale={permissions.organizationLocale} email={email} />
       </PageSection>
     </PageShell>
   );

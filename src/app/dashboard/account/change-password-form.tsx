@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   email: string;
 };
 
-export default function ChangePasswordForm({ email }: Props) {
+export default function ChangePasswordForm({ locale = "hr", email }: Props) {
+  const t = getDictionary(locale).account;
   const router = useRouter();
   const supabase = createClient();
 
@@ -22,17 +25,17 @@ export default function ChangePasswordForm({ email }: Props) {
     e.preventDefault();
 
     if (!oldPassword || !newPassword || !repeatPassword) {
-      toast.error("Ispuni sva polja za promjenu lozinke.");
+      toast.error(t.fillAllFields);
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.error("Nova lozinka mora imati barem 6 znakova.");
+      toast.error(t.minLength);
       return;
     }
 
     if (newPassword !== repeatPassword) {
-      toast.error("Nova lozinka i ponovljena lozinka se ne podudaraju.");
+      toast.error(t.mismatch);
       return;
     }
 
@@ -45,7 +48,7 @@ export default function ChangePasswordForm({ email }: Props) {
       });
 
       if (verifyError) {
-        toast.error("Stara lozinka nije točna.");
+        toast.error(t.wrongOldPassword);
         return;
       }
 
@@ -66,7 +69,7 @@ export default function ChangePasswordForm({ email }: Props) {
       }
 
       toast.success(
-        "Lozinka je promijenjena. Prijavi se ponovno novom lozinkom.",
+        t.passwordChanged,
       );
       router.push("/login");
       router.refresh();
@@ -79,7 +82,7 @@ export default function ChangePasswordForm({ email }: Props) {
     <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
       <div className="md:col-span-2">
         <label className="mb-1 block text-sm font-medium text-app-text">
-          Stara lozinka
+          {t.oldPassword}
         </label>
         <input
           type="password"
@@ -92,7 +95,7 @@ export default function ChangePasswordForm({ email }: Props) {
 
       <div>
         <label className="mb-1 block text-sm font-medium text-app-text">
-          Nova lozinka
+          {t.newPassword}
         </label>
         <input
           type="password"
@@ -105,7 +108,7 @@ export default function ChangePasswordForm({ email }: Props) {
 
       <div>
         <label className="mb-1 block text-sm font-medium text-app-text">
-          Ponovi novu lozinku
+          {t.repeatPassword}
         </label>
         <input
           type="password"
@@ -122,7 +125,7 @@ export default function ChangePasswordForm({ email }: Props) {
           disabled={pending}
           className="rounded-xl bg-app-accent px-5 py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
         >
-          {pending ? "Spremanje..." : "Promijeni lozinku"}
+          {pending ? t.saving : t.changePasswordButton}
         </button>
       </div>
     </form>

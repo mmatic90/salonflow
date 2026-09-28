@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserPermissions } from "@/lib/permissions";
+import { getDictionary } from "@/lib/i18n";
 
 export type AccountActionState = {
   error: string;
@@ -13,6 +15,8 @@ export async function updateAccountProfileAction(
   formData: FormData,
 ): Promise<AccountActionState> {
   const supabase = await createClient();
+  const permissions = await getCurrentUserPermissions();
+  const t = getDictionary(permissions?.organizationLocale ?? "hr").account;
 
   const {
     data: { user },
@@ -21,7 +25,7 @@ export async function updateAccountProfileAction(
 
   if (userError || !user) {
     return {
-      error: "Niste prijavljeni.",
+      error: t.notSignedIn,
       success: "",
     };
   }
@@ -31,7 +35,7 @@ export async function updateAccountProfileAction(
 
   if (!displayName) {
     return {
-      error: "Prikazano ime je obavezno.",
+      error: t.displayNameRequired,
       success: "",
     };
   }
@@ -88,6 +92,6 @@ export async function updateAccountProfileAction(
 
   return {
     error: "",
-    success: "Podaci računa su spremljeni.",
+    success: t.saved,
   };
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import {
   acceptOnlineBookingRequestAction,
   rejectOnlineBookingRequestAction,
@@ -6,13 +7,17 @@ import {
 import {
   getOnlineBookingCounts,
   getOnlineBookings,
+  type OnlineBookingAvailabilityIssue,
   type OnlineBookingStatus,
 } from "@/features/online-bookings/queries";
 import AutoRefresh from "@/components/auto-refresh";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
-function formatDateHr(date: string) {
+function formatDate(date: string, locale: "hr" | "en" | "it") {
   const [year, month, day] = date.split("-");
-  return `${day}.${month}.${year}.`;
+  if (locale === "hr") return day + "." + month + "." + year + ".";
+  return day + "/" + month + "/" + year;
 }
 
 function getStatusFromSearchParams(searchParams?: {
@@ -36,10 +41,13 @@ function getStatusFromSearchParams(searchParams?: {
   return "pending";
 }
 
-function statusLabel(status: string) {
-  if (status === "pending") return "Na čekanju";
-  if (status === "accepted") return "Prihvaćeno";
-  if (status === "rejected") return "Odbijeno";
+function statusLabel(
+  status: string,
+  t: ReturnType<typeof getDictionary>["onlineBookings"],
+) {
+  if (status === "pending") return t.pending;
+  if (status === "accepted") return t.accepted;
+  if (status === "rejected") return t.rejected;
   return status;
 }
 
@@ -59,23 +67,99 @@ function statusClass(status: string) {
   return "border-app-soft bg-app-card-alt text-app-muted";
 }
 
-const filters: {
-  value: OnlineBookingStatus;
-  label: string;
-}[] = [
-  { value: "today", label: "Danas" },
-  { value: "pending", label: "Na čekanju" },
-  { value: "accepted", label: "Prihvaćeno" },
-  { value: "rejected", label: "Odbijeno" },
-  { value: "all", label: "Sve" },
-  { value: "archive", label: "Arhiva" },
-];
+function availabilityIssueText(
+  issue: OnlineBookingAvailabilityIssue | null,
+  locale: AppLocale,
+) {
+  if (!issue) return null;
+
+  const copy = {
+    hr: {
+      salon_closed: "Salon je zatvoren na traženi datum.",
+      outside_salon_hours: "Traženi termin je izvan radnog vremena salona.",
+      no_mapped_employee: "Nijedan djelatnik nije povezan s ovom uslugom.",
+      no_available_employee:
+        "Nijedan djelatnik za ovu uslugu nije slobodan u traženo vrijeme.",
+      no_mapped_room: "Nijedna soba nije povezana s ovom uslugom.",
+      no_available_room:
+        "Nijedna odgovarajuća soba nije slobodna u traženo vrijeme.",
+    },
+    en: {
+      salon_closed: "The salon is closed on the requested date.",
+      outside_salon_hours: "The requested slot is outside salon opening hours.",
+      no_mapped_employee: "No employee is assigned to this service.",
+      no_available_employee:
+        "No employee for this service is available at the requested time.",
+      no_mapped_room: "No room is assigned to this service.",
+      no_available_room: "No suitable room is available at the requested time.",
+    },
+    it: {
+      salon_closed: "Il salone è chiuso nella data richiesta.",
+      outside_salon_hours:
+        "L'orario richiesto è fuori dall'orario di apertura del salone.",
+      no_mapped_employee: "Nessun operatore è associato a questo servizio.",
+      no_available_employee:
+        "Nessun operatore per questo servizio è libero nell'orario richiesto.",
+      no_mapped_room: "Nessuna cabina è associata a questo servizio.",
+      no_available_room:
+        "Nessuna cabina adatta è libera nell'orario richiesto.",
+    },
+  } as const;
+
+  return copy[locale][issue];
+}
+
+function availabilityHeadings(locale: AppLocale) {
+  if (locale === "en") {
+    return {
+      available: "Requested slot is available",
+      unavailable: "Requested slot is not currently available",
+      availableHelp:
+        "SalonFlow found an available employee and room for the requested time.",
+      unavailableHelp:
+        "Open the request to choose another employee, room or alternative time.",
+    };
+  }
+
+  if (locale === "it") {
+    return {
+      available: "L'orario richiesto è disponibile",
+      unavailable: "L'orario richiesto non è al momento disponibile",
+      availableHelp:
+        "SalonFlow ha trovato un operatore e una cabina disponibili per l'orario richiesto.",
+      unavailableHelp:
+        "Apri la richiesta per scegliere un altro operatore, una cabina o un orario alternativo.",
+    };
+  }
+
+  return {
+    available: "Traženi termin je dostupan",
+    unavailable: "Traženi termin trenutno nije dostupan",
+    availableHelp:
+      "SalonFlow je pronašao slobodnog djelatnika i sobu za traženi datum i vrijeme.",
+    unavailableHelp:
+      "Otvori zahtjev za odabir drugog djelatnika, sobe ili alternativnog vremena.",
+  };
+}
 
 export default async function OnlineBookingsPage({
   searchParams,
 }: {
   searchParams?: Promise<{ status?: string | string[] }>;
 }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.onlineBookings;
+  const availabilityCopy = availabilityHeadings(permissions.organizationLocale);
+  const filters: { value: OnlineBookingStatus; label: string }[] = [
+    { value: "today", label: t.today },
+    { value: "pending", label: t.pending },
+    { value: "accepted", label: t.accepted },
+    { value: "rejected", label: t.rejected },
+    { value: "all", label: t.all },
+    { value: "archive", label: t.archive },
+  ];
+
   const resolvedSearchParams = await searchParams;
   const activeStatus = getStatusFromSearchParams(resolvedSearchParams);
 
@@ -89,24 +173,16 @@ export default async function OnlineBookingsPage({
       <AutoRefresh />
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
-          <p className="text-sm font-medium text-app-muted">
-            Zahtjevi s javne web stranice
-          </p>
+          <p className="text-sm font-medium text-app-muted">{t.sourceLabel}</p>
 
           <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-app-text">
-                Online rezervacije
-              </h1>
-
-              <p className="mt-2 text-app-muted">
-                Pregledaj nove, prihvaćene i odbijene zahtjeve za online
-                rezervaciju.
-              </p>
+              <h1 className="text-3xl font-bold text-app-text">{t.title}</h1>
+              <p className="mt-2 text-app-muted">{t.intro}</p>
             </div>
 
             <div className="rounded-2xl border border-app-soft bg-app-card-alt px-5 py-3 text-sm text-app-muted">
-              Danas:{" "}
+              {t.today}:{" "}
               <span className="font-bold text-app-text">{counts.today}</span>
             </div>
           </div>
@@ -140,16 +216,31 @@ export default async function OnlineBookingsPage({
 
         {bookings.length === 0 ? (
           <div className="rounded-2xl border border-app-soft bg-app-card p-8 text-center text-app-muted">
-            Nema zahtjeva za odabrani filter.
+            {t.empty}
           </div>
         ) : (
           <div className="space-y-4">
             {bookings.map((booking) => {
+              const liveAvailability = booking.live_availability;
+              const quickEmployee = liveAvailability?.employee ?? null;
+              const quickRoom = liveAvailability?.room ?? null;
+              const generalIssue = availabilityIssueText(
+                liveAvailability?.generalIssue ?? null,
+                permissions.organizationLocale,
+              );
+              const employeeIssue = availabilityIssueText(
+                liveAvailability?.employeeIssue ?? null,
+                permissions.organizationLocale,
+              );
+              const roomIssue = availabilityIssueText(
+                liveAvailability?.roomIssue ?? null,
+                permissions.organizationLocale,
+              );
               const canQuickAccept =
                 booking.status === "pending" &&
-                booking.final_employee_id &&
-                booking.final_room_id &&
-                (booking.final_duration_minutes || booking.duration_minutes);
+                !generalIssue &&
+                quickEmployee &&
+                quickRoom;
 
               return (
                 <article
@@ -168,14 +259,17 @@ export default async function OnlineBookingsPage({
                             booking.status,
                           )}`}
                         >
-                          {statusLabel(booking.status)}
+                          {statusLabel(booking.status, t)}
                         </span>
                       </div>
 
                       <p className="mt-2 text-sm text-app-muted">
-                        {booking.services?.name ?? "Nepoznata usluga"} ·{" "}
-                        {formatDateHr(booking.requested_date)} u{" "}
-                        {booking.start_time?.slice(0, 5)}
+                        {booking.services?.name ?? t.unknownService} ·{" "}
+                        {formatDate(
+                          booking.requested_date,
+                          permissions.organizationLocale,
+                        )}{" "}
+                        {t.at} {booking.start_time?.slice(0, 5)}
                       </p>
                     </div>
 
@@ -184,7 +278,7 @@ export default async function OnlineBookingsPage({
                         href={`/dashboard/online-bookings/${booking.id}`}
                         className="rounded-xl bg-app-accent px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
                       >
-                        Otvori zahtjev
+                        {t.openRequest}
                       </Link>
 
                       {booking.status === "pending" ? (
@@ -199,12 +293,12 @@ export default async function OnlineBookingsPage({
                               <input
                                 type="hidden"
                                 name="employee_id"
-                                value={booking.final_employee_id}
+                                value={quickEmployee.id}
                               />
                               <input
                                 type="hidden"
                                 name="room_id"
-                                value={booking.final_room_id}
+                                value={quickRoom.id}
                               />
                               <input
                                 type="hidden"
@@ -219,7 +313,7 @@ export default async function OnlineBookingsPage({
                                 type="submit"
                                 className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
                               >
-                                Prihvati
+                                {t.accept}
                               </button>
                             </form>
                           ) : null}
@@ -233,14 +327,14 @@ export default async function OnlineBookingsPage({
                             <input
                               type="hidden"
                               name="rejection_reason"
-                              value="Termin je u međuvremenu zauzet."
+                              value={t.rejectionReasons[0]}
                             />
 
                             <button
                               type="submit"
                               className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
                             >
-                              Odbij
+                              {t.reject}
                             </button>
                           </form>
                         </>
@@ -250,7 +344,7 @@ export default async function OnlineBookingsPage({
 
                   <div className="mt-5 grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-4">
                     <div className="rounded-xl bg-app-card-alt p-4">
-                      <div className="text-app-muted">Telefon</div>
+                      <div className="text-app-muted">{t.phone}</div>
                       <div className="mt-1 font-medium text-app-text">
                         {booking.client_phone}
                       </div>
@@ -264,61 +358,83 @@ export default async function OnlineBookingsPage({
                     </div>
 
                     <div className="rounded-xl bg-app-card-alt p-4">
-                      <div className="text-app-muted">Trajanje</div>
+                      <div className="text-app-muted">{t.duration}</div>
                       <div className="mt-1 font-medium text-app-text">
-                        {booking.final_duration_minutes ??
-                          booking.duration_minutes}{" "}
-                        min
+                        {booking.final_duration_minutes ?? booking.duration_minutes} min
                       </div>
                     </div>
 
                     <div className="rounded-xl bg-app-card-alt p-4">
-                      <div className="text-app-muted">Kreirano</div>
+                      <div className="text-app-muted">{t.created}</div>
                       <div className="mt-1 font-medium text-app-text">
                         {new Date(booking.created_at).toLocaleDateString(
-                          "hr-HR",
+                          permissions.organizationLocale === "en"
+                            ? "en-GB"
+                            : permissions.organizationLocale === "it"
+                              ? "it-IT"
+                              : "hr-HR",
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {booking.status === "pending" && (
-                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                      <div className="font-semibold">Brze akcije koriste:</div>
-
-                      <div className="mt-2 grid gap-2 md:grid-cols-3">
-                        <div>
-                          <span className="font-medium">Djelatnik:</span>{" "}
-                          {booking.final_employee?.display_name ||
-                            booking.suggested_employee?.display_name ||
-                            "Nije odabrano"}
-                        </div>
-
-                        <div>
-                          <span className="font-medium">Soba:</span>{" "}
-                          {booking.final_room?.name ||
-                            booking.suggested_room?.name ||
-                            "Nije odabrano"}
-                        </div>
-
-                        <div>
-                          <span className="font-medium">Trajanje:</span>{" "}
-                          {booking.final_duration_minutes ??
-                            booking.duration_minutes}{" "}
-                          min
+                  {booking.status === "pending" ? (
+                    canQuickAccept ? (
+                      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                        <div className="flex items-start gap-3">
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-semibold">
+                              {availabilityCopy.available}
+                            </div>
+                            <p className="mt-1 text-emerald-800">
+                              {availabilityCopy.availableHelp}
+                            </p>
+                            <div className="mt-3 grid gap-2 md:grid-cols-3">
+                              <div>
+                                <span className="font-medium">{t.employee}:</span>{" "}
+                                {quickEmployee.display_name}
+                              </div>
+                              <div>
+                                <span className="font-medium">{t.room}:</span>{" "}
+                                {quickRoom.name}
+                              </div>
+                              <div>
+                                <span className="font-medium">{t.duration}:</span>{" "}
+                                {booking.final_duration_minutes ??
+                                  booking.duration_minutes}{" "}
+                                min
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-
-                      <p className="mt-2">
-                        Za izmjenu djelatnika, sobe ili trajanja otvori zahtjev.
-                      </p>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                          <div>
+                            <div className="font-semibold">
+                              {availabilityCopy.unavailable}
+                            </div>
+                            <div className="mt-2 space-y-1 text-amber-800">
+                              {generalIssue ? <p>• {generalIssue}</p> : null}
+                              {employeeIssue ? <p>• {employeeIssue}</p> : null}
+                              {roomIssue ? <p>• {roomIssue}</p> : null}
+                            </div>
+                            <p className="mt-2 text-amber-800">
+                              {availabilityCopy.unavailableHelp}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ) : null}
 
                   {booking.rejection_reason ? (
                     <div className="mt-4 rounded-xl bg-red-50 p-4 text-sm">
                       <div className="font-medium text-red-900">
-                        Razlog odbijanja
+                        {t.rejectionReason}
                       </div>
                       <p className="mt-1 text-red-700">
                         {booking.rejection_reason}
@@ -328,10 +444,8 @@ export default async function OnlineBookingsPage({
 
                   {booking.client_note ? (
                     <div className="mt-4 rounded-xl bg-app-card-alt p-4 text-sm">
-                      <div className="font-medium text-app-text">Napomena</div>
-                      <p className="mt-1 text-app-muted">
-                        {booking.client_note}
-                      </p>
+                      <div className="font-medium text-app-text">{t.note}</div>
+                      <p className="mt-1 text-app-muted">{booking.client_note}</p>
                     </div>
                   ) : null}
                 </article>

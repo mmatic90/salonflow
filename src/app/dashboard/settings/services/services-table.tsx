@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { RotateCcw } from "lucide-react";
+import { Clock3, Euro, RotateCcw, Search, Shapes } from "lucide-react";
 import type { ServiceItem } from "@/features/settings/types";
 import {
   bulkUpdateServicesAction,
@@ -9,8 +9,10 @@ import {
 } from "@/features/settings/actions";
 import SettingsDeleteButton from "@/components/settings-delete-button";
 import { toast } from "sonner";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
 
 type Props = {
+  locale?: AppLocale;
   services: ServiceItem[];
 };
 
@@ -18,13 +20,9 @@ type EditableService = {
   id: string;
   name: string;
   description: string;
-  name_en: string;
-  description_en: string;
-  service_group_en: string;
   duration_minutes: number;
-  price_cents: number | null;
-  service_group: string;
-  priority_room: string;
+  price: number | null;
+  category: string;
   is_active: boolean;
   is_online_bookable: boolean;
 };
@@ -34,42 +32,101 @@ function toEditable(service: ServiceItem): EditableService {
     id: service.id,
     name: service.name,
     description: service.description ?? "",
-    name_en: service.name_en ?? "",
-    description_en: service.description_en ?? "",
-    service_group_en: service.service_group_en ?? "",
     duration_minutes: service.duration_minutes,
-    price_cents: service.price_cents,
-    service_group: service.service_group || "",
-    priority_room: service.priority_room || "",
+    price: service.price,
+    category: service.category ?? "",
     is_active: service.is_active,
     is_online_bookable: service.is_online_bookable,
   };
 }
 
-function priceCentsToInputValue(priceCents: number | null) {
-  if (priceCents == null) return "";
-  return String(Math.round(priceCents / 100));
-}
-
-function priceInputToCents(value: string) {
+function parsePrice(value: string) {
   if (!value.trim()) return null;
-
-  const parsed = Number(value);
-
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return null;
-  }
-
-  return Math.round(parsed * 100);
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-export default function ServicesTable({ services }: Props) {
-  const initialItems = useMemo(() => services.map(toEditable), [services]);
+function copy(locale: AppLocale) {
+  if (locale === "en") {
+    return {
+      search: "Search services...",
+      all: "All categories",
+      noResults: "No services match the selected filters.",
+      details: "Basic details",
+      availability: "Availability",
+      activeHelp: "Can be used for new appointments",
+      onlineHelp: "Visible in online booking",
+    };
+  }
+  if (locale === "it") {
+    return {
+      search: "Cerca servizi...",
+      all: "Tutte le categorie",
+      noResults: "Nessun servizio corrisponde ai filtri selezionati.",
+      details: "Dati principali",
+      availability: "Disponibilità",
+      activeHelp: "Utilizzabile per nuovi appuntamenti",
+      onlineHelp: "Visibile nella prenotazione online",
+    };
+  }
+  return {
+    search: "Pretraži usluge...",
+    all: "Sve kategorije",
+    noResults: "Nema usluga koje odgovaraju odabranim filtrima.",
+    details: "Osnovni podaci",
+    availability: "Dostupnost",
+    activeHelp: "Može se koristiti za nove termine",
+    onlineHelp: "Vidljivo u online rezervacijama",
+  };
+}
 
+function Switch({ checked, onClick }: { checked: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onClick}
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${
+        checked ? "bg-app-accent" : "bg-app-soft"
+      }`}
+    >
+      <span
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  );
+}
+
+export default function ServicesTable({ locale = "hr", services }: Props) {
+  const t = getDictionary(locale).settings;
+  const ui = copy(locale);
+  const initialItems = useMemo(() => services.map(toEditable), [services]);
   const [items, setItems] = useState<EditableService[]>(initialItems);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
   const [pending, startTransition] = useTransition();
 
   const hasChanges = JSON.stringify(items) !== JSON.stringify(initialItems);
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set(items.map((item) => item.category.trim()).filter(Boolean)),
+      ).sort((a, b) => a.localeCompare(b, locale)),
+    [items, locale],
+  );
+  const visibleItems = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase(locale);
+    return items.filter((item) => {
+      if (category && item.category !== category) return false;
+      if (!query) return true;
+      return `${item.name} ${item.category} ${item.description}`
+        .toLocaleLowerCase(locale)
+        .includes(query);
+    });
+  }, [category, items, locale, search]);
 
   function updateItem(
     id: string,
@@ -81,10 +138,6 @@ export default function ServicesTable({ services }: Props) {
     );
   }
 
-  function resetChanges() {
-    setItems(initialItems);
-  }
-
   function saveChanges() {
     startTransition(async () => {
       const result = await bulkUpdateServicesAction(
@@ -92,18 +145,13 @@ export default function ServicesTable({ services }: Props) {
           id: item.id,
           name: item.name,
           description: item.description,
-          name_en: item.name_en,
-          description_en: item.description_en,
-          service_group_en: item.service_group_en,
           duration_minutes: Number(item.duration_minutes),
-          price_cents: item.price_cents,
-          service_group: item.service_group || null,
-          priority_room: item.priority_room || null,
+          price: item.price,
+          category: item.category || null,
           is_active: item.is_active,
           is_online_bookable: item.is_online_bookable,
         })),
       );
-
       if (result.ok) {
         toast.success(result.message);
       } else {
@@ -113,199 +161,189 @@ export default function ServicesTable({ services }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-app-muted">
-          Uredi podatke u tablici pa klikni{" "}
-          <span className="font-medium text-app-text">Spremi izmjene</span>.
-        </div>
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-app-soft bg-white p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="grid flex-1 gap-3 sm:grid-cols-[minmax(0,1fr)_220px]">
+            <label className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-app-muted" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={ui.search}
+                className="w-full rounded-xl border border-app-soft bg-white py-2.5 pl-10 pr-4 text-sm text-app-text outline-none"
+              />
+            </label>
+            <select
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+              className="rounded-xl border border-app-soft bg-white px-3 py-2.5 text-sm text-app-text outline-none"
+            >
+              <option value="">{ui.all}</option>
+              {categories.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={resetChanges}
-            disabled={pending || !hasChanges}
-            className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-medium text-app-text transition hover:bg-app-bg disabled:opacity-50"
-          >
-            <RotateCcw className="h-4 w-4" />
-            Poništi
-          </button>
-
-          <button
-            type="button"
-            onClick={saveChanges}
-            disabled={pending || !hasChanges}
-            className="rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-          >
-            {pending ? "Spremanje..." : "Spremi izmjene"}
-          </button>
+          <div className="flex shrink-0 gap-2">
+            <button
+              type="button"
+              onClick={() => setItems(initialItems)}
+              disabled={pending || !hasChanges}
+              className="inline-flex items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2.5 text-sm font-semibold text-app-text transition hover:bg-app-bg disabled:opacity-50"
+            >
+              <RotateCcw className="h-4 w-4" /> {t.reset}
+            </button>
+            <button
+              type="button"
+              onClick={saveChanges}
+              disabled={pending || !hasChanges}
+              className="rounded-xl bg-app-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {pending ? t.saving : t.saveChanges}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-app-soft">
-        <table className="min-w-full border-collapse">
-          <thead className="bg-app-table-head">
-            <tr className="text-left text-sm text-app-muted">
-              <th className="px-4 py-3 font-semibold">Naziv</th>
-              <th className="px-4 py-3 font-semibold">Opis</th>
-              <th className="px-4 py-3 font-semibold">Trajanje</th>
-              <th className="px-4 py-3 font-semibold">Cijena (€)</th>
-              <th className="px-4 py-3 font-semibold">Grupa</th>
-              <th className="px-4 py-3 font-semibold">Prioritetna soba</th>
-              <th className="px-4 py-3 font-semibold">Aktivno</th>
-              <th className="px-4 py-3 font-semibold">Online rezervacije</th>
-              <th className="px-4 py-3 font-semibold">Akcije</th>
-            </tr>
-          </thead>
+      {visibleItems.length ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {visibleItems.map((service) => (
+            <article
+              key={service.id}
+              className="rounded-2xl border border-app-soft bg-white p-5 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-app-muted">
+                    {service.category || ui.details}
+                  </p>
+                  <h3 className="mt-1 truncate text-lg font-bold text-app-text">
+                    {service.name}
+                  </h3>
+                </div>
+                <SettingsDeleteButton
+                  locale={locale}
+                  label={service.name}
+                  onDelete={deleteServiceAction.bind(null, service.id)}
+                />
+              </div>
 
-          <tbody className="bg-app-card">
-            {items.map((service) => (
-              <tr
-                key={service.id}
-                className="border-t border-app-soft text-sm transition hover:bg-app-card-alt"
-              >
-                <td className="px-4 py-4">
+              <div className="mt-5 space-y-4">
+                <label className="block space-y-1.5 text-sm font-medium text-app-text">
+                  <span>{t.name}</span>
                   <input
                     value={service.name}
-                    onChange={(e) =>
-                      updateItem(service.id, "name", e.target.value)
-                    }
-                    className="w-full min-w-[220px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
+                    onChange={(event) => updateItem(service.id, "name", event.target.value)}
+                    className="w-full rounded-xl border border-app-soft bg-white px-3.5 py-2.5 outline-none"
                   />
-                </td>
+                </label>
 
-                <td className="px-4 py-4">
+                <label className="block space-y-1.5 text-sm font-medium text-app-text">
+                  <span>{t.descriptionLabel}</span>
                   <textarea
                     value={service.description}
-                    onChange={(e) =>
-                      updateItem(service.id, "description", e.target.value)
+                    onChange={(event) =>
+                      updateItem(service.id, "description", event.target.value)
                     }
-                    rows={2}
-                    className="w-full min-w-[280px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none"
+                    rows={3}
+                    className="w-full resize-none rounded-xl border border-app-soft bg-white px-3.5 py-2.5 outline-none"
                   />
-                </td>
+                </label>
 
-                <td className="px-4 py-4">
-                  <input
-                    type="number"
-                    min={1}
-                    value={service.duration_minutes}
-                    onChange={(e) =>
-                      updateItem(
-                        service.id,
-                        "duration_minutes",
-                        Number(e.target.value),
-                      )
-                    }
-                    className="w-28 rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
-                  />
-                </td>
-
-                <td className="px-4 py-4">
-                  <input
-                    type="number"
-                    min={0}
-                    step="1"
-                    value={priceCentsToInputValue(service.price_cents)}
-                    onChange={(e) =>
-                      updateItem(
-                        service.id,
-                        "price_cents",
-                        priceInputToCents(e.target.value),
-                      )
-                    }
-                    placeholder="npr. 45"
-                    className="w-32 rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
-                  />
-                </td>
-
-                <td className="px-4 py-4">
-                  <input
-                    value={service.service_group}
-                    onChange={(e) =>
-                      updateItem(service.id, "service_group", e.target.value)
-                    }
-                    className="w-full min-w-[180px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
-                  />
-                </td>
-
-                <td className="px-4 py-4">
-                  <input
-                    value={service.priority_room}
-                    onChange={(e) =>
-                      updateItem(service.id, "priority_room", e.target.value)
-                    }
-                    className="w-full min-w-[160px] rounded-lg border border-app-soft bg-white px-3 py-2 text-app-text outline-none transition focus:border-app-accent"
-                  />
-                </td>
-
-                <td className="px-4 py-4">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={service.is_active}
-                    onClick={() =>
-                      updateItem(service.id, "is_active", !service.is_active)
-                    }
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
-                      service.is_active ? "bg-app-accent" : "bg-app-soft"
-                    }`}
-                    title={service.is_active ? "Aktivno" : "Neaktivno"}
-                  >
-                    <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                        service.is_active ? "translate-x-6" : "translate-x-1"
-                      }`}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <label className="space-y-1.5 text-sm font-medium text-app-text">
+                    <span className="flex items-center gap-1.5">
+                      <Clock3 className="h-4 w-4 text-app-muted" /> {t.duration}
+                    </span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={service.duration_minutes}
+                      onChange={(event) =>
+                        updateItem(service.id, "duration_minutes", Number(event.target.value))
+                      }
+                      className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none"
                     />
-                  </button>
-                </td>
-
-                <td className="px-4 py-4">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={service.is_online_bookable}
-                    onClick={() =>
-                      updateItem(
-                        service.id,
-                        "is_online_bookable",
-                        !service.is_online_bookable,
-                      )
-                    }
-                    className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
-                      service.is_online_bookable
-                        ? "bg-app-accent"
-                        : "bg-app-soft"
-                    }`}
-                    title={
-                      service.is_online_bookable
-                        ? "Dostupno za online rezervacije"
-                        : "Nije dostupno za online rezervacije"
-                    }
-                  >
-                    <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                        service.is_online_bookable
-                          ? "translate-x-6"
-                          : "translate-x-1"
-                      }`}
+                  </label>
+                  <label className="space-y-1.5 text-sm font-medium text-app-text">
+                    <span className="flex items-center gap-1.5">
+                      <Euro className="h-4 w-4 text-app-muted" /> {t.price}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={service.price ?? ""}
+                      onChange={(event) =>
+                        updateItem(service.id, "price", parsePrice(event.target.value))
+                      }
+                      className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none"
                     />
-                  </button>
-                </td>
+                  </label>
+                  <label className="space-y-1.5 text-sm font-medium text-app-text">
+                    <span className="flex items-center gap-1.5">
+                      <Shapes className="h-4 w-4 text-app-muted" /> {t.category}
+                    </span>
+                    <input
+                      value={service.category}
+                      onChange={(event) =>
+                        updateItem(service.id, "category", event.target.value)
+                      }
+                      list="service-category-options"
+                      className="w-full rounded-xl border border-app-soft bg-white px-3 py-2.5 outline-none"
+                    />
+                  </label>
+                </div>
 
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <SettingsDeleteButton
-                      label={service.name}
-                      onDelete={deleteServiceAction.bind(null, service.id)}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-app-soft p-3.5">
+                    <div>
+                      <p className="text-sm font-semibold text-app-text">{t.active}</p>
+                      <p className="mt-0.5 text-xs text-app-muted">{ui.activeHelp}</p>
+                    </div>
+                    <Switch
+                      checked={service.is_active}
+                      onClick={() =>
+                        updateItem(service.id, "is_active", !service.is_active)
+                      }
                     />
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-app-soft p-3.5">
+                    <div>
+                      <p className="text-sm font-semibold text-app-text">{t.online}</p>
+                      <p className="mt-0.5 text-xs text-app-muted">{ui.onlineHelp}</p>
+                    </div>
+                    <Switch
+                      checked={service.is_online_bookable}
+                      onClick={() =>
+                        updateItem(
+                          service.id,
+                          "is_online_bookable",
+                          !service.is_online_bookable,
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-app-soft bg-white p-8 text-center text-sm text-app-muted">
+          {ui.noResults}
+        </div>
+      )}
+
+      <datalist id="service-category-options">
+        {categories.map((item) => (
+          <option key={item} value={item} />
+        ))}
+      </datalist>
     </div>
   );
 }

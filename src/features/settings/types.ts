@@ -1,14 +1,11 @@
 export type ServiceItem = {
   id: string;
   name: string;
-  name_en: string | null;
   description: string | null;
-  description_en: string | null;
   duration_minutes: number;
-  price_cents: number | null;
-  service_group: string | null;
-  service_group_en: string | null;
-  priority_room: string | null;
+  price: number | null;
+  currency: string;
+  category: string | null;
   is_active: boolean;
   is_online_bookable: boolean;
 };
@@ -22,17 +19,19 @@ export type RoomItem = {
 export type EquipmentItem = {
   id: string;
   name: string;
-  quantity: number;
+  quantity_total: number;
   is_active: boolean;
 };
 
 export type EmployeeItem = {
   id: string;
-  profile_id: string | null;
+  user_id: string | null;
+  first_name: string;
+  last_name: string | null;
   display_name: string;
   email: string | null;
   phone: string | null;
-  color_hex: string | null;
+  color: string;
   is_active: boolean;
 };
 

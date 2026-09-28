@@ -1,13 +1,14 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getSalonWorkingHours } from "@/features/settings/queries";
 import SalonHoursTable from "./salon-hours-table";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import EmptyStateCard from "@/components/empty-state-card";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function SettingsSalonHoursPage() {
-  await requireAdminForSettings();
+  const permissions = await requireAdminForSettings();
+  const settings = getDictionary(permissions.organizationLocale).settings;
+  const t = settings.salonHours;
 
   const hours = await getSalonWorkingHours();
 
@@ -17,9 +18,9 @@ export default async function SettingsSalonHoursPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Radno vrijeme salona</h1>
+              <h1 className="text-3xl font-bold">{t.title}</h1>
               <p className="mt-2 text-neutral-600">
-                Uredi radno vrijeme salona po danima u tjednu.
+                {t.intro}
               </p>
             </div>
 
@@ -27,7 +28,7 @@ export default async function SettingsSalonHoursPage() {
               href="/dashboard/settings"
               className="rounded-xl border border-neutral-300 px-4 py-2 font-medium"
             >
-              Natrag
+              {settings.back}
             </Link>
           </div>
         </div>
@@ -35,11 +36,11 @@ export default async function SettingsSalonHoursPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           {hours.length === 0 ? (
             <EmptyStateCard
-              title="Nema definiranog radnog vremena"
-              description="Trenutno nema zapisa za radno vrijeme salona. Potrebno je inicijalno postaviti dane u bazi."
+              title={t.emptyTitle}
+              description={t.emptyDescription}
             />
           ) : (
-            <SalonHoursTable hours={hours} />
+            <SalonHoursTable locale={permissions.organizationLocale} hours={hours} />
           )}
         </div>
       </div>

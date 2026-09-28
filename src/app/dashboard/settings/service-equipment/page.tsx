@@ -1,13 +1,13 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { getServiceEquipmentMappingData } from "@/features/settings/queries";
 import ServiceEquipmentTable from "./service-equipment-table";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import EmptyStateCard from "@/components/empty-state-card";
+import { getDictionary } from "@/lib/i18n";
 
 export default async function SettingsServiceEquipmentPage() {
-  await requireAdminForSettings();
+  const permissions = await requireAdminForSettings();
+  const t = getDictionary(permissions.organizationLocale).settings;
 
   const { services, equipment, mappings } =
     await getServiceEquipmentMappingData();
@@ -21,17 +21,15 @@ export default async function SettingsServiceEquipmentPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Usluge i oprema</h1>
-              <p className="mt-2 text-neutral-600">
-                Odredi koja je oprema potrebna za pojedinu uslugu.
-              </p>
+              <h1 className="text-3xl font-bold">{t.serviceEquipmentTitle}</h1>
+              <p className="mt-2 text-neutral-600">{t.serviceEquipmentDescription}</p>
             </div>
 
             <Link
               href="/dashboard/settings"
               className="rounded-xl border border-neutral-300 px-4 py-2 font-medium"
             >
-              Natrag
+              {t.back}
             </Link>
           </div>
         </div>
@@ -39,11 +37,12 @@ export default async function SettingsServiceEquipmentPage() {
         <div className="rounded-2xl bg-white p-6 shadow-md">
           {activeServices.length === 0 || activeEquipment.length === 0 ? (
             <EmptyStateCard
-              title="Mapiranje trenutno nije dostupno"
-              description="Potrebno je imati barem jednu aktivnu uslugu i jednu aktivnu opremu kako bi se moglo definirati mapiranje."
+              title={t.mapping.unavailableTitle}
+              description={t.mapping.equipmentUnavailable}
             />
           ) : (
             <ServiceEquipmentTable
+              locale={permissions.organizationLocale}
               services={services}
               equipment={equipment}
               mappings={mappings}

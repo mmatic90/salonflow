@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 const DONE_RETENTION_DAYS = 90;
 const REJECTED_RETENTION_DAYS = 30;
 
-export default async () => {
+const feedbackCleanup = async () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -56,6 +56,8 @@ export default async () => {
     headers: { "content-type": "application/json" },
   });
 };
+
+export default feedbackCleanup;
 
 export const config = {
   schedule: "0 3 * * *",

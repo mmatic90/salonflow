@@ -13,6 +13,8 @@ import AppointmentStatusActions from "@/components/appointment-status-actions";
 import EmptyStateCard from "@/components/empty-state-card";
 import { formatAppointmentServicesLabel } from "@/features/appointments/format-appointment-services";
 import AppointmentRowActions from "@/components/appointment-row-actions";
+import { requireDashboardUser } from "@/lib/page-guards";
+import { getDictionary } from "@/lib/i18n";
 
 type SearchParams = Promise<{
   date?: string;
@@ -23,6 +25,9 @@ export default async function AppointmentsPage({
 }: {
   searchParams: SearchParams;
 }) {
+  const permissions = await requireDashboardUser();
+  const dictionary = getDictionary(permissions.organizationLocale);
+  const t = dictionary.appointments;
   const supabase = await createClient();
 
   const {
@@ -45,14 +50,16 @@ export default async function AppointmentsPage({
         <div className="rounded-2xl border border-app-soft bg-app-card p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-app-text">Termini</h1>
+              <h1 className="text-3xl font-bold text-app-text">{t.title}</h1>
               <p className="mt-2 text-app-muted">
-                Pregled termina za {formatDateLabel(selectedDate)}
+                {t.overviewFor} {formatDateLabel(selectedDate, permissions.organizationLocale)}
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <DateQueryPicker
+                locale={permissions.organizationLocale}
+                label={t.selectDate}
                 value={selectedDate}
                 basePath="/dashboard/appointments"
               />
@@ -61,7 +68,7 @@ export default async function AppointmentsPage({
                 href={`/dashboard/appointments/new?date=${selectedDate}`}
                 className="inline-flex h-[42px] items-center justify-center rounded-xl bg-app-accent px-4 py-2 font-medium text-white transition hover:opacity-90"
               >
-                Novi termin
+                {t.newAppointment}
               </Link>
             </div>
           </div>
@@ -70,14 +77,14 @@ export default async function AppointmentsPage({
         <div className="overflow-hidden rounded-2xl border border-app-soft bg-app-card shadow-sm">
           {appointments.length === 0 ? (
             <EmptyStateCard
-              title="Nema termina za odabrani datum"
-              description="Promijeni datum ili dodaj novi termin kako bi se prikazao sadržaj."
+              title={t.noAppointmentsTitle}
+              description={t.noAppointmentsDescription}
               action={
                 <Link
                   href={`/dashboard/appointments/new?date=${selectedDate}`}
                   className="inline-flex rounded-xl bg-app-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
                 >
-                  Dodaj novi termin
+                  {t.addNewAppointment}
                 </Link>
               }
             />
@@ -86,14 +93,14 @@ export default async function AppointmentsPage({
               <table className="min-w-full border-collapse">
                 <thead className="bg-app-table-head">
                   <tr className="text-left text-sm text-app-muted">
-                    <th className="px-4 py-3 font-semibold">Vrijeme</th>
-                    <th className="px-4 py-3 font-semibold">Klijent</th>
-                    <th className="px-4 py-3 font-semibold">Usluga</th>
-                    <th className="px-4 py-3 font-semibold">Zaposlenik</th>
-                    <th className="px-4 py-3 font-semibold">Soba</th>
-                    <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">Napomena</th>
-                    <th className="px-4 py-3 font-semibold">Akcije</th>
+                    <th className="px-4 py-3 font-semibold">{t.time}</th>
+                    <th className="px-4 py-3 font-semibold">{t.client}</th>
+                    <th className="px-4 py-3 font-semibold">{t.service}</th>
+                    <th className="px-4 py-3 font-semibold">{t.employee}</th>
+                    <th className="px-4 py-3 font-semibold">{t.room}</th>
+                    <th className="px-4 py-3 font-semibold">{t.status}</th>
+                    <th className="px-4 py-3 font-semibold">{t.note}</th>
+                    <th className="px-4 py-3 font-semibold">{t.actions}</th>
                   </tr>
                 </thead>
 
@@ -108,10 +115,10 @@ export default async function AppointmentsPage({
                       appointment.service?.service_group ?? null;
                     const employeeName =
                       appointment.employee?.display_name ??
-                      "Nepoznati zaposlenik";
+                      t.unknownEmployee;
                     const employeeColor =
                       appointment.employee?.color_hex || "#999999";
-                    const roomName = appointment.room?.name ?? "Nepoznata soba";
+                    const roomName = appointment.room?.name ?? t.unknownRoom;
 
                     return (
                       <tr
@@ -150,7 +157,7 @@ export default async function AppointmentsPage({
                           </div>
                           {serviceGroup ? (
                             <div className="mt-1 text-app-muted">
-                              Grupa: {serviceGroup}
+                              {t.group}: {serviceGroup}
                             </div>
                           ) : null}
                         </td>
@@ -173,7 +180,7 @@ export default async function AppointmentsPage({
 
                         <td className="px-4 py-4 align-top">
                           <span className="rounded-full bg-app-bg px-3 py-1 text-xs font-medium text-app-text">
-                            {statusLabel(appointment.status)}
+                            {statusLabel(appointment.status, permissions.organizationLocale)}
                           </span>
                         </td>
 
@@ -185,11 +192,13 @@ export default async function AppointmentsPage({
                         <td className="px-4 py-4 align-top">
                           <div className="flex flex-col gap-2">
                             <AppointmentRowActions
+                              locale={permissions.organizationLocale}
                               appointmentId={appointment.id}
                               appointmentDate={appointment.appointment_date}
                             />
 
                             <AppointmentStatusActions
+                              locale={permissions.organizationLocale}
                               appointmentId={appointment.id}
                               currentStatus={appointment.status}
                               compact

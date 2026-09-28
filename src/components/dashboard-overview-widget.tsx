@@ -1,89 +1,73 @@
 import Link from "next/link";
 import {
-  BellRing,
   CalendarCheck,
   CalendarDays,
   CheckCircle2,
-  Percent,
   UserX,
+  ArrowUpRight,
 } from "lucide-react";
+import { getDictionary, type AppLocale } from "@/lib/i18n";
+import { getTodayLocalDate } from "@/lib/utils";
 
 type Props = {
-  pendingOnlineCount: number;
-  todayOnlineCount: number;
+  locale: AppLocale;
   todayAppointmentsCount: number;
   tomorrowAppointmentsCount: number;
   completedThisMonthCount: number;
   noShowThisMonthCount: number;
-  onlineConversionRate: number;
 };
 
+function shiftDate(value: string, days: number) {
+  const date = new Date(`${value}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 export default function DashboardOverviewWidget({
-  pendingOnlineCount,
-  todayOnlineCount,
+  locale,
   todayAppointmentsCount,
   tomorrowAppointmentsCount,
   completedThisMonthCount,
   noShowThisMonthCount,
-  onlineConversionRate,
 }: Props) {
+  const dictionary = getDictionary(locale);
+  const t = dictionary.dashboard.overview;
+  const today = getTodayLocalDate();
+  const tomorrow = shiftDate(today, 1);
+
   const cards = [
     {
-      title: "Online na čekanju",
-      value: pendingOnlineCount,
-      description:
-        pendingOnlineCount > 0
-          ? "Novi zahtjevi čekaju pregled."
-          : "Nema novih zahtjeva.",
-      href: "/dashboard/online-bookings?status=pending",
-      icon: BellRing,
-    },
-    {
-      title: "Online danas",
-      value: todayOnlineCount,
-      description: "Online zahtjevi za današnji datum.",
-      href: "/dashboard/online-bookings?status=today",
-      icon: CalendarDays,
-    },
-    {
-      title: "Termini danas",
+      title: t.todayTitle,
       value: todayAppointmentsCount,
-      description: "Zakazani termini za danas.",
-      href: "/dashboard/calendar/time-grid",
+      description: t.todayDescription,
+      href: `/dashboard/calendar?date=${today}`,
       icon: CalendarCheck,
     },
     {
-      title: "Termini sutra",
+      title: t.tomorrowTitle,
       value: tomorrowAppointmentsCount,
-      description: "Zakazani termini za sutra.",
-      href: "/dashboard/calendar/time-grid",
+      description: t.tomorrowDescription,
+      href: `/dashboard/calendar?date=${tomorrow}`,
       icon: CalendarDays,
     },
     {
-      title: "Odrađeno ovaj mjesec",
+      title: t.completedTitle,
       value: completedThisMonthCount,
-      description: "Broj završenih termina u tekućem mjesecu.",
+      description: t.completedDescription,
       href: "/dashboard/reports",
       icon: CheckCircle2,
     },
     {
-      title: "No-show ovaj mjesec",
+      title: t.noShowTitle,
       value: noShowThisMonthCount,
-      description: "Klijenti koji se nisu pojavili.",
+      description: t.noShowDescription,
       href: "/dashboard/reports",
       icon: UserX,
-    },
-    {
-      title: "Online conversion",
-      value: `${onlineConversionRate}%`,
-      description: "Postotak prihvaćenih online zahtjeva ovaj mjesec.",
-      href: "/dashboard/online-bookings?status=all",
-      icon: Percent,
     },
   ];
 
   return (
-    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       {cards.map((card) => {
         const Icon = card.icon;
 
@@ -91,25 +75,31 @@ export default function DashboardOverviewWidget({
           <Link
             key={card.title}
             href={card.href}
-            className="group rounded-2xl border border-app-soft bg-app-card p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="group relative overflow-hidden rounded-3xl border border-app-soft bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.05)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(15,23,42,0.09)] sm:p-5"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-app-muted">
+            <div className="absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full bg-app-accent/5 transition group-hover:bg-app-accent/10" />
+
+            <div className="relative flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted sm:text-sm sm:normal-case sm:tracking-normal">
                   {card.title}
                 </p>
-
-                <div className="mt-3 text-4xl font-bold text-app-text">
+                <div className="mt-3 text-3xl font-extrabold tracking-tight text-app-text sm:text-4xl">
                   {card.value}
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-app-card-alt p-3 text-app-accent transition group-hover:bg-app-accent group-hover:text-white">
-                <Icon className="h-6 w-6" />
+              <div className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-app-accent/10 text-app-accent transition group-hover:bg-app-accent group-hover:text-white sm:flex">
+                <Icon className="h-5 w-5" />
               </div>
             </div>
 
-            <p className="mt-4 text-sm text-app-muted">{card.description}</p>
+            <div className="relative mt-4 flex items-end justify-between gap-3">
+              <p className="line-clamp-2 text-xs leading-5 text-app-muted sm:text-sm">
+                {card.description}
+              </p>
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-app-muted transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-app-accent" />
+            </div>
           </Link>
         );
       })}
