@@ -8,9 +8,8 @@ const emailAutomations = async () => {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!siteUrl || !cronSecret) {
-    return new Response("Missing URL or CRON_SECRET environment variable.", {
-      status: 500,
-    });
+    console.error("email-automations is missing URL or CRON_SECRET.");
+    return new Response("Scheduled job is not configured.", { status: 500 });
   }
 
   const results = [];
@@ -24,21 +23,20 @@ const emailAutomations = async () => {
           accept: "application/json",
         },
       });
-      const body = await response.text();
+
+      if (!response.ok) {
+        const body = await response.text();
+        console.error(`[email-automations:${route}] ${response.status}`, body.slice(0, 4000));
+      }
 
       results.push({
         route,
         ok: response.ok,
         status: response.status,
-        body: body.slice(0, 4000),
       });
     } catch (error) {
-      results.push({
-        route,
-        ok: false,
-        status: 0,
-        body: error instanceof Error ? error.message : "Unknown error",
-      });
+      console.error(`[email-automations:${route}]`, error);
+      results.push({ route, ok: false, status: 0 });
     }
   }
 

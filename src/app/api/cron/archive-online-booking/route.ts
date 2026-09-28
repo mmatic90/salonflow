@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-function isAuthorized(request: Request) {
-  const expectedSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get("authorization");
-
-  return Boolean(expectedSecret) && authHeader === `Bearer ${expectedSecret}`;
-}
+import {
+  cronInternalError,
+  cronUnauthorizedResponse,
+  isCronAuthorized,
+} from "@/lib/cron-auth";
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCronAuthorized(request)) {
+    return cronUnauthorizedResponse();
   }
 
   const supabase = createAdminClient();
@@ -29,7 +27,7 @@ export async function GET(request: Request) {
     .select("id");
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return cronInternalError("archive-online-booking", error);
   }
 
   return NextResponse.json({
