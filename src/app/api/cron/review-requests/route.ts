@@ -2,10 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ManagedEmailError } from "@/lib/email/managed-email";
 import { sendGoogleReviewRequestEmail } from "@/lib/email/review-request-email";
-import {
-  getEffectiveEntitlementPlan,
-  planHasCapability,
-} from "@/lib/entitlements";
+import { organizationHasCapability } from "@/lib/entitlements";
 import {
   normalizeSalonLifecycleStatus,
   normalizeSalonPlanCode,
@@ -70,13 +67,12 @@ function organizationCanUseReviewRequests(organization: OrganizationRow) {
   );
   if (lifecycleStatus === "suspended") return false;
 
-  const effectivePlan = getEffectiveEntitlementPlan(
+  return organizationHasCapability(
     normalizeSalonPlanCode(organization.plan_code),
     lifecycleStatus,
+    "review_requests",
     organization.trial_ends_at,
   );
-
-  return planHasCapability(effectivePlan, "review_requests");
 }
 
 function safeTimeZone(value: string | null | undefined) {
