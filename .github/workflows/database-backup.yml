@@ -1,0 +1,97 @@
+name: Encrypted database backup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 1 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_ENCRYPTION_PASSWORD: ${{ secrets.BACKUP_ENCRYPTION_PASSWORD }}
+
+    steps:
+      - name: Check required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_DB_URL" || { echo "SUPABASE_DB_URL is missing"; exit 1; }
+          test -n "$BACKUP_ENCRYPTION_PASSWORD" || { echo "BACKUP_ENCRYPTION_PASSWORD is missing"; exit 1; }
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Create logical backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup-work
+
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f backup-work/roles.sql \
+            --role-only
+
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f backup-work/schema.sql
+
+          supabase db dump \
+            --db-url "$SUPABASE_DB_URL" \
+            -f backup-work/data.sql \
+            --use-copy \
+            --data-only \
+            -x "storage.buckets_vectors" \
+            -x "storage.vector_indexes"
+
+          test -s backup-work/roles.sql
+          test -s backup-work/schema.sql
+          test -s backup-work/data.sql
+
+      - name: Package and encrypt backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKUP_TIMESTAMP="$(date -u +'%Y-%m-%dT%H-%M-%SZ')"
+
+          printf '%s\n' \
+            "created_at_utc=$BACKUP_TIMESTAMP" \
+            "repository=${GITHUB_REPOSITORY}" \
+            "run_id=${GITHUB_RUN_ID}" \
+            > backup-work/manifest.txt
+
+          tar -C backup-work -czf database-backup.tar.gz \
+            roles.sql schema.sql data.sql manifest.txt
+
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 100000 \
+            -in database-backup.tar.gz \
+            -out database-backup.tar.gz.enc \
+            -pass env:BACKUP_ENCRYPTION_PASSWORD
+
+          test -s database-backup.tar.gz.enc
+          sha256sum database-backup.tar.gz.enc > database-backup.tar.gz.enc.sha256
+
+          rm -rf backup-work database-backup.tar.gz
+
+      - name: Upload encrypted backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mit-salon-db-backup-${{ github.run_id }}
+          path: |
+            database-backup.tar.gz.enc
+            database-backup.tar.gz.enc.sha256
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
