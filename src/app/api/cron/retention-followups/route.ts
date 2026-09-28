@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  getEffectiveEntitlementPlan,
-  planHasCapability,
-} from "@/lib/entitlements";
+import { organizationHasCapability } from "@/lib/entitlements";
 import {
   normalizeSalonLifecycleStatus,
   normalizeSalonPlanCode,
@@ -69,12 +66,12 @@ function organizationCanUseAutomation(organization: OrganizationRow) {
   if (organization.is_active === false) return false;
   const lifecycle = normalizeSalonLifecycleStatus(organization.lifecycle_status);
   if (lifecycle === "suspended") return false;
-  const effectivePlan = getEffectiveEntitlementPlan(
+  return organizationHasCapability(
     normalizeSalonPlanCode(organization.plan_code),
     lifecycle,
+    "automations",
     organization.trial_ends_at,
   );
-  return planHasCapability(effectivePlan, "automations");
 }
 
 async function recordRun(args: {
