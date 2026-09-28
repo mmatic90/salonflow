@@ -76,7 +76,7 @@ export default async function PlatformAdminPage() {
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
-              SalonFlow
+              MiT Salon
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
               Platform Admin

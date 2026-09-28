@@ -1,4 +1,4 @@
--- SalonFlow extra Instagram demo appointments
+-- MiT Salon extra Instagram demo appointments
 -- Run AFTER supabase/demo_seed_instagram_v3.sql
 -- Safe to rerun: only rows with source='instagram_demo_extra' are recreated.
 -- Clients 1-23 are female; clients 24-25 are the only male demo clients.
@@ -79,5 +79,5 @@ begin
   end loop;
 
   delete from public.employee_schedule_overrides eso where eso.organization_id=v_org_id and eso.reason='instagram_demo_extra_seed';
-  raise notice 'Extra SalonFlow demo appointments created successfully with female-heavy clientele.';
+  raise notice 'Extra MiT Salon demo appointments created successfully with female-heavy clientele.';
 end $$;

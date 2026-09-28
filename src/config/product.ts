@@ -1,5 +1,5 @@
 export const productConfig = {
-  name: "SalonFlow",
+  name: "MiT Salon",
   description:
     "Platforma za upravljanje terminima, zaposlenicima, klijentima i resursima salona.",
   shortDescription: "Salon management and appointment scheduling platform",

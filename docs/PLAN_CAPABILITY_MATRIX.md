@@ -1,6 +1,6 @@
-# SalonFlow Plan Capability Matrix
+# MiT Salon Plan Capability Matrix
 
-This document records the audited commercial capability split for the current SalonFlow codebase and the staged enforcement status.
+This document records the audited commercial capability split for the current MiT Salon codebase and the staged enforcement status.
 
 ## Status meanings
 
@@ -35,11 +35,11 @@ Starter must remain a complete day-to-day salon-management product. Safety-relat
 
 Do **not** gate core appointment availability rules, salon hours, employee schedules, room/resource conflict validation, communication preferences or care/safety data separately. They are part of a reliable core booking/client product.
 
-Client contact data, salon notes, upcoming/history records, treatment notes, communication preferences, total appointment count, completed appointment count and last/next appointment stay available in Starter. Phone numbers remain normal contact data even though SalonFlow does not send SMS.
+Client contact data, salon notes, upcoming/history records, treatment notes, communication preferences, total appointment count, completed appointment count and last/next appointment stay available in Starter. Phone numbers remain normal contact data even though MiT Salon does not send SMS.
 
 Marketing preference and operational appointment communication are separate. `unknown` is not consent, `not_allowed` blocks future marketing/retention delivery, and neither status suppresses operational appointment messages. Existing legacy `marketing_consent=false` values migrate to `unknown`, not to an explicit refusal.
 
-Starter does not receive SalonFlow-paid automatic client email delivery. Booking and appointment mutations still complete normally; only the outbound managed notification is unavailable. The public booking form and success response are intentionally channel-neutral so Starter never promises an automatic email that its plan does not include.
+Starter does not receive MiT Salon-paid automatic client email delivery. Booking and appointment mutations still complete normally; only the outbound managed notification is unavailable. The public booking form and success response are intentionally channel-neutral so Starter never promises an automatic email that its plan does not include.
 
 ## Growth
 
@@ -61,7 +61,7 @@ The sidebar, Settings and main dashboard expose clear locked states rather than 
 
 Managed email enforcement happens inside the centralized delivery layer before quota reservation or provider delivery. Therefore a Starter booking can still be accepted/rejected and a Starter appointment can still be created/edited without consuming shared email quota. The `Settings -> Email & notifications` page is Growth/Pro/Trial-only and displays managed provider status, effective Reply-To and current monthly usage.
 
-Managed tenant email uses per-organization and global monthly safety caps. Usage stores attempted, sent and failed counts. Failed provider attempts intentionally remain counted as attempts so repeated failures cannot bypass the safety cap. Production sender infrastructure should use a SalonFlow-owned product domain rather than a personal/M.i.T. domain.
+Managed tenant email uses per-organization and global monthly safety caps. Usage stores attempted, sent and failed counts. Failed provider attempts intentionally remain counted as attempts so repeated failures cannot bypass the safety cap. Production sender infrastructure should use a MiT Salon-owned product domain rather than a personal/M.i.T. domain.
 
 CRM enforcement differs from Waitlist because Starter legitimately needs the same appointment records for client history and continuity of care. Therefore the underlying appointment rows are **not** hidden by RLS. Instead, the server query layer checks the entitlement before calculating or returning segmentation, favourites, cadence, attendance rates and CRM signals.
 
@@ -119,11 +119,11 @@ Client allergies/sensitivities, contraindications, treatment preferences and tre
 
 ### Notifications and reminders
 
-SalonFlow communication is intentionally **email-only**. Phone numbers remain stored as contact information, but the application has no Twilio/SMS delivery path.
+MiT Salon communication is intentionally **email-only**. Phone numbers remain stored as contact information, but the application has no Twilio/SMS delivery path.
 
-SalonFlow Managed Email is a **Growth** capability. The centralized managed-email layer handles entitlement, per-tenant/global quota protection, provider abstraction and tenant Reply-To resolution. Active booking acceptance/rejection emails plus manual appointment creation/schedule-change emails use `booking_notifications`. The proactive 24h email reminder uses the separate `appointment_reminders` Growth capability.
+MiT Salon Managed Email is a **Growth** capability. The centralized managed-email layer handles entitlement, per-tenant/global quota protection, provider abstraction and tenant Reply-To resolution. Active booking acceptance/rejection emails plus manual appointment creation/schedule-change emails use `booking_notifications`. The proactive 24h email reminder uses the separate `appointment_reminders` Growth capability.
 
-The current managed provider implementation is Resend behind an abstraction. Production should eventually send from a SalonFlow-owned product domain. A future Pro custom-provider option may allow a salon to bring its own provider/domain, but credentials must not be stored until a secure secrets/encryption design exists.
+The current managed provider implementation is Resend behind an abstraction. Production should eventually send from a MiT Salon-owned product domain. A future Pro custom-provider option may allow a salon to bring its own provider/domain, but credentials must not be stored until a secure secrets/encryption design exists.
 
 The reminder delivery job is tenant-aware and plan-aware. It:
 

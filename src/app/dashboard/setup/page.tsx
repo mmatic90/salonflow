@@ -87,7 +87,7 @@ function copy(locale: AppLocale) {
         employee_services: {
           title: "Employee ↔ service mapping",
           description:
-            "Tell SalonFlow which employee can perform each active service so availability can be calculated correctly.",
+            "Tell MiT Salon which employee can perform each active service so availability can be calculated correctly.",
         },
         resources: {
           title: "Rooms, equipment and mappings",
@@ -278,7 +278,7 @@ function copy(locale: AppLocale) {
       employee_services: {
         title: "Mapiranje djelatnik ↔ usluga",
         description:
-          "Odredi koji djelatnik smije izvoditi koju uslugu kako bi SalonFlow ispravno računao dostupnost.",
+          "Odredi koji djelatnik smije izvoditi koju uslugu kako bi MiT Salon ispravno računao dostupnost.",
       },
       resources: {
         title: "Sobe, oprema i mapiranja",

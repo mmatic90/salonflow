@@ -81,7 +81,7 @@ export default function SalonEmailQuotaControl({
       </label>
       <p className="mt-2 text-xs leading-5 text-slate-500">
         Prazan override znači da salon koristi platform default ({defaultMonthlyLimit}).
-        Override ne zaobilazi globalni SalonFlow sigurnosni limit.
+        Override ne zaobilazi globalni MiT Salon sigurnosni limit.
       </p>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-2">

@@ -85,7 +85,7 @@ function managedFromAddress() {
 }
 
 function sanitizeDisplayName(value: string | null | undefined) {
-  return (value?.trim() || "SalonFlow")
+  return (value?.trim() || "MiT Salon")
     .replace(/[\r\n<>]/g, "")
     .replace(/"/g, "'")
     .slice(0, 120);

@@ -74,7 +74,7 @@ const dictionaries = {
       },
     },
     auth: {
-      loginTitle: "SalonFlow prijava",
+      loginTitle: "MiT Salon prijava",
       loginDescription: "Prijavite se za pristup svom salonu.",
       email: "Email",
       password: "Lozinka",
@@ -85,7 +85,7 @@ const dictionaries = {
     },
     onboarding: {
       checking: "Provjera korisničkog računa...",
-      welcome: "Dobro došli u SalonFlow",
+      welcome: "Dobro došli u MiT Salon",
       title: "Postavite svoj prvi salon",
       description: "Salon će postati zasebna organizacija, a vi ćete biti njezin vlasnik.",
       salonName: "Naziv salona",
@@ -997,7 +997,7 @@ const dictionaries = {
       },
     },
     auth: {
-      loginTitle: "SalonFlow sign in",
+      loginTitle: "MiT Salon sign in",
       loginDescription: "Sign in to access your salon.",
       email: "Email",
       password: "Password",
@@ -1008,7 +1008,7 @@ const dictionaries = {
     },
     onboarding: {
       checking: "Checking user account...",
-      welcome: "Welcome to SalonFlow",
+      welcome: "Welcome to MiT Salon",
       title: "Set up your first salon",
       description: "The salon will become a separate organization and you will be its owner.",
       salonName: "Salon name",
@@ -1921,7 +1921,7 @@ const dictionaries = {
       },
     },
     auth: {
-      loginTitle: "Accesso a SalonFlow",
+      loginTitle: "Accesso a MiT Salon",
       loginDescription: "Accedi per entrare nel tuo salone.",
       email: "Email",
       password: "Password",
@@ -1932,7 +1932,7 @@ const dictionaries = {
     },
     onboarding: {
       checking: "Verifica account utente...",
-      welcome: "Benvenuto in SalonFlow",
+      welcome: "Benvenuto in MiT Salon",
       title: "Configura il tuo primo salone",
       description: "Il salone diventerà un'organizzazione separata e tu ne sarai il proprietario.",
       salonName: "Nome del salone",

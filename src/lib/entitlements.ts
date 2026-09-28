@@ -96,7 +96,7 @@ export const salonCapabilities: Record<
     code: "appearance_branding",
     name: "Izgled i osnovni branding",
     description:
-      "Tema, logo i tenant postavke koje prilagođavaju SalonFlow pojedinom salonu.",
+      "Tema, logo i tenant postavke koje prilagođavaju MiT Salon pojedinom salonu.",
     minimumPlan: "starter",
     availability: "available",
   },
@@ -112,7 +112,7 @@ export const salonCapabilities: Record<
     code: "booking_notifications",
     name: "Email obavijesti",
     description:
-      "SalonFlow Managed Email za potvrde i odbijanja online rezervacija te obavijesti pri kreiranju i promjeni termina.",
+      "MiT Salon Managed Email za potvrde i odbijanja online rezervacija te obavijesti pri kreiranju i promjeni termina.",
     minimumPlan: "growth",
     availability: "available",
   },

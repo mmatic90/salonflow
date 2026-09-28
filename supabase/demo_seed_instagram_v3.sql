@@ -1,4 +1,4 @@
--- SalonFlow clean Instagram demo dataset v3
+-- MiT Salon clean Instagram demo dataset v3
 -- Run manually in Supabase SQL Editor. This is NOT a migration.
 -- WARNING: clears operational data for the selected demo organization.
 -- Demo clientele intentionally reflects a beauty salon: predominantly female clients,
@@ -123,5 +123,5 @@ begin
     (v_org_id,v_srv_laser,v_room_3),(v_org_id,v_srv_body,v_room_3),(v_org_id,v_srv_massage,v_room_3),
     (v_org_id,v_srv_pedi,v_room_4),(v_org_id,v_srv_mani,v_room_4),(v_org_id,v_srv_brows,v_room_4);
 
-  raise notice 'SalonFlow demo base created. Run demo_seed_instagram_extra.sql next for rich appointment history.';
+  raise notice 'MiT Salon demo base created. Run demo_seed_instagram_extra.sql next for rich appointment history.';
 end $$;

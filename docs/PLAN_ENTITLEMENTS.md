@@ -1,10 +1,10 @@
-# SalonFlow Plan Entitlements
+# MiT Salon Plan Entitlements
 
 This document summarizes the current three-tier commercial entitlement model. Detailed capability status and implementation notes live in `docs/PLAN_CAPABILITY_MATRIX.md`.
 
 ## Plans
 
-- **Starter** — complete core salon operations without SalonFlow-paid outbound automation.
+- **Starter** — complete core salon operations without MiT Salon-paid outbound automation.
 - **Growth** — managed client email, utilization, retention insight and CRM analytics for growing salons.
 - **Pro** — governance plus actionable CRM workflow and premium automation.
 
@@ -16,9 +16,9 @@ A tenant with lifecycle status `trial` receives the **Pro entitlement set** for 
 
 ## Communication rule
 
-SalonFlow automated client communication is **email-only**. Phone numbers remain available as salon/client contact data, but the product has no SMS/Twilio delivery path.
+MiT Salon automated client communication is **email-only**. Phone numbers remain available as salon/client contact data, but the product has no SMS/Twilio delivery path.
 
-SalonFlow Managed Email for booking acceptance/rejection and appointment create/change notifications starts at Growth. The proactive 24h appointment reminder is also Growth. Automated Google review requests after eligible completed appointments are Pro.
+MiT Salon Managed Email for booking acceptance/rejection and appointment create/change notifications starts at Growth. The proactive 24h appointment reminder is also Growth. Automated Google review requests after eligible completed appointments are Pro.
 
 Client marketing/retention preferences are core client data and are available on every plan. They do not unlock outbound marketing by themselves. Future marketing/retention automation must additionally require `marketing_email_status = allowed` and use the server-side marketing eligibility helper before provider delivery. `unknown` and `not_allowed` fail closed.
 

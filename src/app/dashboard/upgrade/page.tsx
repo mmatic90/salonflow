@@ -95,11 +95,11 @@ function ui(locale: AppLocale) {
       howToUpgrade: "How to get access",
       steps: [
         "Choose the plan that includes this feature.",
-        "Until self-service billing is connected, SalonFlow administration activates the plan change.",
+        "Until self-service billing is connected, MiT Salon administration activates the plan change.",
         "The feature becomes available immediately after activation; existing salon data remains preserved.",
       ],
       adminHelp:
-        "Ask the salon owner or administrator to request a plan change from SalonFlow administration.",
+        "Ask the salon owner or administrator to request a plan change from MiT Salon administration.",
       developerHelp:
         "As a Platform Admin, you can change this salon's plan directly from Platform Admin.",
       platformAdmin: "Open Platform Admin",
@@ -121,11 +121,11 @@ function ui(locale: AppLocale) {
       howToUpgrade: "Come ottenere l'accesso",
       steps: [
         "Scegli il piano che include questa funzione.",
-        "Finché la fatturazione self-service non è collegata, l'amministrazione SalonFlow attiva il cambio di piano.",
+        "Finché la fatturazione self-service non è collegata, l'amministrazione MiT Salon attiva il cambio di piano.",
         "La funzione si sblocca subito dopo l'attivazione e i dati esistenti del salone restano conservati.",
       ],
       adminHelp:
-        "Chiedi al proprietario o all'amministratore del salone di richiedere il cambio di piano all'amministrazione SalonFlow.",
+        "Chiedi al proprietario o all'amministratore del salone di richiedere il cambio di piano all'amministrazione MiT Salon.",
       developerHelp:
         "Come Platform Admin puoi cambiare direttamente il piano di questo salone da Platform Admin.",
       platformAdmin: "Apri Platform Admin",
@@ -146,11 +146,11 @@ function ui(locale: AppLocale) {
     howToUpgrade: "Kako dobiti pristup",
     steps: [
       "Odaberite plan koji uključuje ovu funkciju.",
-      "Dok self-service naplata nije spojena, promjenu plana aktivira SalonFlow administracija.",
+      "Dok self-service naplata nije spojena, promjenu plana aktivira MiT Salon administracija.",
       "Funkcija se otključava odmah nakon aktivacije, a postojeći podaci salona ostaju sačuvani.",
     ],
     adminHelp:
-      "Vlasnik ili administrator salona može zatražiti promjenu plana od SalonFlow administracije.",
+      "Vlasnik ili administrator salona može zatražiti promjenu plana od MiT Salon administracije.",
     developerHelp:
       "Kao Platform Admin možeš odmah promijeniti plan ovog salona u Platform Adminu.",
     platformAdmin: "Otvori Platform Admin",

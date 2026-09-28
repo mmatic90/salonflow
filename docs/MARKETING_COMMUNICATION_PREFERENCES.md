@@ -1,6 +1,6 @@
 # Marketing Communication Preferences
 
-SalonFlow keeps operational appointment communication separate from optional marketing/retention communication.
+MiT Salon keeps operational appointment communication separate from optional marketing/retention communication.
 
 This foundation is intentionally conservative. It provides technical controls for recording and enforcing communication preferences, but it is not by itself a legal-compliance certification.
 
@@ -49,7 +49,7 @@ Changing a client email address resets an existing `allowed` status to `unknown`
 
 The database trigger records transitions atomically with the client preference update, so preference history does not depend on a best-effort UI audit call.
 
-The standard SalonFlow audit log additionally records manual administrator preference changes.
+The standard MiT Salon audit log additionally records manual administrator preference changes.
 
 ## Online booking opt-in
 

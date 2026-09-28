@@ -1,6 +1,6 @@
-# SalonFlow
+# MiT Salon
 
-SalonFlow is a salon management and appointment scheduling platform built with Next.js, TypeScript and Supabase.
+MiT Salon is a salon management and appointment scheduling platform built with Next.js, TypeScript and Supabase.
 
 The project is being evolved from a single-salon application into a reusable multi-tenant SaaS product for beauty, wellness and similar service businesses.
 
@@ -71,7 +71,7 @@ On Netlify, `netlify/functions/email-automations.mjs` runs hourly and triggers b
 
 The product foundation covers:
 
-- centralized SalonFlow product identity
+- centralized MiT Salon product identity
 - removal of hardcoded single-salon assumptions
 - multi-tenant organization architecture
 - tenant-aware permissions and database access
@@ -91,4 +91,4 @@ See [`docs/PRODUCT_FOUNDATION.md`](docs/PRODUCT_FOUNDATION.md) for the current i
 
 ## Status
 
-SalonFlow is under active development and is not yet ready for general production use as a multi-tenant SaaS product.
+MiT Salon is under active development and is not yet ready for general production use as a multi-tenant SaaS product.

@@ -1,4 +1,4 @@
-# SalonFlow Product Foundation
+# MiT Salon Product Foundation
 
 ## Goal
 
@@ -19,7 +19,7 @@ Transform the existing single-salon Body & Soul application into a reusable comm
 - Give Trial tenants the Pro entitlement set while keeping their stored paid plan separate.
 - Keep tenant suspension reversible and non-destructive.
 - Store billing-readiness metadata separately from salon operational data: billing contact, provider, Stripe references, billing period, and cancel-at-period-end state.
-- Keep lifecycle status as the SalonFlow access source of truth; future billing-provider events may synchronize lifecycle, but do not bypass it.
+- Keep lifecycle status as the MiT Salon access source of truth; future billing-provider events may synchronize lifecycle, but do not bypass it.
 - Keep automated client communication provider-neutral and cross-market by using email rather than country-specific SMS delivery.
 - Protect shared email cost with per-tenant and global usage quotas before scaling to multiple salons.
 - Turn Growth CRM signals into a distinct Pro retention action workflow without hiding core client history from lower plans.
@@ -41,7 +41,7 @@ Enforcement currently covers Growth Managed Email notifications, Waitlist, CRM/a
 
 ## Communication model
 
-SalonFlow automated client communication is email-only:
+MiT Salon automated client communication is email-only:
 
 - online booking acceptance/rejection emails belong to Growth;
 - manual appointment confirmation and scheduled date/time-change emails belong to Growth;
@@ -53,7 +53,7 @@ Operational appointment communication is intentionally separated from marketing/
 
 All tenant-facing automated email routes through the managed-email layer, which applies current plan/lifecycle entitlement, tenant/global quota protection, provider abstraction and tenant Reply-To resolution immediately before provider delivery. Future marketing/retention delivery has an additional required precondition: `getMarketingEmailDeliveryContext()` must return an eligible target and unsubscribe URL before Managed Email delivery is attempted.
 
-Phone numbers remain normal salon/client contact data. SalonFlow does not contain an SMS/Twilio delivery path.
+Phone numbers remain normal salon/client contact data. MiT Salon does not contain an SMS/Twilio delivery path.
 
 ## Marketing communication preferences
 

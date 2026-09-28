@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PublicBookingService = {
   id: string;
@@ -23,6 +24,13 @@ export type PublicBookingOrganization = {
   city: string | null;
   postal_code: string | null;
   logo_url: string | null;
+};
+
+export type PublicSalonWorkingHour = {
+  day_of_week: number;
+  opens_at: string | null;
+  closes_at: string | null;
+  is_closed: boolean;
 };
 
 function isExpiredTrial(organization: {
@@ -93,4 +101,22 @@ export async function getOnlineBookableServices(
   }
 
   return (data ?? []) as PublicBookingService[];
+}
+
+export async function getPublicSalonWorkingHours(
+  organizationId: string,
+): Promise<PublicSalonWorkingHour[]> {
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("salon_working_hours")
+    .select("day_of_week, opens_at, closes_at, is_closed")
+    .eq("organization_id", organizationId);
+
+  if (error) {
+    console.error(error);
+    throw new Error("Nije moguće dohvatiti radno vrijeme salona.");
+  }
+
+  return (data ?? []) as PublicSalonWorkingHour[];
 }

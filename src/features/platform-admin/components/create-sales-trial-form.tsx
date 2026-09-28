@@ -67,7 +67,7 @@ export default function CreateSalesTrialForm() {
               className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
             />
             <span className="block text-xs leading-5 text-slate-500">
-              Mora biti email koji još nema SalonFlow račun. Na njega se šalje pozivnica.
+              Mora biti email koji još nema MiT Salon račun. Na njega se šalje pozivnica.
             </span>
           </label>
 

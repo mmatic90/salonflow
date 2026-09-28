@@ -47,7 +47,7 @@ function layout(
               ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(salonName)}" style="max-width:150px;height:auto;margin:0 auto 16px;display:block;" />`
               : `<div style="font-size:26px;font-weight:700;letter-spacing:0.02em;">${escapeHtml(salonName)}</div>`
           }
-          <div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;color:#eadbd2;">SalonFlow</div>
+          <div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;color:#eadbd2;">MiT Salon</div>
         </div>
         <div style="padding:34px 30px;">${content}</div>
         <div style="background:#f8f3ef;padding:24px 30px;text-align:center;font-size:13px;line-height:1.7;color:#6f5a50;">

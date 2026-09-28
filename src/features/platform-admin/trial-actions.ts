@@ -116,7 +116,7 @@ async function uniqueSlug(baseName: string) {
 function friendlyProvisioningError(error: unknown) {
   const message = error instanceof Error ? error.message : "Unknown error";
   if (/already|registered|exists/i.test(message)) {
-    return "Ovaj email već ima SalonFlow korisnički račun. Za prvi Sales Trial koristi novi email.";
+    return "Ovaj email već ima MiT Salon korisnički račun. Za prvi Sales Trial koristi novi email.";
   }
   return message;
 }
@@ -157,7 +157,7 @@ export async function createSalesTrialAction(
       return {
         ok: false,
         error:
-          "Ovaj email već postoji u SalonFlowu. Za novi privatni trial koristi email koji još nema račun.",
+          "Ovaj email već postoji u MiT Salonu. Za novi privatni trial koristi email koji još nema račun.",
       };
     }
 
