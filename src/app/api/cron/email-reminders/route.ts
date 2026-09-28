@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendAppointmentReminderEmail } from "@/lib/email/tenant-notifications";
-import {
-  getEffectiveEntitlementPlan,
-  planHasCapability,
-} from "@/lib/entitlements";
+import { organizationHasCapability } from "@/lib/entitlements";
 import {
   normalizeSalonLifecycleStatus,
   normalizeSalonPlanCode,
@@ -67,13 +64,12 @@ function organizationCanUseReminders(organization: OrganizationRow) {
   );
   if (lifecycleStatus === "suspended") return false;
 
-  const effectivePlan = getEffectiveEntitlementPlan(
+  return organizationHasCapability(
     normalizeSalonPlanCode(organization.plan_code),
     lifecycleStatus,
+    "appointment_reminders",
     organization.trial_ends_at,
   );
-
-  return planHasCapability(effectivePlan, "appointment_reminders");
 }
 
 function safeTimeZone(value: string | null | undefined) {
