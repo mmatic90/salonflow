@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-function isAuthorized(request: Request) {
-  const expectedSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get("authorization");
-
-  return Boolean(expectedSecret) && authHeader === `Bearer ${expectedSecret}`;
-}
+import {
+  cronInternalError,
+  cronUnauthorizedResponse,
+  isCronAuthorized,
+} from "@/lib/cron-auth";
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCronAuthorized(request)) {
+    return cronUnauthorizedResponse();
   }
 
   const supabase = createAdminClient();
-
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
   const { error } = await supabase
@@ -23,10 +20,8 @@ export async function GET(request: Request) {
     .lt("created_at", cutoff);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return cronInternalError("cleanup-rate-limits", error);
   }
 
-  return NextResponse.json({
-    ok: true,
-  });
+  return NextResponse.json({ ok: true });
 }
