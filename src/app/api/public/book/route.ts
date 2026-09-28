@@ -13,6 +13,16 @@ type Slot = {
   room_name: string;
 };
 
+type Lang = "hr" | "en" | "it";
+
+function publicServerError(lang: Lang) {
+  return lang === "en"
+    ? "Something went wrong. Please try again."
+    : lang === "it"
+      ? "Si è verificato un errore. Riprova."
+      : "Došlo je do greške. Pokušajte ponovno.";
+}
+
 function isExpiredTrial(organization: {
   lifecycle_status: string | null;
   trial_ends_at: string | null;
@@ -25,6 +35,8 @@ function isExpiredTrial(organization: {
 }
 
 export async function POST(request: Request) {
+  let lang: Lang = "hr";
+
   try {
     const forwardedFor = request.headers.get("x-forwarded-for");
     const ip =
@@ -57,7 +69,7 @@ export async function POST(request: Request) {
     const phone = String(body.phone ?? "").trim() || null;
     const email = String(body.email ?? "").trim();
     const note = String(body.note ?? "").trim() || null;
-    const lang = body.lang === "en" || body.lang === "it" ? body.lang : "hr";
+    lang = body.lang === "en" || body.lang === "it" ? body.lang : "hr";
     const marketingOptIn = body.marketingOptIn === true;
     const slot = body.slot as Slot | null;
 
@@ -85,7 +97,8 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (organizationError) {
-      return NextResponse.json({ error: organizationError.message }, { status: 500 });
+      console.error("Public booking organization lookup failed:", organizationError);
+      return NextResponse.json({ error: publicServerError(lang) }, { status: 500 });
     }
 
     if (!organization) {
@@ -116,10 +129,8 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (serviceError) {
-      return NextResponse.json(
-        { error: serviceError.message },
-        { status: 500 },
-      );
+      console.error("Public booking service lookup failed:", serviceError);
+      return NextResponse.json({ error: publicServerError(lang) }, { status: 500 });
     }
 
     if (!service) {
@@ -179,10 +190,8 @@ export async function POST(request: Request) {
         .limit(1);
 
     if (recentDuplicateError) {
-      return NextResponse.json(
-        { error: recentDuplicateError.message },
-        { status: 500 },
-      );
+      console.error("Public booking duplicate check failed:", recentDuplicateError);
+      return NextResponse.json({ error: publicServerError(lang) }, { status: 500 });
     }
 
     if (recentDuplicateRequest && recentDuplicateRequest.length > 0) {
@@ -204,10 +213,8 @@ export async function POST(request: Request) {
         .maybeSingle();
 
     if (existingRequestError) {
-      return NextResponse.json(
-        { error: existingRequestError.message },
-        { status: 500 },
-      );
+      console.error("Public booking pending-request check failed:", existingRequestError);
+      return NextResponse.json({ error: publicServerError(lang) }, { status: 500 });
     }
 
     if (existingRequest) {
@@ -232,10 +239,8 @@ export async function POST(request: Request) {
         .maybeSingle();
 
     if (existingAppointmentError) {
-      return NextResponse.json(
-        { error: existingAppointmentError.message },
-        { status: 500 },
-      );
+      console.error("Public booking appointment-conflict check failed:", existingAppointmentError);
+      return NextResponse.json({ error: publicServerError(lang) }, { status: 500 });
     }
 
     if (existingAppointment) {
@@ -275,14 +280,8 @@ export async function POST(request: Request) {
       .single();
 
     if (requestError || !requestRow) {
-      return NextResponse.json(
-        {
-          error:
-            requestError?.message ||
-            "Greška pri spremanju zahtjeva za rezervaciju.",
-        },
-        { status: 500 },
-      );
+      console.error("Public booking request insert failed:", requestError);
+      return NextResponse.json({ error: publicServerError(lang) }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -299,12 +298,7 @@ export async function POST(request: Request) {
     console.error("Public booking route failed:", error);
 
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Došlo je do neočekivane greške pri rezervaciji.",
-      },
+      { error: publicServerError(lang) },
       { status: 500 },
     );
   }

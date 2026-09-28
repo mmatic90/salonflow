@@ -55,7 +55,11 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (organizationError) {
-    return NextResponse.json({ error: organizationError.message }, { status: 500 });
+    console.error("Public availability organization lookup failed:", organizationError);
+    return NextResponse.json(
+      { error: "Došlo je do greške. Pokušajte ponovno." },
+      { status: 500 },
+    );
   }
 
   if (!organization) {
@@ -79,7 +83,11 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (serviceError) {
-    return NextResponse.json({ error: serviceError.message }, { status: 500 });
+    console.error("Public availability service lookup failed:", serviceError);
+    return NextResponse.json(
+      { error: "Došlo je do greške. Pokušajte ponovno." },
+      { status: 500 },
+    );
   }
 
   if (!service) {
@@ -107,13 +115,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    console.error("Public availability calculation failed:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Greška pri dohvaćanju dostupnosti.",
-      },
+      { error: "Došlo je do greške. Pokušajte ponovno." },
       { status: 500 },
     );
   }
