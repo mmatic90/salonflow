@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 
 type Locale = "hr" | "en" | "it";
 
+const MIN_PASSWORD_LENGTH = 12;
+
 function browserLocale(): Locale {
   if (typeof window !== "undefined") {
     const requested = new URLSearchParams(window.location.search).get("locale");
@@ -52,7 +54,8 @@ function copy(locale: Locale) {
       invalid: "Questo invito non è più valido o è scaduto.",
       invalidHelp: "Chiedi al team MiT Salon un nuovo invito.",
       mismatch: "Le password non coincidono.",
-      short: "La password deve contenere almeno 8 caratteri.",
+      short: `La password deve contenere almeno ${MIN_PASSWORD_LENGTH} caratteri.`,
+      updateFailed: "Non è stato possibile salvare la password. Riprova o richiedi un nuovo invito.",
       success: "Password impostata. Apertura di MiT Salon...",
       login: "Vai al login",
     };
@@ -69,7 +72,8 @@ function copy(locale: Locale) {
       invalid: "This invitation is no longer valid or has expired.",
       invalidHelp: "Ask the MiT Salon team for a new invitation.",
       mismatch: "Passwords do not match.",
-      short: "Password must be at least 8 characters long.",
+      short: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+      updateFailed: "We could not save your password. Please try again or request a new invitation.",
       success: "Password saved. Opening MiT Salon...",
       login: "Go to login",
     };
@@ -85,7 +89,8 @@ function copy(locale: Locale) {
     invalid: "Ova pozivnica više nije važeća ili je istekla.",
     invalidHelp: "Zatraži novu pozivnicu od MiT Salon tima.",
     mismatch: "Lozinke se ne podudaraju.",
-    short: "Lozinka mora imati najmanje 8 znakova.",
+    short: `Lozinka mora imati najmanje ${MIN_PASSWORD_LENGTH} znakova.`,
+    updateFailed: "Lozinku nije bilo moguće spremiti. Pokušaj ponovno ili zatraži novu pozivnicu.",
     success: "Lozinka je spremljena. Otvaram MiT Salon...",
     login: "Idi na prijavu",
   };
@@ -148,7 +153,7 @@ export default function SetPasswordPage() {
     event.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
+    if (password.length < MIN_PASSWORD_LENGTH) {
       setError(text.short);
       return;
     }
@@ -172,6 +177,7 @@ export default function SetPasswordPage() {
       });
 
       if (verifyError) {
+        console.error("Invite verification failed:", verifyError);
         setError(text.invalid);
         setSaving(false);
         return;
@@ -182,7 +188,8 @@ export default function SetPasswordPage() {
 
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
-      setError(updateError.message);
+      console.error("Password update failed:", updateError);
+      setError(text.updateFailed);
       setSaving(false);
       return;
     }
@@ -231,7 +238,7 @@ export default function SetPasswordPage() {
               <input
                 type="password"
                 autoComplete="new-password"
-                minLength={8}
+                minLength={MIN_PASSWORD_LENGTH}
                 required
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -243,7 +250,7 @@ export default function SetPasswordPage() {
               <input
                 type="password"
                 autoComplete="new-password"
-                minLength={8}
+                minLength={MIN_PASSWORD_LENGTH}
                 required
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
