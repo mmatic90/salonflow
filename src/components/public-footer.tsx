@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type Props = {
   salonName?: string;
 };
@@ -10,6 +12,12 @@ export default function PublicFooter({ salonName = "SalonFlow" }: Props) {
       <p className="mt-2">
         Booking sustav pokreće{" "}
         <span className="font-semibold text-app-text">SalonFlow</span>.
+      </p>
+
+      <p className="mt-3">
+        <Link href="/cookies" className="underline-offset-4 hover:underline">
+          Politika kolačića
+        </Link>
       </p>
     </footer>
   );
