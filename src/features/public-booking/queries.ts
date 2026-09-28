@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type PublicBookingService = {
@@ -47,7 +46,7 @@ function isExpiredTrial(organization: {
 export async function getPublicBookingOrganizationBySlug(
   slug: string,
 ): Promise<PublicBookingOrganization | null> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("organizations")
@@ -84,7 +83,7 @@ export async function getPublicBookingOrganizationBySlug(
 export async function getOnlineBookableServices(
   organizationId: string,
 ): Promise<PublicBookingService[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("services")
