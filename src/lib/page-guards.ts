@@ -10,6 +10,7 @@ import {
 } from "@/lib/permissions";
 import {
   buildCapabilityUpgradePath,
+  isTrialEntitlementLocked,
   type SalonCapabilityCode,
 } from "@/lib/entitlements";
 
@@ -27,6 +28,15 @@ export async function requireDashboardUser() {
     const supabase = await createClient();
     await supabase.auth.signOut();
     redirect("/login");
+  }
+
+  if (
+    isTrialEntitlementLocked(
+      permissions.organizationLifecycleStatus,
+      permissions.organizationTrialEndsAt,
+    )
+  ) {
+    redirect("/trial-expired");
   }
 
   return permissions;
