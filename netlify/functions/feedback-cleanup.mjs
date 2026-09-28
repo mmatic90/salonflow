@@ -3,12 +3,19 @@ import { createClient } from "@supabase/supabase-js";
 const DONE_RETENTION_DAYS = 90;
 const REJECTED_RETENTION_DAYS = 30;
 
+function internalError(context, error) {
+  console.error(`[feedback-cleanup:${context}]`, error);
+  return new Response("Internal scheduled job error.", { status: 500 });
+}
+
 const feedbackCleanup = async () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const cronSecret = process.env.CRON_SECRET;
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    return new Response("Missing Supabase environment variables.", { status: 500 });
+  if (!supabaseUrl || !serviceRoleKey || !cronSecret) {
+    console.error("feedback-cleanup is missing required server environment variables.");
+    return new Response("Scheduled job is not configured.", { status: 500 });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
@@ -24,7 +31,7 @@ const feedbackCleanup = async () => {
     .select("id, screenshot_path")
     .or(`and(status.eq.done,updated_at.lt.${doneBefore}),and(status.eq.rejected,updated_at.lt.${rejectedBefore})`);
 
-  if (error) return new Response(error.message, { status: 500 });
+  if (error) return internalError("select", error);
 
   const candidates = data ?? [];
   if (candidates.length === 0) {
@@ -42,7 +49,7 @@ const feedbackCleanup = async () => {
       .from("feedback")
       .remove(screenshotPaths);
 
-    if (storageError) return new Response(storageError.message, { status: 500 });
+    if (storageError) return internalError("storage-remove", storageError);
   }
 
   const { error: deleteError } = await supabase
@@ -50,7 +57,7 @@ const feedbackCleanup = async () => {
     .delete()
     .in("id", candidates.map((item) => item.id));
 
-  if (deleteError) return new Response(deleteError.message, { status: 500 });
+  if (deleteError) return internalError("database-delete", deleteError);
 
   return new Response(JSON.stringify({ deletedCount: candidates.length }), {
     headers: { "content-type": "application/json" },
