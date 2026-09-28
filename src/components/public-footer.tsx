@@ -14,7 +14,10 @@ export default function PublicFooter({ salonName = "SalonFlow" }: Props) {
         <span className="font-semibold text-app-text">SalonFlow</span>.
       </p>
 
-      <p className="mt-3">
+      <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        <Link href="/privacy" className="underline-offset-4 hover:underline">
+          Politika privatnosti
+        </Link>
         <Link href="/cookies" className="underline-offset-4 hover:underline">
           Politika kolačića
         </Link>
