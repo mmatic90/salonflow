@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarCheck, Clock, Languages, Mail, MapPin, Phone } from "lucide-react";
 import BookingClient from "../booking-client";
-import CookieConsent from "@/components/cookie-consent";
 import PublicFooter from "@/components/public-footer";
 import {
   getOnlineBookableServices,
@@ -282,7 +281,6 @@ export default async function TenantBookingPage({
         </section>
       </div>
 
-      <CookieConsent />
       <PublicFooter salonName={organization.name} />
     </main>
   );
