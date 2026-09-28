@@ -16,7 +16,7 @@ export default function HomePage() {
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-app-muted">
               Platforma za upravljanje salonom
             </p>
-            <h1 className="mt-1 text-2xl font-extrabold">SalonFlow</h1>
+            <h1 className="mt-1 text-2xl font-extrabold">MiT Salon</h1>
           </div>
 
           <Link
@@ -35,7 +35,7 @@ export default function HomePage() {
             </div>
 
             <h2 className="mt-6 max-w-3xl text-5xl font-extrabold leading-tight md:text-7xl">
-              SalonFlow za moderne salone.
+              MiT Salon za moderne salone.
             </h2>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-app-muted">
@@ -48,7 +48,7 @@ export default function HomePage() {
                 href="/login"
                 className="rounded-full bg-app-accent px-6 py-3.5 font-bold text-white shadow-sm"
               >
-                Otvori SalonFlow
+                Otvori MiT Salon
               </Link>
             </div>
           </div>
