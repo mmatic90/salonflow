@@ -251,6 +251,17 @@ export function isTrialEntitlementActive(
   return Number.isFinite(trialEnd) && trialEnd > now.getTime();
 }
 
+export function isTrialEntitlementLocked(
+  lifecycleStatus: SalonLifecycleStatus,
+  trialEndsAt?: string | null,
+  now = new Date(),
+) {
+  return (
+    lifecycleStatus === "trial" &&
+    !isTrialEntitlementActive(lifecycleStatus, trialEndsAt, now)
+  );
+}
+
 export function getTrialDaysLeft(
   lifecycleStatus: SalonLifecycleStatus,
   trialEndsAt?: string | null,
@@ -292,6 +303,10 @@ export function organizationHasCapability(
   capabilityCode: SalonCapabilityCode,
   trialEndsAt?: string | null,
 ) {
+  if (isTrialEntitlementLocked(lifecycleStatus, trialEndsAt)) {
+    return false;
+  }
+
   return planHasCapability(
     getEffectiveEntitlementPlan(planCode, lifecycleStatus, trialEndsAt),
     capabilityCode,
