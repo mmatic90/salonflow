@@ -11,7 +11,10 @@ import {
 } from "lucide-react";
 import { requireAdminForSettings } from "@/lib/page-guards";
 import { canUseCapability } from "@/lib/permissions";
-import { getGuidedSetupState } from "@/features/guided-setup/queries";
+import {
+  getGuidedSetupState,
+  type GuidedSetupStepCode,
+} from "@/features/guided-setup/queries";
 import {
   ConfirmSetupStepButton,
   GuidedSetupFooterActions,
@@ -30,7 +33,6 @@ function copy(locale: AppLocale) {
       confirmed: "Reviewed",
       ready: "Ready to review",
       attention: "Needs attention",
-      open: "Open settings",
       confirm: "Mark as reviewed",
       confirming: "Saving...",
       later: "Continue later",
@@ -42,6 +44,7 @@ function copy(locale: AppLocale) {
       completedBody:
         "You can reopen this guide whenever you want to review the configuration again.",
       dashboard: "Open dashboard",
+      optionalBadge: "Optional",
       optionalTitle: "Automation options in your plan",
       optionalDescription:
         "These options do not block setup completion. Review the ones included in your plan when you are ready.",
@@ -52,6 +55,9 @@ function copy(locale: AppLocale) {
       retention: "Automatic CRM follow-up",
       noOptional:
         "Your current plan has no additional automation setup to review here.",
+      openDays: (count: number) => `${count} open days configured`,
+      resourcesCount: (rooms: number, equipment: number) =>
+        `${rooms} rooms · ${equipment} equipment items`,
       steps: {
         profile: {
           title: "Salon profile and appearance",
@@ -94,6 +100,21 @@ function copy(locale: AppLocale) {
             "Decide which services are bookable online and preview the public booking page before sharing it with clients. Online booking may intentionally remain disabled.",
         },
       },
+      linkLabels: {
+        profile: "Salon profile",
+        appearance: "Appearance",
+        workingHours: "Salon working hours",
+        employees: "Employees",
+        services: "Services",
+        schedules: "Employee schedules",
+        employeeServices: "Employee ↔ service mapping",
+        rooms: "Rooms",
+        equipment: "Equipment",
+        serviceRooms: "Service ↔ room mapping",
+        serviceEquipment: "Service ↔ equipment mapping",
+        onlineServices: "Online-bookable services",
+        bookingPreview: "Preview public booking",
+      },
     };
   }
 
@@ -108,7 +129,6 @@ function copy(locale: AppLocale) {
       confirmed: "Controllato",
       ready: "Pronto da controllare",
       attention: "Richiede attenzione",
-      open: "Apri impostazioni",
       confirm: "Segna come controllato",
       confirming: "Salvataggio...",
       later: "Continua più tardi",
@@ -120,6 +140,7 @@ function copy(locale: AppLocale) {
       completedBody:
         "Puoi riaprire questa guida in qualsiasi momento per ricontrollare le impostazioni.",
       dashboard: "Apri dashboard",
+      optionalBadge: "Opzionale",
       optionalTitle: "Automazioni incluse nel tuo piano",
       optionalDescription:
         "Queste opzioni non bloccano la configurazione. Controlla quelle incluse nel tuo piano quando vuoi.",
@@ -130,6 +151,9 @@ function copy(locale: AppLocale) {
       retention: "Follow-up CRM automatico",
       noOptional:
         "Il piano attuale non include altre automazioni da configurare in questa sezione.",
+      openDays: (count: number) => `${count} giorni di apertura configurati`,
+      resourcesCount: (rooms: number, equipment: number) =>
+        `${rooms} stanze · ${equipment} attrezzature`,
       steps: {
         profile: {
           title: "Profilo e aspetto del salone",
@@ -172,6 +196,21 @@ function copy(locale: AppLocale) {
             "Scegli i servizi prenotabili online e controlla la pagina pubblica prima di condividerla con i clienti. La prenotazione online può anche rimanere volutamente disattivata.",
         },
       },
+      linkLabels: {
+        profile: "Profilo del salone",
+        appearance: "Aspetto del salone",
+        workingHours: "Orari del salone",
+        employees: "Collaboratori",
+        services: "Servizi",
+        schedules: "Orari dei collaboratori",
+        employeeServices: "Mappatura collaboratore ↔ servizio",
+        rooms: "Stanze",
+        equipment: "Attrezzature",
+        serviceRooms: "Mappatura servizio ↔ stanza",
+        serviceEquipment: "Mappatura servizio ↔ attrezzatura",
+        onlineServices: "Servizi prenotabili online",
+        bookingPreview: "Anteprima prenotazione pubblica",
+      },
     };
   }
 
@@ -185,7 +224,6 @@ function copy(locale: AppLocale) {
     confirmed: "Pregledano",
     ready: "Spremno za pregled",
     attention: "Treba dovršiti",
-    open: "Otvori postavke",
     confirm: "Označi kao pregledano",
     confirming: "Spremanje...",
     later: "Nastavi kasnije",
@@ -197,6 +235,7 @@ function copy(locale: AppLocale) {
     completedBody:
       "Ovaj vodič možeš ponovno otvoriti u bilo kojem trenutku ako želiš provjeriti postavke.",
     dashboard: "Otvori dashboard",
+    optionalBadge: "Opcionalno",
     optionalTitle: "Automatizacije dostupne u tvom planu",
     optionalDescription:
       "Ove stavke ne blokiraju završetak postavljanja. Pregledaj one koje tvoj paket podržava kada ti odgovara.",
@@ -207,6 +246,9 @@ function copy(locale: AppLocale) {
     retention: "Automatski CRM follow-up",
     noOptional:
       "Trenutni paket nema dodatnih automatizacija koje treba postaviti u ovom koraku.",
+    openDays: (count: number) => `${count} radnih dana postavljeno`,
+    resourcesCount: (rooms: number, equipment: number) =>
+      `${rooms} soba · ${equipment} komada opreme`,
     steps: {
       profile: {
         title: "Profil i izgled salona",
@@ -249,6 +291,21 @@ function copy(locale: AppLocale) {
           "Odaberi usluge dostupne online i pregledaj javnu booking stranicu prije nego je podijeliš klijentima. Online booking može namjerno ostati isključen.",
       },
     },
+    linkLabels: {
+      profile: "Profil salona",
+      appearance: "Izgled salona",
+      workingHours: "Radno vrijeme salona",
+      employees: "Djelatnici",
+      services: "Usluge",
+      schedules: "Rasporedi djelatnika",
+      employeeServices: "Mapiranje djelatnik ↔ usluga",
+      rooms: "Sobe",
+      equipment: "Oprema",
+      serviceRooms: "Mapiranje usluga ↔ sobe",
+      serviceEquipment: "Mapiranje usluga ↔ oprema",
+      onlineServices: "Usluge za online rezervacije",
+      bookingPreview: "Pregledaj javni booking",
+    },
   };
 }
 
@@ -265,55 +322,67 @@ export default async function SetupPage() {
   const hasOptionalAutomation =
     canUseNotifications || canUseReviews || canUseRetention;
 
-  const details = {
+  const details: Record<GuidedSetupStepCode, string> = {
     profile: `${state.organization.name} · ${permissions.organizationLocale.toUpperCase()}`,
-    working_hours:
-      permissions.organizationLocale === "en"
-        ? `${state.counts.openDays} open days configured`
-        : permissions.organizationLocale === "it"
-          ? `${state.counts.openDays} giorni di apertura configurati`
-          : `${state.counts.openDays} radnih dana postavljeno`,
+    working_hours: t.openDays(state.counts.openDays),
     employees: `${state.counts.activeEmployees}`,
     services: `${state.counts.activeServices}`,
     schedules: `${state.counts.scheduledEmployees}/${state.counts.activeEmployees}`,
     employee_services: `${state.counts.employeeServiceMappings}`,
-    resources:
-      permissions.organizationLocale === "en"
-        ? `${state.counts.rooms} rooms · ${state.counts.equipment} equipment items`
-        : permissions.organizationLocale === "it"
-          ? `${state.counts.rooms} stanze · ${state.counts.equipment} attrezzature`
-          : `${state.counts.rooms} soba · ${state.counts.equipment} komada opreme`,
+    resources: t.resourcesCount(state.counts.rooms, state.counts.equipment),
     online_booking: `${state.counts.onlineBookableServices}`,
   };
 
-  const links = {
+  const links: Record<
+    GuidedSetupStepCode,
+    { href: string; label: string; newTab?: boolean }[]
+  > = {
     profile: [
-      { href: "/dashboard/settings/profile", label: t.open },
-      { href: "/dashboard/settings/appearance", label: t.open },
+      { href: "/dashboard/settings/profile", label: t.linkLabels.profile },
+      { href: "/dashboard/settings/appearance", label: t.linkLabels.appearance },
     ],
-    working_hours: [{ href: "/dashboard/settings/salon-hours", label: t.open }],
-    employees: [{ href: "/dashboard/settings/employees", label: t.open }],
-    services: [{ href: "/dashboard/settings/services", label: t.open }],
-    schedules: [{ href: "/dashboard/schedule", label: t.open }],
+    working_hours: [
+      {
+        href: "/dashboard/settings/salon-hours",
+        label: t.linkLabels.workingHours,
+      },
+    ],
+    employees: [
+      { href: "/dashboard/settings/employees", label: t.linkLabels.employees },
+    ],
+    services: [
+      { href: "/dashboard/settings/services", label: t.linkLabels.services },
+    ],
+    schedules: [
+      { href: "/dashboard/schedule", label: t.linkLabels.schedules },
+    ],
     employee_services: [
-      { href: "/dashboard/settings/employee-services", label: t.open },
+      {
+        href: "/dashboard/settings/employee-services",
+        label: t.linkLabels.employeeServices,
+      },
     ],
     resources: [
-      { href: "/dashboard/settings/rooms", label: t.open },
-      { href: "/dashboard/settings/equipment", label: t.open },
-      { href: "/dashboard/settings/service-rooms", label: t.open },
-      { href: "/dashboard/settings/service-equipment", label: t.open },
+      { href: "/dashboard/settings/rooms", label: t.linkLabels.rooms },
+      { href: "/dashboard/settings/equipment", label: t.linkLabels.equipment },
+      {
+        href: "/dashboard/settings/service-rooms",
+        label: t.linkLabels.serviceRooms,
+      },
+      {
+        href: "/dashboard/settings/service-equipment",
+        label: t.linkLabels.serviceEquipment,
+      },
     ],
     online_booking: [
-      { href: "/dashboard/settings/services", label: t.open },
+      {
+        href: "/dashboard/settings/services",
+        label: t.linkLabels.onlineServices,
+      },
       {
         href: `/booking/${state.organization.slug}`,
-        label:
-          permissions.organizationLocale === "en"
-            ? "Preview booking"
-            : permissions.organizationLocale === "it"
-              ? "Anteprima prenotazione"
-              : "Pregledaj booking",
+        label: t.linkLabels.bookingPreview,
+        newTab: true,
       },
     ],
   };
@@ -428,15 +497,12 @@ export default async function SetupPage() {
                     </div>
 
                     <div className="mt-4 flex flex-wrap items-center gap-2">
-                      {links[step.code].map((link, linkIndex) => (
+                      {links[step.code].map((link) => (
                         <Link
-                          key={`${step.code}-${linkIndex}`}
+                          key={`${step.code}-${link.href}`}
                           href={link.href}
-                          target={
-                            step.code === "online_booking" && linkIndex === 1
-                              ? "_blank"
-                              : undefined
-                          }
+                          target={link.newTab ? "_blank" : undefined}
+                          rel={link.newTab ? "noreferrer" : undefined}
                           className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-app-soft bg-white px-4 py-2 text-sm font-semibold text-app-text transition hover:bg-app-bg"
                         >
                           {link.label} <ArrowRight className="h-4 w-4" />
@@ -462,7 +528,7 @@ export default async function SetupPage() {
         <section className="rounded-3xl border border-app-soft bg-white p-5 shadow-sm sm:p-6">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-app-accent/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.1em] text-app-accent">
-              <Sparkles className="h-3.5 w-3.5" /> Optional
+              <Sparkles className="h-3.5 w-3.5" /> {t.optionalBadge}
             </div>
             <h2 className="mt-3 text-xl font-bold text-app-text">{t.optionalTitle}</h2>
             <p className="mt-1 max-w-3xl text-sm leading-6 text-app-muted">
