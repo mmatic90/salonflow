@@ -11,7 +11,7 @@ function getResend() {
 }
 
 const fromEmail =
-  process.env.RESEND_FROM_EMAIL || "SalonFlow <onboarding@resend.dev>";
+  process.env.RESEND_FROM_EMAIL || "MiT Salon <onboarding@resend.dev>";
 
 const replyTo = process.env.RESEND_REPLY_TO || undefined;
 
@@ -57,7 +57,7 @@ function layout(
               : `<div style="font-size:26px;font-weight:700;letter-spacing:0.02em;">${escapeHtml(salonName)}</div>`
           }
           <div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;color:#eadbd2;">
-            SalonFlow
+            MiT Salon
           </div>
         </div>
 

@@ -22,13 +22,13 @@ function copy(locale: AppLocale) {
     return {
       title: "Email & notifications",
       description:
-        "Monitor SalonFlow managed email delivery and monthly usage for this salon.",
+        "Monitor MiT Salon managed email delivery and monthly usage for this salon.",
       back: "Back to settings",
       status: "Managed email",
       active: "Active",
       paused: "Paused",
       provider: "Delivery provider",
-      providerValue: "SalonFlow Managed Email",
+      providerValue: "MiT Salon Managed Email",
       customProviderValue: "Custom provider",
       sender: "Sender name",
       replyTo: "Replies go to",
@@ -38,7 +38,7 @@ function copy(locale: AppLocale) {
       attempted: "Attempts",
       remaining: "Remaining quota",
       quotaHelp:
-        "The quota protects the shared SalonFlow email infrastructure from unexpected tenant usage.",
+        "The quota protects the shared MiT Salon email infrastructure from unexpected tenant usage.",
       reminderTitle: "Included email notifications",
       reminderBody:
         "Growth includes booking acceptance/rejection emails, appointment create/change notifications and 24h appointment reminders.",
@@ -52,13 +52,13 @@ function copy(locale: AppLocale) {
     return {
       title: "Email e notifiche",
       description:
-        "Controlla l'invio delle email gestite da SalonFlow e l'utilizzo mensile del salone.",
+        "Controlla l'invio delle email gestite da MiT Salon e l'utilizzo mensile del salone.",
       back: "Torna alle impostazioni",
       status: "Email gestita",
       active: "Attiva",
       paused: "In pausa",
       provider: "Provider di invio",
-      providerValue: "SalonFlow Managed Email",
+      providerValue: "MiT Salon Managed Email",
       customProviderValue: "Provider personalizzato",
       sender: "Nome mittente",
       replyTo: "Le risposte arrivano a",
@@ -68,7 +68,7 @@ function copy(locale: AppLocale) {
       attempted: "Tentativi",
       remaining: "Quota restante",
       quotaHelp:
-        "La quota protegge l'infrastruttura email condivisa di SalonFlow da utilizzi imprevisti di un singolo salone.",
+        "La quota protegge l'infrastruttura email condivisa di MiT Salon da utilizzi imprevisti di un singolo salone.",
       reminderTitle: "Notifiche email incluse",
       reminderBody:
         "Growth include email di accettazione/rifiuto, notifiche di creazione/modifica appuntamento e promemoria 24h.",
@@ -81,13 +81,13 @@ function copy(locale: AppLocale) {
   return {
     title: "Email i obavijesti",
     description:
-      "Prati slanje upravljanih SalonFlow emailova i mjesečnu potrošnju ovog salona.",
+      "Prati slanje upravljanih MiT Salon emailova i mjesečnu potrošnju ovog salona.",
     back: "Natrag na postavke",
     status: "Upravljani email",
     active: "Aktivno",
     paused: "Pauzirano",
     provider: "Način slanja",
-    providerValue: "SalonFlow Managed Email",
+    providerValue: "MiT Salon Managed Email",
     customProviderValue: "Vlastiti provider",
     sender: "Naziv pošiljatelja",
     replyTo: "Odgovori se šalju na",
@@ -97,7 +97,7 @@ function copy(locale: AppLocale) {
     attempted: "Pokušaji",
     remaining: "Preostala kvota",
     quotaHelp:
-      "Kvota štiti zajedničku SalonFlow email infrastrukturu od neočekivano velike potrošnje pojedinog salona.",
+      "Kvota štiti zajedničku MiT Salon email infrastrukturu od neočekivano velike potrošnje pojedinog salona.",
     reminderTitle: "Uključene email obavijesti",
     reminderBody:
       "Growth uključuje email potvrde i odbijanja online rezervacija, obavijesti kod kreiranja i promjene termina te 24-satne podsjetnike.",
@@ -185,7 +185,7 @@ export default async function EmailNotificationsSettingsPage() {
                 {t.sender}
               </dt>
               <dd className="mt-1 break-words font-semibold text-app-text">
-                {overview.fromName || "SalonFlow"}
+                {overview.fromName || "MiT Salon"}
               </dd>
             </div>
             <div className="rounded-2xl bg-app-bg p-4 sm:col-span-2">

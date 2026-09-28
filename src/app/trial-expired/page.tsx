@@ -10,10 +10,10 @@ import { createClient } from "@/lib/supabase/server";
 function copy(locale: "hr" | "en" | "it") {
   if (locale === "en") {
     return {
-      eyebrow: "SalonFlow trial",
+      eyebrow: "MiT Salon trial",
       title: "Your trial has ended",
       description:
-        "Access to the salon workspace and public online booking is paused. Your salon data is still safely stored. Activate a paid plan to continue using SalonFlow.",
+        "Access to the salon workspace and public online booking is paused. Your salon data is still safely stored. Activate a paid plan to continue using MiT Salon.",
       salon: "Salon",
       platformAdmin: "Open Platform Admin",
     };
@@ -21,20 +21,20 @@ function copy(locale: "hr" | "en" | "it") {
 
   if (locale === "it") {
     return {
-      eyebrow: "Prova SalonFlow",
+      eyebrow: "Prova MiT Salon",
       title: "Il periodo di prova è terminato",
       description:
-        "L'accesso all'area del salone e alla prenotazione online pubblica è sospeso. I dati del salone restano salvati. Attiva un piano a pagamento per continuare a usare SalonFlow.",
+        "L'accesso all'area del salone e alla prenotazione online pubblica è sospeso. I dati del salone restano salvati. Attiva un piano a pagamento per continuare a usare MiT Salon.",
       salon: "Salone",
       platformAdmin: "Apri Platform Admin",
     };
   }
 
   return {
-    eyebrow: "SalonFlow probno razdoblje",
+    eyebrow: "MiT Salon probno razdoblje",
     title: "Probno razdoblje je završilo",
     description:
-      "Pristup radnom prostoru salona i javnim online rezervacijama je pauziran. Podaci salona ostaju sigurno sačuvani. Aktivirajte plaćeni plan za nastavak korištenja SalonFlowa.",
+      "Pristup radnom prostoru salona i javnim online rezervacijama je pauziran. Podaci salona ostaju sigurno sačuvani. Aktivirajte plaćeni plan za nastavak korištenja MiT Salona.",
     salon: "Salon",
     platformAdmin: "Otvori Platform Admin",
   };

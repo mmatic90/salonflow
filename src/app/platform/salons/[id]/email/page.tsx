@@ -49,7 +49,7 @@ export default async function PlatformSalonEmailPage({
               Email potrošnja · {salon.name}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Pregled SalonFlow Managed Email potrošnje i tenant quota kontrole.
+              Pregled MiT Salon Managed Email potrošnje i tenant quota kontrole.
               Usage brojevi su read-only; ovdje se može mijenjati samo mjesečni
               quota override.
             </p>

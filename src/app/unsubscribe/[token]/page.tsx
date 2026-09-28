@@ -32,7 +32,7 @@ function copy(locale: Locale) {
       button: "Unsubscribe from marketing email",
       doneTitle: "You are unsubscribed",
       doneBody:
-        "This salon will no longer send you marketing or retention emails through SalonFlow. Operational appointment messages remain separate.",
+        "This salon will no longer send you marketing or retention emails through MiT Salon. Operational appointment messages remain separate.",
       invalidTitle: "This unsubscribe link is not valid",
       invalidBody:
         "The link may be incomplete or no longer available. Contact the salon if you want your communication preference changed.",
@@ -47,7 +47,7 @@ function copy(locale: Locale) {
       button: "Disiscrivimi dalle email marketing",
       doneTitle: "Disiscrizione completata",
       doneBody:
-        "Questo salone non ti invierà più email marketing o retention tramite SalonFlow. Le comunicazioni operative sugli appuntamenti restano separate.",
+        "Questo salone non ti invierà più email marketing o retention tramite MiT Salon. Le comunicazioni operative sugli appuntamenti restano separate.",
       invalidTitle: "Questo link di disiscrizione non è valido",
       invalidBody:
         "Il link potrebbe essere incompleto o non più disponibile. Contatta il salone per modificare la preferenza di comunicazione.",
@@ -61,7 +61,7 @@ function copy(locale: Locale) {
     button: "Odjavi me s marketinških emailova",
     doneTitle: "Odjava je uspješna",
     doneBody:
-      "Ovaj salon ti više neće slati marketinške ili retention emailove kroz SalonFlow. Operativne poruke o terminima vode se odvojeno.",
+      "Ovaj salon ti više neće slati marketinške ili retention emailove kroz MiT Salon. Operativne poruke o terminima vode se odvojeno.",
     invalidTitle: "Ovaj unsubscribe link nije ispravan",
     invalidBody:
       "Link je možda nepotpun ili više nije dostupan. Obrati se salonu ako želiš promijeniti preferencu komunikacije.",
@@ -145,7 +145,7 @@ export default async function MarketingUnsubscribePage({
           <>
             <ShieldCheck className="h-9 w-9 text-slate-700" />
             <p className="mt-5 text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
-              {organization?.name || "SalonFlow"}
+              {organization?.name || "MiT Salon"}
             </p>
             <h1 className="mt-2 text-2xl font-bold">{t.title}</h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">{t.description}</p>

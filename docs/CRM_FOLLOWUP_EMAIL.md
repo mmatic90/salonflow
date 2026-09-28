@@ -1,6 +1,6 @@
 # CRM follow-up email
 
-SalonFlow supports consent-gated retention email on top of the Pro Advanced CRM queue.
+MiT Salon supports consent-gated retention email on top of the Pro Advanced CRM queue.
 
 ## Manual follow-up
 
@@ -13,7 +13,7 @@ A successful send:
 3. checks the client marketing-email preference server-side;
 4. requires `marketing_email_status = allowed`;
 5. obtains the opaque unsubscribe URL through `getMarketingEmailDeliveryContext()`;
-6. sends through SalonFlow Managed Email with the `advanced_crm` capability;
+6. sends through MiT Salon Managed Email with the `advanced_crm` capability;
 7. records the delivery as `sent`;
 8. inserts the existing CRM `contacted` action for the same signal generation.
 
@@ -80,7 +80,7 @@ The message contains:
 - a clear marketing/retention context note;
 - the client-specific unsubscribe link.
 
-No discount or promotional offer is invented by SalonFlow.
+No discount or promotional offer is invented by MiT Salon.
 
 ## Platform Admin boundary
 

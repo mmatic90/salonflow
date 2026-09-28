@@ -115,7 +115,7 @@ function availabilityHeadings(locale: AppLocale) {
       available: "Requested slot is available",
       unavailable: "Requested slot is not currently available",
       availableHelp:
-        "SalonFlow found an available employee and room for the requested time.",
+        "MiT Salon found an available employee and room for the requested time.",
       unavailableHelp:
         "Open the request to choose another employee, room or alternative time.",
     };
@@ -126,7 +126,7 @@ function availabilityHeadings(locale: AppLocale) {
       available: "L'orario richiesto è disponibile",
       unavailable: "L'orario richiesto non è al momento disponibile",
       availableHelp:
-        "SalonFlow ha trovato un operatore e una cabina disponibili per l'orario richiesto.",
+        "MiT Salon ha trovato un operatore e una cabina disponibili per l'orario richiesto.",
       unavailableHelp:
         "Apri la richiesta per scegliere un altro operatore, una cabina o un orario alternativo.",
     };
@@ -136,7 +136,7 @@ function availabilityHeadings(locale: AppLocale) {
     available: "Traženi termin je dostupan",
     unavailable: "Traženi termin trenutno nije dostupan",
     availableHelp:
-      "SalonFlow je pronašao slobodnog djelatnika i sobu za traženi datum i vrijeme.",
+      "MiT Salon je pronašao slobodnog djelatnika i sobu za traženi datum i vrijeme.",
     unavailableHelp:
       "Otvori zahtjev za odabir drugog djelatnika, sobe ili alternativnog vremena.",
   };

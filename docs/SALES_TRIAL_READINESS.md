@@ -1,6 +1,6 @@
-# SalonFlow Sales Trial readiness
+# MiT Salon Sales Trial readiness
 
-This document is the release gate for sending a private SalonFlow trial to a prospective salon.
+This document is the release gate for sending a private MiT Salon trial to a prospective salon.
 
 The goal is not a shared demo account. Every prospect gets an isolated organization, an owner account and a time-limited trial.
 
@@ -22,17 +22,17 @@ A new Sales Trial is provisioned with:
 - CRM retention automation OFF;
 - Managed Email tenant foundation available;
 - optional localized demo data;
-- a localized account activation email generated through the SalonFlow email provider.
+- a localized account activation email generated through the MiT Salon email provider.
 
 After the trial expires, the tenant data is retained but dashboard access is locked until a paid plan is activated. The public booking page and public booking APIs are also disabled for that expired trial tenant.
 
-When Platform Admin converts a trial tenant to an active paid plan, SalonFlow starts the tenant-scoped guided setup. The owner can review salon profile/contact data, working hours, employees, services, employee schedules, employee/service mappings, optional room/equipment resources and online booking. Setup is resumable: **Continue later** returns to the dashboard while a progress banner remains visible until setup is completed. Plan-specific email/review/CRM automations are shown as optional setup items and remain OFF until explicitly enabled.
+When Platform Admin converts a trial tenant to an active paid plan, MiT Salon starts the tenant-scoped guided setup. The owner can review salon profile/contact data, working hours, employees, services, employee schedules, employee/service mappings, optional room/equipment resources and online booking. Setup is resumable: **Continue later** returns to the dashboard while a progress banner remains visible until setup is completed. Plan-specific email/review/CRM automations are shown as optional setup items and remain OFF until explicitly enabled.
 
-Existing trial data is preserved during conversion. If the converted tenant was provisioned with SalonFlow's seeded Sales Trial demo dataset, Settings exposes a guarded one-time **Start with a clean salon** flow. It requires the exact salon name as confirmation, works only for an active converted Sales Trial, and removes the tenant's operational/demo data before resetting guided setup to 0%. Organization identity, owner membership/access, paid plan, billing metadata and platform/audit history are preserved. After the reset the option disappears permanently for that tenant.
+Existing trial data is preserved during conversion. If the converted tenant was provisioned with MiT Salon's seeded Sales Trial demo dataset, Settings exposes a guarded one-time **Start with a clean salon** flow. It requires the exact salon name as confirmation, works only for an active converted Sales Trial, and removes the tenant's operational/demo data before resetting guided setup to 0%. Organization identity, owner membership/access, paid plan, billing metadata and platform/audit history are preserved. After the reset the option disappears permanently for that tenant.
 
 ## Generic demo dataset
 
-When **Seed demo data** is enabled, SalonFlow creates an isolated dataset inside that new organization only.
+When **Seed demo data** is enabled, MiT Salon creates an isolated dataset inside that new organization only.
 
 The seed currently contains:
 
@@ -57,17 +57,17 @@ Seeded clients intentionally have no real email or phone contact data. This prev
 
 Before sending a real prospect an invite, verify the deployed environment has:
 
-- `NEXT_PUBLIC_SITE_URL` set to the real deployed SalonFlow URL, never localhost;
+- `NEXT_PUBLIC_SITE_URL` set to the real deployed MiT Salon URL, never localhost;
 - `NEXT_PUBLIC_SUPABASE_URL`;
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`;
 - `SUPABASE_SERVICE_ROLE_KEY`;
 - `RESEND_API_KEY`;
-- `SALONFLOW_EMAIL_FROM_ADDRESS` using a verified SalonFlow-owned sending domain;
+- `SALONFLOW_EMAIL_FROM_ADDRESS` using a verified MiT Salon-owned sending domain;
 - optional `SALONFLOW_EMAIL_DEFAULT_REPLY_TO`;
 - Managed Email monthly/global limit variables;
 - `CRON_SECRET`.
 
-Do not send external prospects invitations from `onboarding@resend.dev`; use a verified SalonFlow-owned domain first.
+Do not send external prospects invitations from `onboarding@resend.dev`; use a verified MiT Salon-owned domain first.
 
 ## Supabase Auth redirect gate
 
@@ -77,7 +77,7 @@ The invite action generates a Supabase Auth invite link whose redirect target is
 
 In **Supabase Dashboard → Authentication → URL Configuration**:
 
-1. Set Site URL to the real SalonFlow application URL.
+1. Set Site URL to the real MiT Salon application URL.
 2. Add the production `/set-password` URL to allowed Redirect URLs.
 3. For local testing, allow `http://localhost:3000/**`.
 4. If Netlify preview deployments are used for auth testing, explicitly allow the intended preview URL pattern.
@@ -106,7 +106,7 @@ Apply all unapplied Supabase migrations, including:
 
 ## First controlled end-to-end QA
 
-Use an email address you own that does not already have a SalonFlow auth account.
+Use an email address you own that does not already have a MiT Salon auth account.
 
 1. Sign in as Platform Admin.
 2. Open **Novi trial**.
@@ -145,7 +145,7 @@ For the disposable expired trial tenant:
 
 1. In Platform Admin choose the paid plan and change lifecycle from `trial` to `active`.
 2. Refresh the owner's expired-trial page or sign in again.
-3. Confirm SalonFlow opens `/dashboard/setup` instead of dropping directly into the workspace.
+3. Confirm MiT Salon opens `/dashboard/setup` instead of dropping directly into the workspace.
 4. Confirm existing trial/demo data is still present and the setup checklist derives readiness from that live tenant data.
 5. Confirm mandatory steps cannot be marked reviewed until their technical requirement is satisfied.
 6. Confirm rooms/equipment and online booking can be explicitly reviewed even when the salon does not use them.

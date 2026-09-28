@@ -12,7 +12,7 @@ function copy(locale: AppLocale) {
       eyebrow: "Salon profile",
       title: "Salon details",
       description:
-        "Keep the contact and address information used across SalonFlow and the public booking page up to date.",
+        "Keep the contact and address information used across MiT Salon and the public booking page up to date.",
       name: "Salon name",
       email: "Salon email",
       phone: "Phone",
@@ -29,7 +29,7 @@ function copy(locale: AppLocale) {
       eyebrow: "Profilo del salone",
       title: "Dati del salone",
       description:
-        "Mantieni aggiornati i contatti e l'indirizzo usati in SalonFlow e nella pagina pubblica di prenotazione.",
+        "Mantieni aggiornati i contatti e l'indirizzo usati in MiT Salon e nella pagina pubblica di prenotazione.",
       name: "Nome del salone",
       email: "Email del salone",
       phone: "Telefono",
@@ -45,7 +45,7 @@ function copy(locale: AppLocale) {
     eyebrow: "Profil salona",
     title: "Podaci salona",
     description:
-      "Održavaj kontaktne podatke i adresu koji se koriste u SalonFlowu i na javnoj booking stranici.",
+      "Održavaj kontaktne podatke i adresu koji se koriste u MiT Salonu i na javnoj booking stranici.",
     name: "Naziv salona",
     email: "Email salona",
     phone: "Telefon",

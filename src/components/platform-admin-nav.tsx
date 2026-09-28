@@ -29,7 +29,7 @@ export default function PlatformAdminNav() {
             <Building2 className="h-5 w-5" />
           </span>
           <div>
-            <p className="font-bold">SalonFlow</p>
+            <p className="font-bold">MiT Salon</p>
             <p className="text-xs text-slate-400">Platform Admin</p>
           </div>
         </div>

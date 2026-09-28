@@ -12,10 +12,10 @@ import { createClient } from "@/lib/supabase/server";
 function copy(locale: "hr" | "en" | "it") {
   if (locale === "en") {
     return {
-      eyebrow: "SalonFlow account",
+      eyebrow: "MiT Salon account",
       title: "This salon is currently suspended",
       description:
-        "Access to the salon workspace is temporarily disabled. Your salon data has not been deleted. Contact the person responsible for your SalonFlow account for more information.",
+        "Access to the salon workspace is temporarily disabled. Your salon data has not been deleted. Contact the person responsible for your MiT Salon account for more information.",
       salon: "Salon",
       platformAdmin: "Open Platform Admin",
     };
@@ -23,20 +23,20 @@ function copy(locale: "hr" | "en" | "it") {
 
   if (locale === "it") {
     return {
-      eyebrow: "Account SalonFlow",
+      eyebrow: "Account MiT Salon",
       title: "Questo salone è attualmente sospeso",
       description:
-        "L'accesso all'area del salone è temporaneamente disabilitato. I dati del salone non sono stati eliminati. Contatta il referente del tuo account SalonFlow per maggiori informazioni.",
+        "L'accesso all'area del salone è temporaneamente disabilitato. I dati del salone non sono stati eliminati. Contatta il referente del tuo account MiT Salon per maggiori informazioni.",
       salon: "Salone",
       platformAdmin: "Apri Platform Admin",
     };
   }
 
   return {
-    eyebrow: "SalonFlow račun",
+    eyebrow: "MiT Salon račun",
     title: "Ovaj salon je trenutačno suspendiran",
     description:
-      "Pristup radnom prostoru salona privremeno je onemogućen. Podaci salona nisu obrisani. Za više informacija kontaktirajte osobu odgovornu za vaš SalonFlow račun.",
+      "Pristup radnom prostoru salona privremeno je onemogućen. Podaci salona nisu obrisani. Za više informacija kontaktirajte osobu odgovornu za vaš MiT Salon račun.",
     salon: "Salon",
     platformAdmin: "Otvori Platform Admin",
   };

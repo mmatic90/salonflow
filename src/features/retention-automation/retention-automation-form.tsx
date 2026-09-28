@@ -13,7 +13,7 @@ function copy(locale: AppLocale) {
     return {
       enabled: "Enable automatic CRM follow-up",
       enabledHelp:
-        "When enabled, SalonFlow sends follow-up emails once per day to current consent-eligible CRM candidates, up to the daily limit.",
+        "When enabled, MiT Salon sends follow-up emails once per day to current consent-eligible CRM candidates, up to the daily limit.",
       limit: "Daily send limit",
       limitHelp:
         "Only clients with an explicit marketing-email opt-in can consume this limit.",
@@ -27,7 +27,7 @@ function copy(locale: AppLocale) {
     return {
       enabled: "Attiva follow-up CRM automatico",
       enabledHelp:
-        "Quando è attivo, SalonFlow invia una volta al giorno email di follow-up ai candidati CRM attuali con consenso valido, fino al limite giornaliero.",
+        "Quando è attivo, MiT Salon invia una volta al giorno email di follow-up ai candidati CRM attuali con consenso valido, fino al limite giornaliero.",
       limit: "Limite giornaliero di invio",
       limitHelp:
         "Solo i clienti con consenso esplicito alle email marketing possono consumare questo limite.",
@@ -40,7 +40,7 @@ function copy(locale: AppLocale) {
   return {
     enabled: "Uključi automatski CRM follow-up",
     enabledHelp:
-      "Kad je uključeno, SalonFlow jednom dnevno šalje follow-up email aktualnim CRM kandidatima s valjanim pristankom, do dnevnog limita.",
+      "Kad je uključeno, MiT Salon jednom dnevno šalje follow-up email aktualnim CRM kandidatima s valjanim pristankom, do dnevnog limita.",
     limit: "Dnevni limit slanja",
     limitHelp:
       "Samo klijenti s izričitim pristankom na marketinški email mogu potrošiti ovaj limit.",

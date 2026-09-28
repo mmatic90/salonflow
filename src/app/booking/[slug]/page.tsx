@@ -194,7 +194,7 @@ export default async function TenantBookingPage({
             )}
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-app-muted">
-                SalonFlow
+                MiT Salon
               </p>
               <h1 className="text-xl font-extrabold">{organization.name}</h1>
             </div>

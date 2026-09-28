@@ -100,7 +100,7 @@ export async function sendRetentionFollowupEmail(args: {
       <div style="overflow:hidden;border:1px solid #eadbd2;border-radius:28px;background:#ffffff;box-shadow:0 12px 32px rgba(47,39,35,0.08);">
         <div style="background:#2f2723;padding:32px 28px;text-align:center;color:#ffffff;">
           ${logo ? `<img src="${logo}" alt="${salonName}" style="display:block;max-width:150px;height:auto;margin:0 auto 16px;" />` : `<div style="font-size:26px;font-weight:700;">${salonName}</div>`}
-          <div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;color:#eadbd2;">SalonFlow</div>
+          <div style="font-size:13px;letter-spacing:0.28em;text-transform:uppercase;color:#eadbd2;">MiT Salon</div>
         </div>
         <div style="padding:34px 30px;">
           <p style="margin:0 0 10px;font-size:15px;color:#6f5a50;">${args.lang === "it" ? "Ciao" : args.lang === "en" ? "Hi" : "Bok"} ${clientName},</p>

@@ -1,6 +1,6 @@
-# SalonFlow Managed Email Foundation
+# MiT Salon Managed Email Foundation
 
-SalonFlow tenant communication is email-only. SMS/Twilio delivery is intentionally not part of the reusable SaaS foundation.
+MiT Salon tenant communication is email-only. SMS/Twilio delivery is intentionally not part of the reusable SaaS foundation.
 
 ## Architecture
 
@@ -33,7 +33,7 @@ Reply-To resolution prefers:
 
 1. the explicit tenant email setting;
 2. the organization's own contact email;
-3. the SalonFlow environment fallback.
+3. the MiT Salon environment fallback.
 
 This keeps replies directed to the salon rather than to the platform operator by default.
 
@@ -45,7 +45,7 @@ This keeps replies directed to the salon rather than to the platform operator by
 - successful sends;
 - failed sends.
 
-A database function reserves an email attempt atomically before provider delivery. The reservation checks both the tenant monthly limit and a global SalonFlow managed-email limit. This prevents one tenant from consuming the entire provider allowance and also provides a global emergency ceiling.
+A database function reserves an email attempt atomically before provider delivery. The reservation checks both the tenant monthly limit and a global MiT Salon managed-email limit. This prevents one tenant from consuming the entire provider allowance and also provides a global emergency ceiling.
 
 Failed provider attempts remain counted as attempts. This is intentional: repeated invalid/failing requests must not be usable to bypass the safety cap.
 
@@ -58,7 +58,7 @@ Development has small safety fallbacks only. Production fails closed when the li
 
 The current default limit is configuration, not finalized commercial pricing. Per-tenant overrides are stored in the database so future plan/contract-specific quotas can be introduced without redesigning delivery.
 
-Platform Admin has a dedicated per-salon managed-email screen. It shows the current UTC-month usage, effective tenant limit, remaining quota, provider state, sender and Reply-To context. Usage counters are intentionally read-only. Platform Admin can only set a positive per-tenant `monthly_limit_override` or return the salon to the platform default. A tenant override never bypasses the global SalonFlow safety ceiling.
+Platform Admin has a dedicated per-salon managed-email screen. It shows the current UTC-month usage, effective tenant limit, remaining quota, provider state, sender and Reply-To context. Usage counters are intentionally read-only. Platform Admin can only set a positive per-tenant `monthly_limit_override` or return the salon to the platform default. A tenant override never bypasses the global MiT Salon safety ceiling.
 
 The Platform Admin usage card surfaces warning states at 80% utilization and at quota exhaustion. Manual usage reset is intentionally not supported because it would undermine cost protection and usage accounting.
 
@@ -68,11 +68,11 @@ The global dashboard is read-only. It does not expose client records, appointmen
 
 ## Sender strategy
 
-Local Resend testing may use `onboarding@resend.dev` when allowed by Resend testing rules. Production should use a verified domain owned by the SalonFlow SaaS product, not a personal or M.i.T. Informatika sender domain.
+Local Resend testing may use `onboarding@resend.dev` when allowed by Resend testing rules. Production should use a verified domain owned by the MiT Salon SaaS product, not a personal or M.i.T. Informatika sender domain.
 
 The intended production pattern is:
 
-`Salon name <notifications@managed-salonflow-domain>`
+`Salon name <notifications@managed-mit-salon-domain>`
 
 with Reply-To pointing to the tenant salon's own contact email.
 
@@ -84,7 +84,7 @@ The managed email layer checks the capability associated with the email before q
 - 24h reminders use `appointment_reminders`;
 - Google review request emails use `review_requests`.
 
-`booking_notifications` is a **Growth** capability. Growth, Pro and Trial tenants can use SalonFlow Managed Email for operational client notifications. Starter keeps online booking and normal appointment management, but automatic client email delivery is not included.
+`booking_notifications` is a **Growth** capability. Growth, Pro and Trial tenants can use MiT Salon Managed Email for operational client notifications. Starter keeps online booking and normal appointment management, but automatic client email delivery is not included.
 
 `appointment_reminders` is a **Growth** capability. Growth/Pro/Trial receive proactive 24h reminders in addition to managed operational notifications.
 
@@ -102,6 +102,6 @@ Review-request delivery additionally uses an atomic appointment claim, a maximum
 
 ## Future custom provider
 
-A future Pro/BYOP option may allow a salon to use its own provider account/domain. Before implementation, SalonFlow needs a credential-safe design such as encrypted secrets or an external secret store. Plain API keys must never be stored in tenant-readable database columns.
+A future Pro/BYOP option may allow a salon to use its own provider account/domain. Before implementation, MiT Salon needs a credential-safe design such as encrypted secrets or an external secret store. Plain API keys must never be stored in tenant-readable database columns.
 
 When implemented, provider choice should remain behind the same notification interface so booking, appointment, reminder and review features do not need provider-specific code.

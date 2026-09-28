@@ -21,7 +21,7 @@ export default async function NewSalesTrialPage() {
             Sales Trial
           </div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-950">
-            Kreiraj privatni SalonFlow za potencijalnog klijenta
+            Kreiraj privatni MiT Salon za potencijalnog klijenta
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
             Svaki salon dobiva vlastiti tenant, vlasnički račun i 14 dana Pro funkcionalnosti. Po želji ga možeš odmah napuniti sigurnim demo podacima kako bi korisnik imao što istraživati od prvog prijavljivanja.

@@ -55,7 +55,7 @@ export default async function SalonEmailUsageCard({
               Potrošnja i quota
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              {formatMonth(overview.periodStart)} · {overview.provider === "salonflow" ? "SalonFlow Managed Email" : "Custom provider"}
+              {formatMonth(overview.periodStart)} · {overview.provider === "salonflow" ? "MiT Salon Managed Email" : "Custom provider"}
             </p>
           </div>
         </div>
@@ -135,7 +135,7 @@ export default async function SalonEmailUsageCard({
             Sender
           </dt>
           <dd className="mt-2 break-words font-semibold text-slate-900">
-            {overview.fromName || "SalonFlow"}
+            {overview.fromName || "MiT Salon"}
           </dd>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
@@ -158,7 +158,7 @@ export default async function SalonEmailUsageCard({
 
       <p className="mt-4 text-xs leading-5 text-slate-500">
         Usage brojevi su read-only. Quota override mijenja samo tenant limit i ne
-        može zaobići globalni SalonFlow managed-email sigurnosni limit.
+        može zaobići globalni MiT Salon managed-email sigurnosni limit.
       </p>
     </section>
   );

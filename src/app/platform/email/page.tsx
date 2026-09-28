@@ -102,7 +102,7 @@ export default async function PlatformManagedEmailPage() {
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-slate-500">
-              SalonFlow Managed Email
+              MiT Salon Managed Email
             </p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
               Globalna email potrošnja
@@ -275,7 +275,7 @@ export default async function PlatformManagedEmailPage() {
                       </td>
                       <td className="px-4 py-4 text-slate-700">
                         {salon.provider === "salonflow"
-                          ? "SalonFlow"
+                          ? "MiT Salon"
                           : "Custom"}
                       </td>
                       <td className="px-4 py-4">

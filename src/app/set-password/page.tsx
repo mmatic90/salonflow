@@ -42,51 +42,51 @@ const getServerInviteTokenHash = () => "";
 function copy(locale: Locale) {
   if (locale === "it") {
     return {
-      eyebrow: "Attivazione SalonFlow",
+      eyebrow: "Attivazione MiT Salon",
       title: "Imposta la tua password",
-      description: "Completa l'attivazione del tuo spazio privato SalonFlow.",
+      description: "Completa l'attivazione del tuo spazio privato MiT Salon.",
       password: "Nuova password",
       confirm: "Ripeti la password",
-      button: "Salva e apri SalonFlow",
+      button: "Salva e apri MiT Salon",
       checking: "Verifica dell'invito...",
       invalid: "Questo invito non è più valido o è scaduto.",
-      invalidHelp: "Chiedi al team SalonFlow un nuovo invito.",
+      invalidHelp: "Chiedi al team MiT Salon un nuovo invito.",
       mismatch: "Le password non coincidono.",
       short: "La password deve contenere almeno 8 caratteri.",
-      success: "Password impostata. Apertura di SalonFlow...",
+      success: "Password impostata. Apertura di MiT Salon...",
       login: "Vai al login",
     };
   }
   if (locale === "en") {
     return {
-      eyebrow: "SalonFlow activation",
+      eyebrow: "MiT Salon activation",
       title: "Set your password",
-      description: "Complete activation of your private SalonFlow workspace.",
+      description: "Complete activation of your private MiT Salon workspace.",
       password: "New password",
       confirm: "Repeat password",
-      button: "Save and open SalonFlow",
+      button: "Save and open MiT Salon",
       checking: "Checking your invitation...",
       invalid: "This invitation is no longer valid or has expired.",
-      invalidHelp: "Ask the SalonFlow team for a new invitation.",
+      invalidHelp: "Ask the MiT Salon team for a new invitation.",
       mismatch: "Passwords do not match.",
       short: "Password must be at least 8 characters long.",
-      success: "Password saved. Opening SalonFlow...",
+      success: "Password saved. Opening MiT Salon...",
       login: "Go to login",
     };
   }
   return {
-    eyebrow: "SalonFlow aktivacija",
+    eyebrow: "MiT Salon aktivacija",
     title: "Postavi svoju lozinku",
-    description: "Dovrši aktivaciju svog privatnog SalonFlow prostora.",
+    description: "Dovrši aktivaciju svog privatnog MiT Salon prostora.",
     password: "Nova lozinka",
     confirm: "Ponovi lozinku",
-    button: "Spremi i otvori SalonFlow",
+    button: "Spremi i otvori MiT Salon",
     checking: "Provjeravam pozivnicu...",
     invalid: "Ova pozivnica više nije važeća ili je istekla.",
-    invalidHelp: "Zatraži novu pozivnicu od SalonFlow tima.",
+    invalidHelp: "Zatraži novu pozivnicu od MiT Salon tima.",
     mismatch: "Lozinke se ne podudaraju.",
     short: "Lozinka mora imati najmanje 8 znakova.",
-    success: "Lozinka je spremljena. Otvaram SalonFlow...",
+    success: "Lozinka je spremljena. Otvaram MiT Salon...",
     login: "Idi na prijavu",
   };
 }

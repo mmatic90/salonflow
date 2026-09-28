@@ -181,7 +181,7 @@ export default async function SalonPublicPage({
               )}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-app-muted">
-                  SalonFlow
+                  MiT Salon
                 </p>
                 <h1 className="text-xl font-extrabold">{organization.name}</h1>
               </div>

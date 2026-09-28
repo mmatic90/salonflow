@@ -1,6 +1,6 @@
 # Repeat-client matching for online booking
 
-When a pending public online-booking request is accepted, SalonFlow should reuse an existing active CRM client when the identity signal is strong enough instead of creating a duplicate client row.
+When a pending public online-booking request is accepted, MiT Salon should reuse an existing active CRM client when the identity signal is strong enough instead of creating a duplicate client row.
 
 ## Matching order
 
@@ -11,7 +11,7 @@ When a pending public online-booking request is accepted, SalonFlow should reuse
 5. If no email match exists, normalize the phone to digits only. Phone values shorter than seven digits are not identity signals.
 6. If exactly one active client has the same normalized phone, reuse it only when that client has no email or has the same normalized email as the booking request.
 7. If multiple clients share the same phone, the same exact normalized full name may disambiguate them. A phone candidate that already has a different non-empty email is still not auto-linked.
-8. If more than one plausible client remains after these tie-breakers, stop acceptance and show an ambiguity error. SalonFlow must not pick an arbitrary record.
+8. If more than one plausible client remains after these tie-breakers, stop acceptance and show an ambiguity error. MiT Salon must not pick an arbitrary record.
 
 Matching never crosses `organization_id` and ignores inactive/soft-deleted clients.
 
@@ -21,7 +21,7 @@ The tie-breakers are deliberately conservative. Name is never used as the primar
 
 Reusing an existing client does not overwrite established CRM data from a public booking request.
 
-SalonFlow may only fill:
+MiT Salon may only fill:
 
 - a missing email address;
 - a missing phone number;
@@ -48,11 +48,11 @@ This lets either an admin or employee accept a legitimate repeat-client booking 
 
 ## Rollback safety
 
-The accept flow tracks whether it created a new CRM client. If appointment creation fails, SalonFlow deletes only a client created by that same acceptance attempt. A reused existing client is never deleted as rollback cleanup.
+The accept flow tracks whether it created a new CRM client. If appointment creation fails, MiT Salon deletes only a client created by that same acceptance attempt. A reused existing client is never deleted as rollback cleanup.
 
 ## Current limitations
 
 - Existing historical duplicate clients are not automatically merged by this feature.
 - Matching currently derives normalized values server-side from active client rows rather than indexed normalized identity columns. This is appropriate for the current pilot scale but should be optimized before very large tenant datasets.
 - Two truly concurrent acceptance requests for the same brand-new person can still race before either newly created client becomes visible to the other request. A later scaling hardening step can add an advisory-lock or database-level find-or-create primitive.
-- Phone normalization is intentionally country-neutral and compares digits exactly. SalonFlow does not assume a Croatian or other market-specific country code when matching.
+- Phone normalization is intentionally country-neutral and compares digits exactly. MiT Salon does not assume a Croatian or other market-specific country code when matching.

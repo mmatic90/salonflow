@@ -5,7 +5,7 @@ import type {
 } from "@/features/feedback/types";
 
 const fromEmail =
-  process.env.RESEND_FROM_EMAIL || "SalonFlow <onboarding@resend.dev>";
+  process.env.RESEND_FROM_EMAIL || "MiT Salon <onboarding@resend.dev>";
 const feedbackRecipient =
   process.env.FEEDBACK_NOTIFICATION_EMAIL || "maticmaurizio@gmail.com";
 
@@ -52,7 +52,7 @@ export async function sendFeedbackNotificationEmail(args: {
   const { error } = await resend.emails.send({
     from: fromEmail,
     to: [feedbackRecipient],
-    subject: `[SalonFlow feedback · ${args.salonName}] ${args.title}`,
+    subject: `[MiT Salon feedback · ${args.salonName}] ${args.title}`,
     html: `
       <div style="font-family:Arial,Helvetica,sans-serif;max-width:680px;margin:0 auto;color:#2f2723;line-height:1.6;">
         <h1 style="font-size:24px;margin-bottom:20px;">Novi feedback</h1>
