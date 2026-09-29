@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  cronInternalError,
+  cronUnauthorizedResponse,
+  isCronAuthorized,
+} from "@/lib/cron-auth";
 import { organizationHasCapability } from "@/lib/entitlements";
 import {
   normalizeSalonLifecycleStatus,
@@ -24,12 +29,6 @@ type OrganizationRow = {
   trial_ends_at: string | null;
   is_active: boolean | null;
 };
-
-function isAuthorized(request: Request) {
-  const expectedSecret = process.env.CRON_SECRET;
-  if (!expectedSecret) return false;
-  return request.headers.get("authorization") === `Bearer ${expectedSecret}`;
-}
 
 function normalizeLocale(value: string | null | undefined): AppLocale {
   if (value === "en" || value === "it") return value;
@@ -97,8 +96,8 @@ async function recordRun(args: {
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCronAuthorized(request)) {
+    return cronUnauthorizedResponse();
   }
 
   const url = new URL(request.url);
@@ -111,7 +110,7 @@ export async function GET(request: Request) {
     .eq("enabled", true);
 
   if (settingsError) {
-    return NextResponse.json({ error: settingsError.message }, { status: 500 });
+    return cronInternalError("retention-followups:settings", settingsError);
   }
 
   const settingsRows = (settingsData ?? []) as SettingsRow[];
@@ -135,7 +134,7 @@ export async function GET(request: Request) {
     .in("id", organizationIds);
 
   if (organizationError) {
-    return NextResponse.json({ error: organizationError.message }, { status: 500 });
+    return cronInternalError("retention-followups:organizations", organizationError);
   }
 
   const organizations = new Map(

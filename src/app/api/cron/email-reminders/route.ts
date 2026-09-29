@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  cronInternalError,
+  cronUnauthorizedResponse,
+  isCronAuthorized,
+} from "@/lib/cron-auth";
 import { sendAppointmentReminderEmail } from "@/lib/email/tenant-notifications";
 import { organizationHasCapability } from "@/lib/entitlements";
 import {
@@ -43,13 +48,6 @@ type OrganizationRow = {
   trial_ends_at: string | null;
   is_active: boolean | null;
 };
-
-function isAuthorized(request: Request) {
-  const expectedSecret = process.env.CRON_SECRET;
-  if (!expectedSecret) return false;
-
-  return request.headers.get("authorization") === `Bearer ${expectedSecret}`;
-}
 
 function normalizeLocale(value: string | null | undefined): AppLocale {
   if (value === "en" || value === "it") return value;
@@ -188,8 +186,8 @@ function getSalonAddress(organization: OrganizationRow) {
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCronAuthorized(request)) {
+    return cronUnauthorizedResponse();
   }
 
   const supabase = createAdminClient();
@@ -225,7 +223,7 @@ export async function GET(request: Request) {
     .lte("appointment_date", maxCandidateDate);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return cronInternalError("email-reminders:appointments", error);
   }
 
   const appointments = (data ?? []) as AppointmentRow[];
@@ -252,10 +250,7 @@ export async function GET(request: Request) {
     .in("id", organizationIds);
 
   if (organizationsError) {
-    return NextResponse.json(
-      { error: organizationsError.message },
-      { status: 500 },
-    );
+    return cronInternalError("email-reminders:organizations", organizationsError);
   }
 
   const organizationsById = new Map(
