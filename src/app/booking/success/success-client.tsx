@@ -115,44 +115,42 @@ export default function BookingSuccessClient({
   }, [router, language, organizationSlug]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f8f3ef] px-4 py-10 text-[#2f2723]">
-      <div className="w-full max-w-xl rounded-[2rem] border border-[#eadbd2] bg-white p-8 text-center shadow-sm md:p-10">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#f8f3ef]">
-          <CheckCircle2 className="h-9 w-9 text-[#9b6f5b]" />
+    <main className="flex min-h-screen items-center justify-center bg-app-bg px-4 py-10 text-app-text">
+      <div className="w-full max-w-xl rounded-[2rem] border border-app-soft bg-white p-8 text-center shadow-sm md:p-10">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-app-card">
+          <CheckCircle2 className="h-9 w-9 text-app-accent" />
         </div>
 
-        <p className="mt-6 text-sm font-semibold uppercase tracking-[0.3em] text-[#9b6f5b]">
+        <p className="mt-6 text-sm font-semibold uppercase tracking-[0.3em] text-app-accent">
           {t.status}
         </p>
 
         <h1 className="mt-3 text-3xl font-semibold">{t.title}</h1>
 
-        <p className="mt-4 leading-7 text-[#6f5a50]">{t.text}</p>
+        <p className="mt-4 leading-7 text-app-muted">{t.text}</p>
 
         {(date || time || service) && (
-          <div className="mt-8 rounded-2xl bg-[#f8f3ef] p-5 text-left">
+          <div className="mt-8 rounded-2xl bg-app-card p-5 text-left">
             <h2 className="font-semibold">{t.details}</h2>
 
-            <div className="mt-4 space-y-2 text-sm text-[#6f5a50]">
+            <div className="mt-4 space-y-2 text-sm text-app-muted">
               {service && (
                 <p>
-                  <span className="font-medium text-[#2f2723]">
-                    {t.service}:
-                  </span>{" "}
+                  <span className="font-medium text-app-text">{t.service}:</span>{" "}
                   {service}
                 </p>
               )}
 
               {date && (
                 <p>
-                  <span className="font-medium text-[#2f2723]">{t.date}:</span>{" "}
+                  <span className="font-medium text-app-text">{t.date}:</span>{" "}
                   {formatDate(date, language)}
                 </p>
               )}
 
               {time && (
                 <p>
-                  <span className="font-medium text-[#2f2723]">{t.time}:</span>{" "}
+                  <span className="font-medium text-app-text">{t.time}:</span>{" "}
                   {time}
                 </p>
               )}
@@ -160,7 +158,7 @@ export default function BookingSuccessClient({
           </div>
         )}
 
-        <p className="mt-6 text-sm text-[#9b6f5b]">{t.redirect}</p>
+        <p className="mt-6 text-sm text-app-accent">{t.redirect}</p>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link
@@ -169,7 +167,7 @@ export default function BookingSuccessClient({
                 ? `/booking/${organizationSlug}?lang=${language}`
                 : `/?lang=${language}`
             }
-            className="rounded-xl bg-[#2f2723] px-6 py-3 font-semibold text-white transition hover:bg-[#4a3932]"
+            className="rounded-xl bg-app-accent px-6 py-3 font-semibold text-white transition hover:opacity-90"
           >
             {t.home}
           </Link>
@@ -180,7 +178,7 @@ export default function BookingSuccessClient({
                 ? `/booking/${organizationSlug}?lang=${language}`
                 : `/?lang=${language}`
             }
-            className="rounded-xl border border-[#eadbd2] px-6 py-3 font-semibold text-[#2f2723] transition hover:bg-[#f8f3ef]"
+            className="rounded-xl border border-app-soft px-6 py-3 font-semibold text-app-text transition hover:bg-app-card"
           >
             {t.newBooking}
           </Link>
