@@ -11,6 +11,18 @@ type Props = {
   email: string;
 };
 
+const MIN_PASSWORD_LENGTH = 12;
+
+function genericPasswordError(locale: AppLocale) {
+  if (locale === "it") {
+    return "Non è stato possibile modificare la password. Riprova.";
+  }
+  if (locale === "en") {
+    return "We could not change the password. Please try again.";
+  }
+  return "Lozinku nije bilo moguće promijeniti. Pokušaj ponovno.";
+}
+
 export default function ChangePasswordForm({ locale = "hr", email }: Props) {
   const t = getDictionary(locale).account;
   const router = useRouter();
@@ -29,8 +41,14 @@ export default function ChangePasswordForm({ locale = "hr", email }: Props) {
       return;
     }
 
-    if (newPassword.length < 6) {
-      toast.error(t.minLength);
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      toast.error(
+        locale === "it"
+          ? `La nuova password deve contenere almeno ${MIN_PASSWORD_LENGTH} caratteri.`
+          : locale === "en"
+            ? `New password must be at least ${MIN_PASSWORD_LENGTH} characters long.`
+            : `Nova lozinka mora imati barem ${MIN_PASSWORD_LENGTH} znakova.`,
+      );
       return;
     }
 
@@ -57,20 +75,20 @@ export default function ChangePasswordForm({ locale = "hr", email }: Props) {
       });
 
       if (updateError) {
-        toast.error(updateError.message);
+        console.error("Account password update failed:", updateError);
+        toast.error(genericPasswordError(locale));
         return;
       }
 
       const { error: signOutError } = await supabase.auth.signOut();
 
       if (signOutError) {
-        toast.error(signOutError.message);
+        console.error("Sign out after password change failed:", signOutError);
+        toast.error(genericPasswordError(locale));
         return;
       }
 
-      toast.success(
-        t.passwordChanged,
-      );
+      toast.success(t.passwordChanged);
       router.push("/login");
       router.refresh();
     } finally {
@@ -88,6 +106,7 @@ export default function ChangePasswordForm({ locale = "hr", email }: Props) {
           type="password"
           value={oldPassword}
           onChange={(e) => setOldPassword(e.target.value)}
+          autoComplete="current-password"
           className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none"
           required
         />
@@ -101,6 +120,8 @@ export default function ChangePasswordForm({ locale = "hr", email }: Props) {
           type="password"
           value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD_LENGTH}
           className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none"
           required
         />
@@ -114,6 +135,8 @@ export default function ChangePasswordForm({ locale = "hr", email }: Props) {
           type="password"
           value={repeatPassword}
           onChange={(e) => setRepeatPassword(e.target.value)}
+          autoComplete="new-password"
+          minLength={MIN_PASSWORD_LENGTH}
           className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none"
           required
         />
