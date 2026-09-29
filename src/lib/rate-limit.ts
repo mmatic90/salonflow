@@ -7,50 +7,38 @@ type CheckRateLimitArgs = {
   windowMinutes?: number;
 };
 
+type RateLimitResult = {
+  allowed: boolean;
+  remaining: number;
+};
+
 export async function checkRateLimit({
   ip,
   endpoint,
   limit = 5,
   windowMinutes = 10,
-}: CheckRateLimitArgs) {
+}: CheckRateLimitArgs): Promise<RateLimitResult> {
   const supabase = createAdminClient();
-
-  const since = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
-
-  const { count, error } = await supabase
-    .from("public_api_rate_limits")
-    .select("id", {
-      count: "exact",
-      head: true,
-    })
-    .eq("ip_address", ip)
-    .eq("endpoint", endpoint)
-    .gte("created_at", since);
+  const { data, error } = await supabase.rpc("consume_public_api_rate_limit", {
+    p_ip_address: ip,
+    p_endpoint: endpoint,
+    p_limit: limit,
+    p_window_minutes: windowMinutes,
+  });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  if ((count ?? 0) >= limit) {
-    return {
-      allowed: false,
-      remaining: 0,
-    };
-  }
-
-  const { error: insertError } = await supabase
-    .from("public_api_rate_limits")
-    .insert({
-      ip_address: ip,
-      endpoint,
-    });
-
-  if (insertError) {
-    throw new Error(insertError.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row.allowed !== "boolean") {
+    throw new Error("Invalid public API rate-limit response.");
   }
 
   return {
-    allowed: true,
-    remaining: limit - ((count ?? 0) + 1),
+    allowed: row.allowed,
+    remaining: Number.isFinite(Number(row.remaining))
+      ? Number(row.remaining)
+      : 0,
   };
 }
