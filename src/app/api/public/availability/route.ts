@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicBookingAvailability } from "@/features/public-booking/availability";
 import type { AppointmentServiceInput } from "@/features/appointments/types";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 type PublicAvailabilityBody = {
   organizationSlug?: string;
@@ -21,6 +22,34 @@ function isExpiredTrial(organization: {
 }
 
 export async function POST(request: Request) {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const ip =
+    forwardedFor?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+
+  try {
+    const rateLimit = await checkRateLimit({
+      ip,
+      endpoint: "public-availability",
+      limit: 60,
+      windowMinutes: 10,
+    });
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Previše zahtjeva. Pokušajte ponovno za nekoliko minuta." },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    console.error("Public availability rate-limit check failed:", error);
+    return NextResponse.json(
+      { error: "Došlo je do greške. Pokušajte ponovno." },
+      { status: 500 },
+    );
+  }
+
   let body: PublicAvailabilityBody;
 
   try {
