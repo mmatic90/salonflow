@@ -8,9 +8,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: feedback-storage-backup
+  cancel-in-progress: false
+
 jobs:
   backup:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_BACKUP_KEY: ${{ secrets.SUPABASE_BACKUP_KEY }}
@@ -18,9 +23,26 @@ jobs:
       STORAGE_BUCKET: feedback
       STORAGE_BACKUP_DIR: storage-backup-work
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci --ignore-scripts --omit=dev
-      - run: node .github/scripts/backup-feedback-storage.mjs
+          cache: npm
+      - name: Install runtime dependencies
+        run: npm ci --ignore-scripts --omit=dev
+      - name: Download feedback storage
+        run: node .github/scripts/backup-feedback-storage.mjs
+      - name: Package backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            "created_at_utc=$(date -u +'%Y-%m-%dT%H-%M-%SZ')" \
+            "repository=${GITHUB_REPOSITORY}" \
+            "run_id=${GITHUB_RUN_ID}" \
+            "bucket=${STORAGE_BUCKET}" \
+            > storage-backup-work/workflow-manifest.txt
+          tar -C storage-backup-work -czf feedback-storage-backup.tar.gz \
+            objects manifest.json workflow-manifest.txt
