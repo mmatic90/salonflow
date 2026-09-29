@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { rm } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 
 if (!process.env.BACKUP_ENCRYPTION_PASSWORD) {
   throw new Error("BACKUP_ENCRYPTION_PASSWORD is required");
@@ -34,6 +35,13 @@ run("openssl", [
   "env:BACKUP_ENCRYPTION_PASSWORD",
 ]);
 
-run("sha256sum", ["feedback-storage-backup.tar.gz.enc"]);
+const encrypted = await readFile("feedback-storage-backup.tar.gz.enc");
+const checksum = createHash("sha256").update(encrypted).digest("hex");
+await writeFile(
+  "feedback-storage-backup.tar.gz.enc.sha256",
+  `${checksum}  feedback-storage-backup.tar.gz.enc\n`,
+  "utf8",
+);
+
 await rm("storage-backup-work", { recursive: true, force: true });
 await rm("feedback-storage-backup.tar.gz", { force: true });
