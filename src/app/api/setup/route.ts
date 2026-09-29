@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Greška pri dodavanju zaposlenika:", error);
-      return jsonError(error.message || "Zaposlenika nije moguće dodati.", 500);
+      return jsonError("Zaposlenika nije moguće dodati.", 500);
     }
 
     return NextResponse.json({ ok: true, message: "Zaposlenik je dodan." });
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Greška pri dodavanju usluge:", error);
-      return jsonError(error.message || "Uslugu nije moguće dodati.", 500);
+      return jsonError("Uslugu nije moguće dodati.", 500);
     }
 
     return NextResponse.json({ ok: true, message: "Usluga je dodana." });
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Greška pri dodavanju sobe:", error);
-      return jsonError(error.message || "Sobu nije moguće dodati.", 500);
+      return jsonError("Sobu nije moguće dodati.", 500);
     }
 
     return NextResponse.json({ ok: true, message: "Soba je dodana." });
