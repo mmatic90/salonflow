@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { getDictionary, type AppLocale } from "@/lib/i18n";
+import { useSyncExternalStore } from "react";
+import LogoutButton from "@/components/logout-button";
+import type { AppLocale } from "@/lib/i18n";
 
 function detectLocale(): AppLocale {
   if (typeof navigator === "undefined") return "hr";
@@ -16,15 +15,32 @@ function detectLocale(): AppLocale {
 const subscribeToLocale = () => () => {};
 const getServerLocale = (): AppLocale => "hr";
 
-function slugify(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+const COPY: Record<
+  AppLocale,
+  { eyebrow: string; title: string; description: string; help: string }
+> = {
+  hr: {
+    eyebrow: "MiT Salon pristup",
+    title: "Račun još nije povezan sa salonom",
+    description:
+      "Novi salon više nije moguće samostalno kreirati iz korisničkog računa. Pristup salonu dodjeljuje MiT Salon administrator kroz kontrolirani pozivni postupak.",
+    help: "Ako ste očekivali pristup postojećem salonu, javite se osobi koja vam je poslala pozivnicu ili MiT Salon podršci.",
+  },
+  en: {
+    eyebrow: "MiT Salon access",
+    title: "Your account is not linked to a salon yet",
+    description:
+      "New salons can no longer be created directly from a user account. Salon access is provisioned by a MiT Salon administrator through the controlled invitation flow.",
+    help: "If you expected access to an existing salon, contact the person who invited you or MiT Salon support.",
+  },
+  it: {
+    eyebrow: "Accesso MiT Salon",
+    title: "Il tuo account non è ancora collegato a un salone",
+    description:
+      "Non è più possibile creare autonomamente un nuovo salone dall'account utente. L'accesso viene assegnato da un amministratore MiT Salon tramite la procedura di invito controllata.",
+    help: "Se ti aspettavi l'accesso a un salone esistente, contatta la persona che ti ha invitato o l'assistenza MiT Salon.",
+  },
+};
 
 export default function OnboardingPage() {
   const locale = useSyncExternalStore(
@@ -32,154 +48,18 @@ export default function OnboardingPage() {
     detectLocale,
     getServerLocale,
   );
-  const t = getDictionary(locale).onboarding;
-  const supabase = useMemo(() => createClient(), []);
-  const router = useRouter();
-  const [salonName, setSalonName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [slugEdited, setSlugEdited] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  useEffect(() => {
-    async function checkAccess() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-
-      const { data: membership } = await supabase
-        .from("organization_members")
-        .select("organization_id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle();
-
-      if (membership) {
-        router.replace("/dashboard");
-        return;
-      }
-
-      setChecking(false);
-    }
-
-    void checkAccess();
-  }, [router, supabase]);
-
-  function handleSalonNameChange(value: string) {
-    setSalonName(value);
-    if (!slugEdited) {
-      setSlug(slugify(value));
-    }
-  }
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setErrorMessage("");
-
-    const normalizedName = salonName.trim();
-    const normalizedSlug = slugify(slug);
-
-    if (normalizedName.length < 2 || normalizedSlug.length < 2) {
-      setErrorMessage(t.validation);
-      setLoading(false);
-      return;
-    }
-
-    const { error } = await supabase.rpc("create_organization_with_owner", {
-      organization_name: normalizedName,
-      organization_slug: normalizedSlug,
-    });
-
-    if (error) {
-      setErrorMessage(
-        error.code === "23505"
-          ? t.slugExists
-          : t.createError
-      );
-      setLoading(false);
-      return;
-    }
-
-    router.push("/dashboard");
-    router.refresh();
-  }
-
-  if (checking) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-app-bg px-4">
-        <p className="text-sm text-app-muted">{t.checking}</p>
-      </main>
-    );
-  }
+  const copy = COPY[locale];
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-app-bg px-4 py-10">
       <div className="w-full max-w-lg rounded-2xl border border-app-soft bg-app-card p-8 shadow-sm">
-        <div className="mb-6">
-          <p className="text-sm font-semibold text-app-accent">{t.welcome}</p>
-          <h1 className="mt-2 text-3xl font-bold text-app-text">{t.title}</h1>
-          <p className="mt-2 text-sm text-app-muted">
-            {t.description}
-          </p>
+        <p className="text-sm font-semibold text-app-accent">{copy.eyebrow}</p>
+        <h1 className="mt-2 text-3xl font-bold text-app-text">{copy.title}</h1>
+        <p className="mt-4 text-sm leading-6 text-app-muted">{copy.description}</p>
+        <p className="mt-3 text-sm leading-6 text-app-muted">{copy.help}</p>
+        <div className="mt-6">
+          <LogoutButton locale={locale} />
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label htmlFor="salon-name" className="mb-1 block text-sm font-medium text-app-text">
-              {t.salonName}
-            </label>
-            <input
-              id="salon-name"
-              value={salonName}
-              onChange={(event) => handleSalonNameChange(event.target.value)}
-              placeholder={t.salonNamePlaceholder}
-              className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="salon-slug" className="mb-1 block text-sm font-medium text-app-text">
-              {t.salonSlug}
-            </label>
-            <input
-              id="salon-slug"
-              value={slug}
-              onChange={(event) => {
-                setSlugEdited(true);
-                setSlug(slugify(event.target.value));
-              }}
-              placeholder="studio-aurora"
-              className="w-full rounded-xl border border-app-soft bg-white px-4 py-3 text-app-text outline-none"
-              required
-            />
-            <p className="mt-1 text-xs text-app-muted">
-              {t.slugHelp}
-            </p>
-          </div>
-
-          {errorMessage ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-app-accent px-4 py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50"
-          >
-            {loading ? t.creating : t.create}
-          </button>
-        </form>
       </div>
     </main>
   );
