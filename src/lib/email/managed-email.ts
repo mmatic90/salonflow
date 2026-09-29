@@ -1,4 +1,5 @@
 import { createManagedEmailProvider } from "@/lib/email/provider";
+import { applyTenantEmailTheme } from "@/lib/email/tenant-email-theme";
 import {
   organizationHasCapability,
   type SalonCapabilityCode,
@@ -117,7 +118,7 @@ export async function sendManagedTenantEmail(args: ManagedEmailArgs) {
     supabase
       .from("organizations")
       .select(
-        "id, name, email, plan_code, lifecycle_status, trial_ends_at, is_active",
+        "id, name, email, theme, plan_code, lifecycle_status, trial_ends_at, is_active",
       )
       .eq("id", args.organizationId)
       .maybeSingle(),
@@ -215,7 +216,7 @@ export async function sendManagedTenantEmail(args: ManagedEmailArgs) {
       from,
       to: args.to,
       subject: args.subject,
-      html: args.html,
+      html: applyTenantEmailTheme(args.html, organization.theme),
       replyTo,
     });
     await recordResult(args.organizationId, true);
