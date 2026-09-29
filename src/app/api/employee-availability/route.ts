@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 type OverrideType = "custom_hours" | "day_off" | "vacation" | "sick_leave";
 
@@ -26,17 +27,12 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) {
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
 
+  const supabase = await createClient();
   const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
 
   const [
@@ -44,26 +40,32 @@ export async function GET(request: Request) {
     { data: defaultSchedules, error: defaultSchedulesError },
     { data: overrides, error: overridesError },
   ] = await Promise.all([
-    supabase.from("employees").select("id").eq("is_active", true),
+    supabase
+      .from("employees")
+      .select("id")
+      .eq("organization_id", permissions.organizationId)
+      .eq("is_active", true),
     supabase
       .from("employee_default_schedule")
       .select("employee_id, day_of_week, is_working")
+      .eq("organization_id", permissions.organizationId)
       .eq("day_of_week", dayOfWeek),
     supabase
       .from("employee_schedule_overrides")
       .select("employee_id, override_date, override_type")
+      .eq("organization_id", permissions.organizationId)
       .eq("override_date", date),
   ]);
 
   if (employeesError || defaultSchedulesError || overridesError) {
+    console.error("Employee availability lookup failed:", {
+      employeesError,
+      defaultSchedulesError,
+      overridesError,
+    });
+
     return NextResponse.json(
-      {
-        error:
-          employeesError?.message ||
-          defaultSchedulesError?.message ||
-          overridesError?.message ||
-          "Greška pri dohvaćanju dostupnosti zaposlenika.",
-      },
+      { error: "Greška pri dohvaćanju dostupnosti zaposlenika." },
       { status: 500 },
     );
   }
