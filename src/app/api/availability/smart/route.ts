@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getSmartAvailability } from "@/features/availability/smart-availability";
 import type { AppointmentServiceInput } from "@/features/appointments/types";
+import { getCurrentUserPermissions } from "@/lib/permissions";
 
 type SmartAvailabilityRequestBody = {
   date?: string;
@@ -53,13 +53,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  const permissions = await getCurrentUserPermissions();
+  if (!permissions) {
     return NextResponse.json({ error: "Niste prijavljeni." }, { status: 401 });
   }
 
@@ -71,12 +66,15 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(result);
-  } catch (e) {
+  } catch (error) {
+    console.error("Smart availability lookup failed:", {
+      error,
+      organizationId: permissions.organizationId,
+      date,
+    });
+
     return NextResponse.json(
-      {
-        error:
-          e instanceof Error ? e.message : "Greška pri dohvaćanju dostupnosti.",
-      },
+      { error: "Greška pri dohvaćanju dostupnosti." },
       { status: 500 },
     );
   }
