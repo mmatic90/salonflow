@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  cronInternalError,
+  cronUnauthorizedResponse,
+  isCronAuthorized,
+} from "@/lib/cron-auth";
 import { ManagedEmailError } from "@/lib/email/managed-email";
 import { sendGoogleReviewRequestEmail } from "@/lib/email/review-request-email";
 import { organizationHasCapability } from "@/lib/entitlements";
@@ -47,12 +52,6 @@ type ReviewSettingsRow = {
   delay_hours: number;
   enabled_at: string | null;
 };
-
-function isAuthorized(request: Request) {
-  const expectedSecret = process.env.CRON_SECRET;
-  if (!expectedSecret) return false;
-  return request.headers.get("authorization") === `Bearer ${expectedSecret}`;
-}
 
 function normalizeLocale(value: string | null | undefined): AppLocale {
   if (value === "en" || value === "it") return value;
@@ -173,8 +172,8 @@ function isDue(
 }
 
 export async function GET(request: Request) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isCronAuthorized(request)) {
+    return cronUnauthorizedResponse();
   }
 
   const supabase = createAdminClient();
@@ -199,7 +198,7 @@ export async function GET(request: Request) {
     .lte("appointment_date", maxCandidateDate);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return cronInternalError("review-requests:appointments", error);
   }
 
   const appointments = (data ?? []) as AppointmentRow[];
@@ -236,16 +235,13 @@ export async function GET(request: Request) {
   ]);
 
   if (organizationsResult.error) {
-    return NextResponse.json(
-      { error: organizationsResult.error.message },
-      { status: 500 },
+    return cronInternalError(
+      "review-requests:organizations",
+      organizationsResult.error,
     );
   }
   if (settingsResult.error) {
-    return NextResponse.json(
-      { error: settingsResult.error.message },
-      { status: 500 },
-    );
+    return cronInternalError("review-requests:settings", settingsResult.error);
   }
 
   const organizationsById = new Map(
