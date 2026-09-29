@@ -68,6 +68,10 @@ function waitlistIdFromRequest(request: Request, body: Record<string, unknown>) 
   }
 }
 
+function appointmentServerError(message = "Termin nije moguće spremiti.") {
+  return NextResponse.json({ error: message }, { status: 500 });
+}
+
 export async function POST(request: Request) {
   try {
     const permissions = await getCurrentUserPermissions();
@@ -139,13 +143,16 @@ export async function POST(request: Request) {
     ]);
 
     if (employeeError) {
-      return NextResponse.json({ error: employeeError.message }, { status: 400 });
+      console.error("Appointment employee lookup failed:", employeeError);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (serviceError) {
-      return NextResponse.json({ error: serviceError.message }, { status: 400 });
+      console.error("Appointment service lookup failed:", serviceError);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (roomError) {
-      return NextResponse.json({ error: roomError.message }, { status: 400 });
+      console.error("Appointment room lookup failed:", roomError);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (!employee) {
       return NextResponse.json(
@@ -184,16 +191,12 @@ export async function POST(request: Request) {
     ]);
 
     if (employeeMappingResult.error) {
-      return NextResponse.json(
-        { error: employeeMappingResult.error.message },
-        { status: 400 },
-      );
+      console.error("Appointment employee-service lookup failed:", employeeMappingResult.error);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (roomMappingResult.error) {
-      return NextResponse.json(
-        { error: roomMappingResult.error.message },
-        { status: 400 },
-      );
+      console.error("Appointment service-room lookup failed:", roomMappingResult.error);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (!employeeMappingResult.data) {
       return NextResponse.json(
@@ -243,10 +246,8 @@ export async function POST(request: Request) {
         .eq("organization_id", organizationId)
         .maybeSingle();
       if (existingClientError) {
-        return NextResponse.json(
-          { error: existingClientError.message },
-          { status: 400 },
-        );
+        console.error("Appointment client lookup failed:", existingClientError);
+        return appointmentServerError("Klijenta trenutno nije moguće dohvatiti.");
       }
       if (!existingClient) {
         return NextResponse.json(
@@ -267,14 +268,8 @@ export async function POST(request: Request) {
         .eq("organization_id", organizationId);
 
       if (clientUpdateError) {
-        return NextResponse.json(
-          {
-            error:
-              clientUpdateError.message ||
-              "Podatke klijenta nije moguće ažurirati.",
-          },
-          { status: 400 },
-        );
+        console.error("Appointment client update failed:", clientUpdateError);
+        return appointmentServerError("Podatke klijenta nije moguće ažurirati.");
       }
 
       clientId = existingClient.id;
@@ -292,13 +287,8 @@ export async function POST(request: Request) {
         .select("id")
         .single();
       if (clientError || !newClient) {
-        return NextResponse.json(
-          {
-            error:
-              clientError?.message || "Klijenta nije moguće spremiti.",
-          },
-          { status: 400 },
-        );
+        console.error("Appointment client creation failed:", clientError);
+        return appointmentServerError("Klijenta nije moguće spremiti.");
       }
       clientId = newClient.id;
     }
@@ -327,6 +317,9 @@ export async function POST(request: Request) {
       .single();
 
     if (appointmentError || !appointment) {
+      if (appointmentError) {
+        console.error("Appointment creation failed:", appointmentError);
+      }
       return NextResponse.json(
         {
           error: appointmentDatabaseErrorMessage(
@@ -350,11 +343,13 @@ export async function POST(request: Request) {
       });
 
     if (appointmentServiceError) {
-      await supabase.from("appointments").delete().eq("id", appointment.id);
-      return NextResponse.json(
-        { error: appointmentServiceError.message },
-        { status: 400 },
-      );
+      console.error("Appointment service creation failed:", appointmentServiceError);
+      await supabase
+        .from("appointments")
+        .delete()
+        .eq("id", appointment.id)
+        .eq("organization_id", organizationId);
+      return appointmentServerError("Termin nije moguće dovršiti.");
     }
 
     if (waitlistId && clientId) {
@@ -431,14 +426,6 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Greška pri stvaranju termina:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Termin nije moguće spremiti.",
-      },
-      { status: 500 },
-    );
+    return appointmentServerError();
   }
 }
