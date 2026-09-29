@@ -202,3 +202,46 @@ thead {
   --color-app-dark-2: #6A5270;
   --color-app-table-head: #E5DAE8;
 }
+
+/* =========================
+   PUBLIC BOOKING THEME BRIDGE
+   Legacy booking controls still use arbitrary color utility classes.
+   Remap them to the active organization theme so public booking stays
+   visually consistent with the salon page and dashboard appearance.
+========================= */
+
+main[data-theme] .text-\[\#6f5a50\] {
+  color: var(--color-app-muted) !important;
+}
+
+main[data-theme] .text-\[\#9b6f5b\] {
+  color: var(--color-app-accent) !important;
+}
+
+main[data-theme] .text-\[\#2f2723\] {
+  color: var(--color-app-text) !important;
+}
+
+main[data-theme] .border-\[\#eadbd2\] {
+  border-color: var(--color-app-soft) !important;
+}
+
+main[data-theme] .bg-\[\#f8f3ef\] {
+  background-color: var(--color-app-card-alt) !important;
+}
+
+main[data-theme] .bg-\[\#2f2723\] {
+  background-color: var(--color-app-accent) !important;
+}
+
+main[data-theme] .border-\[\#2f2723\] {
+  border-color: var(--color-app-accent) !important;
+}
+
+main[data-theme] .accent-\[\#2f2723\] {
+  accent-color: var(--color-app-accent) !important;
+}
+
+main[data-theme] .hover\:bg-\[\#fffaf7\]:hover {
+  background-color: var(--color-app-card-alt) !important;
+}
