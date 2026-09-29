@@ -61,6 +61,10 @@ function getSalonAddress(organization: {
     .join(", ");
 }
 
+function appointmentServerError(message = "Termin nije moguće urediti.") {
+  return NextResponse.json({ error: message }, { status: 500 });
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -130,10 +134,8 @@ export async function PATCH(
         .maybeSingle();
 
     if (existingAppointmentError) {
-      return NextResponse.json(
-        { error: existingAppointmentError.message },
-        { status: 400 },
-      );
+      console.error("Appointment lookup before update failed:", existingAppointmentError);
+      return appointmentServerError("Termin trenutno nije moguće dohvatiti.");
     }
     if (!existingAppointment) {
       return NextResponse.json(
@@ -171,13 +173,16 @@ export async function PATCH(
     ]);
 
     if (employeeError) {
-      return NextResponse.json({ error: employeeError.message }, { status: 400 });
+      console.error("Appointment update employee lookup failed:", employeeError);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (serviceError) {
-      return NextResponse.json({ error: serviceError.message }, { status: 400 });
+      console.error("Appointment update service lookup failed:", serviceError);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (roomError) {
-      return NextResponse.json({ error: roomError.message }, { status: 400 });
+      console.error("Appointment update room lookup failed:", roomError);
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (!employee) {
       return NextResponse.json(
@@ -216,16 +221,18 @@ export async function PATCH(
     ]);
 
     if (employeeMappingResult.error) {
-      return NextResponse.json(
-        { error: employeeMappingResult.error.message },
-        { status: 400 },
+      console.error(
+        "Appointment update employee-service lookup failed:",
+        employeeMappingResult.error,
       );
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (roomMappingResult.error) {
-      return NextResponse.json(
-        { error: roomMappingResult.error.message },
-        { status: 400 },
+      console.error(
+        "Appointment update service-room lookup failed:",
+        roomMappingResult.error,
       );
+      return appointmentServerError("Podatke termina trenutno nije moguće provjeriti.");
     }
     if (!employeeMappingResult.data) {
       return NextResponse.json(
@@ -276,10 +283,8 @@ export async function PATCH(
         .eq("organization_id", organizationId)
         .maybeSingle();
       if (clientError) {
-        return NextResponse.json(
-          { error: clientError.message },
-          { status: 400 },
-        );
+        console.error("Appointment update client lookup failed:", clientError);
+        return appointmentServerError("Klijenta trenutno nije moguće dohvatiti.");
       }
       if (!existingClient) {
         return NextResponse.json(
@@ -302,13 +307,8 @@ export async function PATCH(
         .select("id")
         .single();
       if (clientError || !newClient) {
-        return NextResponse.json(
-          {
-            error:
-              clientError?.message || "Klijenta nije moguće spremiti.",
-          },
-          { status: 400 },
-        );
+        console.error("Appointment update client creation failed:", clientError);
+        return appointmentServerError("Klijenta nije moguće spremiti.");
       }
       clientId = newClient.id;
     }
@@ -336,6 +336,7 @@ export async function PATCH(
       .eq("organization_id", organizationId);
 
     if (appointmentError) {
+      console.error("Appointment update failed:", appointmentError);
       return NextResponse.json(
         { error: appointmentDatabaseErrorMessage(appointmentError.message) },
         { status: 400 },
@@ -348,10 +349,8 @@ export async function PATCH(
       .eq("appointment_id", id)
       .eq("organization_id", organizationId);
     if (deleteServiceError) {
-      return NextResponse.json(
-        { error: deleteServiceError.message },
-        { status: 400 },
-      );
+      console.error("Appointment service cleanup failed:", deleteServiceError);
+      return appointmentServerError("Usluge termina nije moguće ažurirati.");
     }
 
     const { error: insertServiceError } = await supabase
@@ -366,10 +365,8 @@ export async function PATCH(
         sort_order: 0,
       });
     if (insertServiceError) {
-      return NextResponse.json(
-        { error: insertServiceError.message },
-        { status: 400 },
-      );
+      console.error("Appointment service update failed:", insertServiceError);
+      return appointmentServerError("Usluge termina nije moguće ažurirati.");
     }
 
     const previousStart = existingAppointment.start_time?.slice(0, 5) ?? "";
@@ -453,14 +450,6 @@ export async function PATCH(
     });
   } catch (error) {
     console.error("Greška pri uređivanju termina:", error);
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Termin nije moguće urediti.",
-      },
-      { status: 500 },
-    );
+    return appointmentServerError();
   }
 }
