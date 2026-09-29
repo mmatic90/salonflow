@@ -10,12 +10,14 @@ export type PublicBookingService = {
   category: string | null;
 };
 
+type PublicTheme = "sand" | "rose" | "slate" | "sage" | "ocean" | "plum";
+
 export type PublicBookingOrganization = {
   id: string;
   name: string;
   slug: string;
   locale: "hr" | "en" | "it";
-  theme: "sand" | "rose" | "slate";
+  theme: PublicTheme;
   phone: string | null;
   email: string | null;
   address_line_1: string | null;
@@ -31,6 +33,21 @@ export type PublicSalonWorkingHour = {
   closes_at: string | null;
   is_closed: boolean;
 };
+
+const publicThemes = new Set<PublicTheme>([
+  "sand",
+  "rose",
+  "slate",
+  "sage",
+  "ocean",
+  "plum",
+]);
+
+function resolvePublicTheme(value: string | null): PublicTheme {
+  return value && publicThemes.has(value as PublicTheme)
+    ? (value as PublicTheme)
+    : "sand";
+}
 
 function isExpiredTrial(organization: {
   lifecycle_status: string | null;
@@ -69,7 +86,7 @@ export async function getPublicBookingOrganizationBySlug(
     name: data.name,
     slug: data.slug,
     locale: data.locale === "en" || data.locale === "it" ? data.locale : "hr",
-    theme: data.theme === "rose" || data.theme === "slate" ? data.theme : "sand",
+    theme: resolvePublicTheme(data.theme),
     phone: data.phone,
     email: data.email,
     address_line_1: data.address_line_1,
