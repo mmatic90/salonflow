@@ -19,7 +19,11 @@ export async function GET() {
       .eq("status", "pending");
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Pending online booking count query failed:", error);
+      return NextResponse.json(
+        { error: "Unable to load pending booking count." },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ count: count ?? 0 });
