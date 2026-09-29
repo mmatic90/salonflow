@@ -30,6 +30,13 @@ function dayOfWeekForDate(value: string) {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+function availabilityServerError() {
+  return NextResponse.json(
+    { error: "Dostupnost trenutno nije moguće dohvatiti." },
+    { status: 500 },
+  );
+}
+
 export async function GET(request: NextRequest) {
   const permissions = await getCurrentUserPermissions();
 
@@ -75,10 +82,8 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (serviceResult.error) {
-    return NextResponse.json(
-      { error: serviceResult.error.message },
-      { status: 400 },
-    );
+    console.error("Appointment availability service lookup failed:", serviceResult.error);
+    return availabilityServerError();
   }
 
   if (!serviceResult.data) {
@@ -107,10 +112,8 @@ export async function GET(request: NextRequest) {
     .maybeSingle();
 
   if (salonHoursError) {
-    return NextResponse.json(
-      { error: salonHoursError.message },
-      { status: 400 },
-    );
+    console.error("Appointment availability salon hours lookup failed:", salonHoursError);
+    return availabilityServerError();
   }
 
   if (!salonDay || salonDay.is_closed) {
@@ -185,7 +188,8 @@ export async function GET(request: NextRequest) {
     appointmentsResult.error;
 
   if (firstError) {
-    return NextResponse.json({ error: firstError.message }, { status: 400 });
+    console.error("Appointment availability resource lookup failed:", firstError);
+    return availabilityServerError();
   }
 
   const allowedEmployeeIds = new Set(
@@ -217,6 +221,10 @@ export async function GET(request: NextRequest) {
       ]);
 
       if (scheduleResult.error) {
+        console.error(
+          "Appointment availability employee schedule lookup failed:",
+          scheduleResult.error,
+        );
         return { employeeId: employee.id, available: false };
       }
 
@@ -233,6 +241,13 @@ export async function GET(request: NextRequest) {
         scheduleEnd !== null &&
         startMinutes >= scheduleStart &&
         endMinutes <= scheduleEnd;
+
+      if (breakResult.error) {
+        console.error(
+          "Appointment availability employee break lookup failed:",
+          breakResult.error,
+        );
+      }
 
       const employeeBreak = breakResult.error ? null : breakResult.data?.[0];
       const overlapsBreak = Boolean(
