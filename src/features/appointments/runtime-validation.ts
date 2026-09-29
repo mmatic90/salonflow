@@ -42,15 +42,27 @@ export async function validateAppointmentRuntime(args: ValidationArgs) {
   ]);
 
   if (scheduleResult.error) {
-    return { ok: false as const, message: scheduleResult.error.message };
+    console.error("Appointment runtime schedule lookup failed:", scheduleResult.error);
+    return {
+      ok: false as const,
+      message: "Dostupnost termina trenutno nije moguće provjeriti.",
+    };
   }
 
   if (breakResult.error) {
-    return { ok: false as const, message: breakResult.error.message };
+    console.error("Appointment runtime break lookup failed:", breakResult.error);
+    return {
+      ok: false as const,
+      message: "Dostupnost termina trenutno nije moguće provjeriti.",
+    };
   }
 
   if (appointmentsResult.error) {
-    return { ok: false as const, message: appointmentsResult.error.message };
+    console.error("Appointment runtime conflict lookup failed:", appointmentsResult.error);
+    return {
+      ok: false as const,
+      message: "Dostupnost termina trenutno nije moguće provjeriti.",
+    };
   }
 
   const schedule = scheduleResult.data?.[0];
@@ -145,5 +157,5 @@ export function appointmentDatabaseErrorMessage(message: string) {
   if (message.includes("ROOM_APPOINTMENT_OVERLAP")) {
     return "Soba je već zauzeta u odabranom vremenu.";
   }
-  return message;
+  return "Termin nije moguće spremiti.";
 }
