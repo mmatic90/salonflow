@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicBookingAvailability } from "@/features/public-booking/availability";
 import type { AppointmentServiceInput } from "@/features/appointments/types";
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: organization, error: organizationError } = await supabase
     .from("organizations")
