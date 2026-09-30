@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getSelectedOrganizationId } from "@/lib/organization-selection";
 import {
   normalizeSalonLifecycleStatus,
   normalizeSalonPlanCode,
@@ -78,17 +79,22 @@ export async function getCurrentUserPermissions(): Promise<CurrentUserPermission
     return null;
   }
 
+  const selectedOrganizationId = await getSelectedOrganizationId();
+  let membershipQuery = supabase
+    .from("organization_members")
+    .select(
+      "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active, plan_code, lifecycle_status, trial_ends_at)",
+    )
+    .eq("user_id", user.id)
+    .eq("is_active", true);
+
+  membershipQuery = selectedOrganizationId
+    ? membershipQuery.eq("organization_id", selectedOrganizationId)
+    : membershipQuery.order("joined_at", { ascending: true }).limit(1);
+
   const [{ data: membership, error: membershipError }, { data: platformAdmin }] =
     await Promise.all([
-      supabase
-        .from("organization_members")
-        .select(
-          "organization_id, role, display_name, is_active, organizations(name, locale, theme, logo_url, is_active, plan_code, lifecycle_status, trial_ends_at)",
-        )
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle(),
+      membershipQuery.maybeSingle(),
       supabase
         .from("platform_admins")
         .select("user_id")
