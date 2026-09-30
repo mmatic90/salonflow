@@ -24,7 +24,7 @@ export default async function NewSalesTrialPage() {
             Kreiraj privatni MiT Salon za potencijalnog klijenta
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Svaki salon dobiva vlastiti tenant, vlasnički račun i 14 dana Pro funkcionalnosti. Po želji ga možeš odmah napuniti sigurnim demo podacima kako bi korisnik imao što istraživati od prvog prijavljivanja.
+            Svaki salon dobiva vlastiti tenant, vlasnički račun i 7 dana Pro funkcionalnosti. Po želji ga možeš odmah napuniti sigurnim demo podacima kako bi korisnik imao što istraživati od prvog prijavljivanja.
           </p>
         </div>
 
@@ -33,7 +33,7 @@ export default async function NewSalesTrialPage() {
             <ShieldCheck className="h-5 w-5 text-emerald-600" /> Vlastiti tenant i podaci
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
-            <Clock3 className="h-5 w-5 text-blue-600" /> 14 dana Pro triala
+            <Clock3 className="h-5 w-5 text-blue-600" /> 7 dana Pro triala
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">
             <Sparkles className="h-5 w-5 text-violet-600" /> Demo podaci bez stvarnih emailova
