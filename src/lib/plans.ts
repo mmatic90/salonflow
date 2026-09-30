@@ -28,26 +28,28 @@ const unlimitedFoundationLimits = {
   maxLocations: null,
 } as const;
 
+// Internal database codes stay starter/growth/pro for backwards compatibility.
+// Customer-facing names are Solo/Team/Pro everywhere in the product and sales material.
 export const salonPlans: Record<SalonPlanCode, SalonPlanDefinition> = {
   starter: {
     code: "starter",
-    name: "Starter",
+    name: "Solo",
     description:
-      "Osnovni plan za manje salone kojima trebaju kalendar, klijenti, rasporedi i online rezervacije.",
+      "Osnovni paket za samostalne salone kojima trebaju kalendar, klijenti, rasporedi i online rezervacije.",
     limits: { ...unlimitedFoundationLimits },
   },
   growth: {
     code: "growth",
-    name: "Growth",
+    name: "Team",
     description:
-      "Plan za salone koji žele automatiziranu listu čekanja, CRM uvide i naprednije izvještaje.",
+      "Paket za manje timove koji uz osnovne funkcije trebaju podsjetnike, listu čekanja, CRM uvide i naprednije izvještaje.",
     limits: { ...unlimitedFoundationLimits },
   },
   pro: {
     code: "pro",
     name: "Pro",
     description:
-      "Najviši plan za napredni CRM, automatizacije, integracije i premium workflow.",
+      "Najviši paket s naprednim CRM workflowom, review automatizacijom i audit funkcionalnostima.",
     limits: { ...unlimitedFoundationLimits },
   },
 };
