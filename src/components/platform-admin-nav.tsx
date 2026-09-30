@@ -7,12 +7,14 @@ import {
   LayoutDashboard,
   Mail,
   MessageSquareText,
+  Sparkles,
   Store,
   UserPlus,
 } from "lucide-react";
 
 const items = [
   { href: "/platform", label: "Pregled", icon: LayoutDashboard, exact: true },
+  { href: "/platform/demos", label: "Showcase demo", icon: Sparkles },
   { href: "/platform/trials/new", label: "Novi trial", icon: UserPlus },
   { href: "/platform/email", label: "Managed email", icon: Mail },
   { href: "/platform/feedback", label: "Feedback", icon: MessageSquareText },
