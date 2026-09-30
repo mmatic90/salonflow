@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ExternalLink, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import {
+  ExternalLink,
+  LayoutDashboard,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import {
   createMissingShowcaseDemosAction,
   refreshShowcaseDemoAction,
@@ -140,6 +146,15 @@ export default function ShowcaseDemoManager({ demos }: { demos: ShowcaseDemoStat
                 )}
                 Osvježi demo podatke
               </button>
+
+              {demo.exists ? (
+                <Link
+                  href={`/platform/demos/open/${demo.key}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-950 hover:bg-emerald-100"
+                >
+                  <LayoutDashboard className="h-4 w-4" /> Otvori dashboard
+                </Link>
+              ) : null}
 
               {demo.organizationId ? (
                 <Link
