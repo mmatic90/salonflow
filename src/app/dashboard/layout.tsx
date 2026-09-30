@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -19,6 +20,18 @@ import {
   getGuidedSetupState,
 } from "@/features/guided-setup/queries";
 import { getDictionary } from "@/lib/i18n";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const permissions = await getCurrentUserPermissions();
+
+  return {
+    title: {
+      absolute: permissions
+        ? `${permissions.organizationName} - MiT Salon`
+        : "MiT Salon",
+    },
+  };
+}
 
 function trialBannerCopy(locale: "hr" | "en" | "it", daysLeft: number, endDate: string, active: boolean) {
   if (locale === "it") {
