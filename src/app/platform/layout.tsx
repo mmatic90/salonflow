@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import PlatformAdminNav from "@/components/platform-admin-nav";
 import { requirePlatformAdmin } from "@/lib/platform-admin";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Admin Platform - MiT Salon",
+  },
+};
 
 export default async function PlatformLayout({ children }: { children: ReactNode }) {
   const admin = await requirePlatformAdmin();
